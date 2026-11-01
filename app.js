@@ -1,10 +1,18 @@
 const KEY='student-brain-data-v1';
-const starter=()=>({notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[]});
+const DATA_SCHEMA_VERSION=2;
+const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[]});
+function migrateData(raw){
+ const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+ const next={...starter(),...source};
+ for(const key of ['notes','tasks','projects','expenses','messages','studySessions','documents'])if(!Array.isArray(next[key]))next[key]=[];
+ next.schemaVersion=DATA_SCHEMA_VERSION;
+ return next;
+}
 let data=loadData(),page='overview',chatBusy=false;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
-function loadData(){try{return {...starter(),...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return starter()}}
+function loadData(){try{return migrateData(JSON.parse(localStorage.getItem(KEY)||'{}'))}catch{return starter()}}
 let syncQueue=Promise.resolve();
 let cloudRetryTimer=null,cloudRetryDelay=1500;
 function persist(){
@@ -177,7 +185,7 @@ function action(name,id){const map={ 'new-note':()=>openForm('note'),'voice-quic
 function confirmDelete(key,id){const item=data[key].find(x=>x.id===id);if(!item)return;if(confirm(`Delete "${item.title||item.name||item.description}"? This cannot be undone.`)){data[key]=data[key].filter(x=>x.id!==id);persist();render();toast('Deleted')}}
 function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid backup');if(!confirm('Restore this backup and replace current workspace data?'))return;data={...starter(),...parsed};persist();page='overview';render();toast('Backup restored')}catch(e){toast('Invalid Student Brain backup file')}};reader.readAsText(f)}
 function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='student-brain-backup.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup downloaded')}
-function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}if(f.size>20*1024*1024){toast('Backup too large (20 MB maximum)');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||typeof parsed!=='object'||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid Student Brain backup');const next={...starter(),...parsed};for(const key of Object.keys(starter()))if(!Array.isArray(next[key]))next[key]=[];if(!confirm('Restore backup and replace current data? A safety snapshot will be saved first.'))return;localStorage.setItem(KEY+'-pre-restore',JSON.stringify(data));data=next;persist();page='overview';render();toast('Backup restored')}catch(err){console.error('Restore failed',err);toast(err.message||'Invalid backup file')}};reader.onerror=()=>toast('Could not read backup file');reader.readAsText(f)}
+function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}if(f.size>20*1024*1024){toast('Backup too large (20 MB maximum)');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||typeof parsed!=='object'||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid Student Brain backup');const next=migrateData(parsed);if(!confirm('Restore backup and replace current data? A safety snapshot will be saved first.'))return;localStorage.setItem(KEY+'-pre-restore',JSON.stringify(data));data=next;persist();page='overview';render();toast('Backup restored')}catch(err){console.error('Restore failed',err);toast(err.message||'Invalid backup file')}};reader.onerror=()=>toast('Could not read backup file');reader.readAsText(f)}
 function clearData(){if(confirm('Delete all Student Brain data saved in this browser? Export first if you need a backup.')){data=starter();persist();render();toast('Local data cleared')}}
 document.addEventListener('click',e=>{const backdrop=e.target.closest('.modal-backdrop');if(backdrop&&e.target===backdrop){e.preventDefault();e.stopPropagation();action('close-modal');return}if(e.target.closest('.modal')){const close=e.target.closest('[data-action="close-modal"]');if(close){e.preventDefault();e.stopPropagation();action('close-modal')}return}const close=e.target.closest('[data-action="close-modal"]');if(close){e.preventDefault();e.stopPropagation();action('close-modal');return}if(e.target.closest('.modal'))return;const pg=e.target.closest('[data-page]');if(pg){page=pg.dataset.page;render();return}const a=e.target.closest('[data-action]');if(a){action(a.dataset.action,a.dataset.id);return}const q=e.target.closest('[data-question]');if(q){sendChat(q.dataset.question);return}});
 document.addEventListener('submit',e=>{if(e.target.id==='edit-form')saveForm(e);if(e.target.id==='chat-form'){e.preventDefault();const i=document.querySelector('#chat-input');sendChat(i.value);}});
