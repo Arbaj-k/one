@@ -69,30 +69,49 @@ function askDocument(id){
  document.querySelector('#modal-root .modal-actions .primary')?.setAttribute('type','button');
 }
 function aiAnswer(q){
- const lower=String(q||'').toLowerCase();
- const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document']);
- const terms=lower.replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>1&&!stop.has(w));
- if(!terms.length)return {answer:'Try a few important words from your file, such as a subject name, date, exam name, or exact phrase.',sources:[]};
- const docs=(data.documents||[]).filter(d=>d.extractedText);
- const notes=(data.notes||[]);
- const docHits=[];
- docs.forEach(doc=>{
-   const lines=String(doc.extractedText||'').split(/\n+/).map(line=>line.trim()).filter(line=>line&&!/^\[Page \d+\]$/.test(line));
+ // Local, source-grounded retrieval. Expand common exam/date question wording
+ // so "mid term 1 kab hai?" can match "Mid-Term I examination: 14 Nov".
+ const raw=String(q||'').toLowerCase();
+ const normalize=s=>String(s||'').toLowerCase()
+   .replace(/[’']/g,'')
+   .replace(/\bmid[\s-]*term\b/g,'midterm')
+   .replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2')
+   .replace(/\b(first|1st|one)\b/g,'1')
+   .replace(/\b(second|2nd|two)\b/g,'2')
+   .replace(/\b(third|3rd|three)\b/g,'3')
+   .replace(/\b(exam|examination|paper|test)\b/g,'exam')
+   .replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date')
+   .replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+ const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do','please']);
+ const terms=normalize(raw).split(/\s+/).filter(w=>w.length>1&&!stop.has(w));
+ if(!terms.length)return {answer:'Please ask with a topic or exam name, for example: “Mid Term 1 kab hai?”',sources:[]};
+ const scoreText=text=>{
+   const normalized=normalize(text);
+   let score=terms.reduce((sum,term)=>sum+(normalized.includes(term)?2:0),0);
+   // Date questions benefit from nearby date-bearing lines once the subject/exam matches.
+   if(/\b\d{1,2}[\s./-]+(?:\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(text)||/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}/i.test(text))score+=1;
+   return score;
+ };
+ const hits=[];
+ (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
+   const lines=String(doc.extractedText||'').split(/\n+/).map(s=>s.trim()).filter(s=>s&&!/^\[Page \d+\]$/.test(s));
+   // Score line and its immediate neighbors together; exam names and dates often wrap.
    lines.forEach((line,index)=>{
-     const text=line.toLowerCase();
-     const score=terms.reduce((sum,term)=>sum+(text.includes(term)?1:0),0);
-     if(score)docHits.push({score,text:line,source:doc.name,index});
+     const context=[lines[index-1],line,lines[index+1]].filter(Boolean).join(' ');
+     const score=scoreText(context);
+     if(score>0)hits.push({score,text:context,source:doc.name,index});
    });
  });
- const noteHits=notes.map(note=>{
-   const text=[note.title,note.subject,note.tags,note.content].join(' ').toLowerCase();
-   const score=terms.reduce((sum,term)=>sum+(text.includes(term)?1:0),0);
-   return {score,text:(note.title||'Note')+': '+(note.content||''),source:note.title||'Note'};
- }).filter(hit=>hit.score>0);
- const hits=[...docHits,...noteHits].sort((a,b)=>b.score-a.score).slice(0,7);
- if(!hits.length)return {answer:'I could not find those keywords in the text extracted from your uploaded files or saved notes. Try a simpler keyword or exact wording from the file. If this is a scanned/unclear image, text extraction may have missed it.',sources:[]};
- const sourceNames=[...new Set(hits.map(hit=>hit.source))];
- return {answer:'I found these matching passages in your saved knowledge:\n\n'+hits.map(hit=>hit.text).join('\n\n'),sources:sourceNames};
+ (data.notes||[]).forEach(note=>{
+   const content=[note.title,note.subject,note.tags,note.content].filter(Boolean).join(' ');
+   const score=scoreText(content);
+   if(score>0)hits.push({score,text:content,source:note.title||'Saved note'});
+ });
+ hits.sort((a,b)=>b.score-a.score||a.index-b.index);
+ const best=hits.slice(0,5);
+ if(!best.length)return {answer:'I could not find a matching answer in the text extracted from your uploaded files or saved notes. Try the exam name or subject. If this is a scanned/unclear file, text extraction may have missed its content.',sources:[]};
+ const sources=[...new Set(best.map(h=>h.source))];
+ return {answer:'Here is the relevant information I found in your saved files/notes:\n\n'+best.map(h=>h.text).join('\n\n')+'\n\nI’m using the extracted source text, so please verify important dates against the original file.',sources};
 }
 function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();const el=document.querySelector('#chat-messages');if(el)el.scrollTop=el.scrollHeight}
 function action(name,id){const map={ 'new-note':()=>openForm('note'),'voice-quick-command':()=>{if(window.startStudentBrainListening)window.startStudentBrainListening();else toast('Voice assistant is loading. Try again.');},'edit-note':()=>openForm('note',id),'delete-note':()=>confirmDelete('notes',id),'delete-document':()=>{data.documents=(data.documents||[]).filter(d=>d.id!==id);persist();render();toast('Document deleted')},'ask-document':()=>askDocument(id),'new-task':()=>openForm('task'),'new-study':()=>openForm('study'),'edit-task':()=>openForm('task',id),'delete-task':()=>confirmDelete('tasks',id),'new-project':()=>openForm('project'),'edit-project':()=>openForm('project',id),'new-expense':()=>openForm('expense'),'edit-expense':()=>openForm('expense',id),'delete-expense':()=>confirmDelete('expenses',id),'delete-study':()=>{data.studySessions=(data.studySessions||[]).filter(x=>x.id!==id);persist();render();toast('Study session removed')},'go-ask':()=>{page='ask';render()},'go-planner':()=>{page='planner';render()},'go-knowledge':()=>{page='knowledge';render()},'toggle-task':()=>{let t=data.tasks.find(x=>x.id===id);if(t)t.done=!t.done;persist();render()},'all-expenses':()=>{window.expenseMonth='';render()},'export-data':()=>exportData(),'restore-data':()=>restoreData(),'clear-data':()=>clearData(),'close-modal':()=>document.querySelector('#modal-root').innerHTML=''};map[name]?.()}
