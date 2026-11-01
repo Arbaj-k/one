@@ -46,4 +46,40 @@ document.addEventListener('click',e=>{const pg=e.target.closest('[data-page]');i
 document.addEventListener('submit',e=>{if(e.target.id==='edit-form')saveForm(e);if(e.target.id==='chat-form'){e.preventDefault();const i=document.querySelector('#chat-input');sendChat(i.value);}});
 document.addEventListener('input',e=>{if(e.target.id==='note-search'){window.noteQuery=e.target.value;const el=document.querySelector('#notes-list');if(el)el.innerHTML=notesCards()}});
 document.addEventListener('change',e=>{if(e.target.id==='subject-filter'){window.subjectFilter=e.target.value;const el=document.querySelector('#notes-list');if(el)el.innerHTML=notesCards()}if(e.target.id==='task-filter'){window.taskFilter=e.target.value;render()}if(e.target.id==='expense-month'){window.expenseMonth=e.target.value;render()}});
+
+window.handleStudentBrainVoiceCommand = function(raw) {
+ const text=String(raw||'').trim(), lower=text.toLowerCase();
+ if(!text)return false;
+ const m=text.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
+ const amount=m?Number(m[1].replace(/,/g,'')):null;
+ const months={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sep:8,sept:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
+ let due='';
+ const dm=lower.match(/\b(\d{1,2})\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?\b/i);
+ if(dm){let y=dm[3]?+dm[3]:new Date().getFullYear(),mo=months[dm[2]];if(!dm[3]&&new Date(y,mo,+dm[1])<new Date(new Date().setHours(0,0,0,0)))y++;due=new Date(y,mo,+dm[1]).toISOString().slice(0,10)}
+ else if(/\btomorrow\b|\bkal\b/i.test(lower)){let d=new Date();d.setDate(d.getDate()+1);due=d.toISOString().slice(0,10)}
+ else if(/\btoday\b|\baaj\b/i.test(lower))due=new Date().toISOString().slice(0,10);
+ else {const w=lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);if(w){const days={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};let d=new Date(),delta=(days[w[1]]-d.getDay()+7)%7||7;d.setDate(d.getDate()+delta);due=d.toISOString().slice(0,10)}}
+ const moneyIntent=amount!==null&&/rupee|rs\.?|₹|udhaar|lend|lent|borrow|paid|spent|kharch|diye|diya|wapas|return|expense|lunch|food|रुपये|रुपए/i.test(lower);
+ if(moneyIntent){
+  let category='Other',kind='expense';
+  if(/udhaar|lend|lent|diye|diya|gave/i.test(lower)){category='Lent / Udhaar';kind='lent'}
+  else if(/wapas|return|repay|repaid/i.test(lower)){category='Udhaar returned';kind='repayment'}
+  else if(/food|lunch|dinner|breakfast|khana/i.test(lower))category='Food';
+  else if(/travel|bus|cab|auto/i.test(lower))category='Travel';
+  const desc=text.replace(/\b(i\s+)?(spent|paid|gave|lent|borrowed|returned|repaid)\b/ig,'').trim()||text;
+  if(!confirm('Save money record?\n\n'+category+': ₹'+amount.toLocaleString('en-IN')+'\n'+desc+'\nDate: '+dateFmt(due||today()))){toast('Not saved');return true}
+  data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:due||today(),kind,updated:Date.now(),created:Date.now()});
+  persist();page='expenses';window.expenseMonth=(due||today()).slice(0,7);render();toast('Money record saved');speakVoiceConfirmation('Money record saved.');return true;
+ }
+ const taskCue=/task|assignment|deadline|last date|due|submit|exam|remind|project|homework/i.test(lower);
+ if(taskCue||due){
+  const title=text.replace(/\b(the )?(last date|deadline|due date)\s*(is|hai|on)?\s*/ig,' ').trim();
+  if(!confirm('Create task?\n\n'+title+'\nDue: '+dateFmt(due))){toast('Task not saved');return true}
+  data.tasks.push({id:uid(),title,category:/assignment/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':'Personal',due,priority:'Medium',done:false,updated:Date.now(),created:Date.now()});
+  persist();page='planner';render();toast('Task saved to Planner');speakVoiceConfirmation('Task saved to Planner.');return true;
+ }
+ return false;
+};
+function speakVoiceConfirmation(message){if(!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(message);u.lang='en-IN';window.speechSynthesis.speak(u)}
+
 render();
