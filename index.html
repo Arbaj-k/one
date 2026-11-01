@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student Brain — Your college life, remembered</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css">\n<link rel="manifest" href="manifest.json">\n<meta name="theme-color" content="#4169e1">\n<link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
 </head>
 <body>
 <div class="app">
@@ -32,5 +32,5 @@
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>\n<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="app.js"></script>
-<script src="voice-assistant.js"></script>
+<script src="voice-assistant.js"></script>\n<script>if ("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));</script>
 </body></html>
