@@ -201,6 +201,16 @@ function askDocument(id){
  modal('Answer from '+esc(doc.name),'<div class="document-answer"><p><b>Your question</b></p><p>'+esc(q)+'</p><p><b>Relevant text from the uploaded file</b></p><div class="answer-extract">'+esc(answer)+'</div><small class="muted">Source: '+esc(doc.name)+(ranked.length?' · Text extracted from this file':' · No matching passage')+'</small><p class="muted">This searches extracted text locally; it does not generate an AI answer. Confirm important dates against the original document.</p></div>','Close');
  document.querySelector('#modal-root .modal-actions .primary')?.setAttribute('type','button');
 }
+function extractTimetableData(text){
+ const records=[];
+ const lines=String(text||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
+ const parseTime=s=>{const m=String(s||'').match(/(\d{1,2}:\d{2}\s*[AP]M)/i);return m?m[1].toUpperCase().replace(/\s+/g,' '):''};
+ for(const line of lines){
+  const m=line.match(/\b(All\s+)?(AEC|VAC|SEC|Open\s+Elective(?:\s+Courses)?)\s*[-:–—]\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})\s*(?:\(([^)]+)\))?\s*[-:–—]\s*(\d{1,2}:\d{2}\s*[AP]M)\s*[-:–—]\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+  if(m)records.push({course:m[2].replace(/\s+/g,' ').trim().toUpperCase().replace('OPEN ELECTIVE COURSES','OPEN ELECTIVE'),date:m[3].replace(/[/-]/g,'.'),day:m[4]||'',start:parseTime(m[5]),end:parseTime(m[6]),raw:line});
+ }
+ return records;
+}
 function aiAnswer(q){
  const raw=String(q||'').trim();
  const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term[\s-]*i{1,3}\b/g,(m)=>'midterm '+(m.match(/i{1,3}$/)?.[0].length||1)).replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
