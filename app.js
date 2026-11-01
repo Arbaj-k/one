@@ -56,7 +56,18 @@ async function processUploadedDocuments(files){
  }
  if(status)status.textContent='PDF and image files · max 12 MB each';
 }
-function askDocument(id){const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;const q=prompt('Ask a question about '+doc.name);if(!q||!q.trim())return;const terms=q.toLowerCase().replace(/[^\\w\\s]/g,' ').split(/\\s+/).filter(w=>w.length>2&&!['what','when','where','which','does','this','that','from','with','tell','show','about','please','date','sheet'].includes(w));const chunks=(doc.extractedText||'').split(/(?<=[.!?])\\s+|\\n+/).filter(s=>s.trim());const ranked=chunks.map((text,index)=>({text,index,score:terms.reduce((n,t)=>n+(text.toLowerCase().includes(t)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);const answer=ranked.length?ranked.map(x=>x.text.trim()).join('\\n\\n'):'I could not find a matching passage in this file. Try asking with the exact subject name, date, or phrase printed in the document.';modal('Answer from '+esc(doc.name),'<div class="document-answer"><p><b>Your question</b></p><p>'+esc(q)+'</p><p><b>Relevant text from the uploaded file</b></p><div class="answer-extract">'+esc(answer)+'</div><small class="muted">Source: '+esc(doc.name)+(ranked.length?' · Extracted text':' · No matching passage')+'</small><p class="muted">This is a local text search, not a generative AI response. Verify dates against the original document.</p></div>','Close');document.querySelector('#modal-root .modal-actions .primary')?.setAttribute('type','button');}
+function askDocument(id){
+ const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
+ const q=prompt('Ask a question about '+doc.name);if(!q||!q.trim())return;
+ const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','date','sheet','the','and','for','are','was','is','in','on','of']);
+ const terms=q.toLowerCase().replace(/[^\\w\\s]/g,' ').split(/\\s+/).filter(w=>w.length>2&&!stop.has(w));
+ const lines=(doc.extractedText||'').split(/\\n+/).filter(s=>s.trim());
+ const chunks=[];for(let i=0;i<lines.length;i++){const line=lines[i].trim();if(/^\\[Page \\d+\\]$/.test(line))continue;chunks.push(line)}
+ const ranked=chunks.map((text,index)=>{const normalized=text.toLowerCase();const score=terms.reduce((n,t)=>n+(normalized.includes(t)?1:0),0);return {text,index,score}}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,5);
+ const answer=ranked.length?ranked.map(x=>x.text).join('\\n\\n'):'No matching passage was found. Try the exact course name, subject code, date, or a phrase printed in the file.';
+ modal('Answer from '+esc(doc.name),'<div class="document-answer"><p><b>Your question</b></p><p>'+esc(q)+'</p><p><b>Relevant text from the uploaded file</b></p><div class="answer-extract">'+esc(answer)+'</div><small class="muted">Source: '+esc(doc.name)+(ranked.length?' · Text extracted from this file':' · No matching passage')+'</small><p class="muted">This searches extracted text locally; it does not generate an AI answer. Confirm important dates against the original document.</p></div>','Close');
+ document.querySelector('#modal-root .modal-actions .primary')?.setAttribute('type','button');
+}
 function aiAnswer(q){
  const lower=q.toLowerCase();let sources=[],answer='';
  if(!data.notes.length)return {answer:'You have not saved any notes yet. Open My Knowledge and create a note first; then I can retrieve relevant content.',sources:[]};
