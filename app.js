@@ -203,11 +203,10 @@ function askDocument(id){
 }
 function aiAnswer(q){
  const raw=String(q||'').trim();
- const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\bmidterm[\s-]*i\b/g,'midterm 1').replace(/\bmidterm[\s-]*ii\b/g,'midterm 2').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+ const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term[\s-]*i{1,3}\b/g,(m)=>'midterm '+(m.match(/i{1,3}$/)?.[0].length||1)).replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
  const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do','or','to','a','an','as','at','by','it','be','schedule','time','timing']);
- const qnorm=normalize(raw),terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
+ const qnorm=normalize(raw);let terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
  if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]};
- const dateQuestion=/\b(date|when|kab|schedule|deadline|due)\b/i.test(qnorm)||/\b\d+\b/.test(qnorm);
  const candidates=[],add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
  (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
   const note=(data.notes||[]).find(n=>n.id===doc.sourceNoteId),source=note?{label:note.title||'Attached note',file:doc.name,noteId:note.id,documentId:doc.id}:{label:doc.name,file:doc.name,documentId:doc.id};
@@ -216,21 +215,24 @@ function aiAnswer(q){
  });
  (data.notes||[]).forEach(n=>add([n.title,n.subject,n.tags,n.content].filter(Boolean).join(' '),{label:n.title||'Saved note',noteId:n.id},'note'));
  const tokens=s=>normalize(s).split(/\s+/).filter(Boolean);
+ // Queries like "mid term 1" should match the heading "Mid Term-I" even if OCR drops punctuation or Roman numerals.
+ const queryMidterm=/\bmidterm\s*1\b/.test(qnorm),queryCourse=terms.some(t=>['aec','vac','sec'].includes(t));
  const score=cand=>{
-  const docTokens=tokens(cand.text),docSet=new Set(docTokens),matched=terms.filter(t=>docSet.has(t)),partial=terms.filter(t=>!docSet.has(t)&&docTokens.some(w=>w.length>=3&&t.length>=3&&(w.includes(t)||t.includes(w))));
-  if(!matched.length&&!partial.length)return 0;
-  let s=matched.length*2.5+partial.length*0.8+(matched.length/terms.length)*3;
+  const docTokens=tokens(cand.text),docSet=new Set(docTokens);
+  const matched=terms.filter(t=>docSet.has(t));
+  const partial=terms.filter(t=>!docSet.has(t)&&docTokens.some(w=>w.length>=3&&t.length>=3&&(w.includes(t)||t.includes(w))));
+  let s=matched.length*2.5+partial.length*.8+(matched.length/terms.length)*3;
   if(terms.length>1&&matched.length===terms.length)s+=2;
-  if(dateQuestion&&/\b\d{1,2}[\s./-]+(?:\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(cand.text))s+=1.2;
-  if(cand.kind==='note')s+=0.2;
+  if(queryMidterm&&/\bmid\s*term\b|\bmidterm\b/i.test(cand.text)&&(/\btheory\b|\b31[./-]10[./-]2026\b|\b2026\b/i.test(cand.text)))s+=5;
+  if(queryCourse&&terms.some(t=>docSet.has(t)))s+=2;
+  if(/\b(date|when|kab|schedule|deadline|due)\b/i.test(qnorm)&&/\b\d{1,2}[.\s/-]+\d{1,2}[.\s/-]+\d{2,4}\b/.test(cand.text))s+=1.5;
   return s;
  };
  const ranked=candidates.map(x=>({...x,score:score(x)})).filter(x=>x.score>=2.3).sort((a,b)=>b.score-a.score||(a.index??0)-(b.index??0));
  const unique=[],seen=new Set();ranked.forEach(h=>{const key=(h.source.documentId||h.source.noteId||h.source.label)+'|'+(h.page??'');if(!seen.has(key)&&unique.length<5){seen.add(key);unique.push(h)}});
  if(!unique.length)return {answer:'I couldn’t find a matching passage. Try the course code (AEC, VAC, SEC), the date, or a short phrase from the document. Check the extracted text in My Knowledge if the image is unclear.',sources:[]};
  const sourceLabels=unique.map(h=>h.source.file?h.source.label+' — attachment: '+h.source.file+(h.page?' · Page '+h.page:(h.page===null?' · Page unavailable':'')):h.source.label);
- const answer=unique.slice(0,3).map((h,i)=>(i+1)+'. '+h.text+(h.page?' (Page '+h.page+')':'')).join('\n\n');
- return {answer,sources:sourceLabels};
+ return {answer:unique.slice(0,3).map((h,i)=>(i+1)+'. '+h.text+(h.page?' (Page '+h.page+')':'')).join('\n\n'),sources:sourceLabels};
 }
 function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();scrollChatToBottom()}
 function action(name,id){const map={ 'new-note':()=>openForm('note'),'voice-quick-command':()=>{if(window.startStudentBrainListening)window.startStudentBrainListening();else toast('Voice assistant is loading. Try again.');},'edit-note':()=>openForm('note',id),'delete-note':()=>confirmDelete('notes',id),'delete-document':()=>{data.documents=(data.documents||[]).filter(d=>d.id!==id);persist();render();toast('Document deleted')},'retry-document-ocr':()=>retryDocumentOCR(id),'ask-document':()=>askDocument(id),'new-task':()=>openForm('task'),'new-study':()=>openForm('study'),'edit-task':()=>openForm('task',id),'delete-task':()=>confirmDelete('tasks',id),'new-project':()=>openForm('project'),'edit-project':()=>openForm('project',id),'new-expense':()=>openForm('expense'),'edit-expense':()=>openForm('expense',id),'delete-expense':()=>confirmDelete('expenses',id),'delete-study':()=>{data.studySessions=(data.studySessions||[]).filter(x=>x.id!==id);persist();render();toast('Study session removed')},'go-ask':()=>{page='ask';render()},'go-planner':()=>{page='planner';render()},'go-knowledge':()=>{page='knowledge';render()},'toggle-task':()=>{let t=data.tasks.find(x=>x.id===id);if(t)t.done=!t.done;persist();render()},'all-expenses':()=>{window.expenseMonth='';render()},'export-data':()=>exportData(),'restore-data':()=>restoreData(),'clear-data':()=>clearData(),'close-modal':()=>document.querySelector('#modal-root').innerHTML=''};map[name]?.()}
