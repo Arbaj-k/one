@@ -174,7 +174,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     if(pdf.numPages>100)throw Error('This PDF has more than 100 pages. Split it into smaller files.');
-    for(let p=1;p<=pdf.numPages;p++){setStatus('Extracting page '+p+' of '+pdf.numPages+' · '+file.name);const page=await pdf.getPage(p),content=await page.getTextContent();extracted+='\\n[Page '+p+']\\n'+content.items.map(i=>i.str).join(' ')}
+    for(let p=1;p<=pdf.numPages;p++){setStatus('Extracting page '+p+' of '+pdf.numPages+' · '+file.name);const page=await pdf.getPage(p),content=await page.getTextContent();extracted+='\\n[Page '+p+']\\n'+content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\\n')}
    }else{
     if(!window.Tesseract)throw Error('Image OCR is unavailable. Check your connection and refresh.');
     setStatus('Reading image text · '+file.name);
@@ -184,7 +184,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    }
    if(!extracted.trim())throw Error('No text detected. Try a clearer image or a text-based PDF.');
    data.documents=data.documents||[];
-   data.documents.push({id:uid(),name:file.name,type:isPdf?'pdf':'image',extractedText:extracted.trim(),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file'});
+   const extractedText=extracted.trim();data.documents.push({id:uid(),name:file.name,type:isPdf?'pdf':'image',extractedText,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file'});
    persist();render();setStatus('Text extracted from '+file.name);toast('Text extracted');
   }catch(err){console.error('Document extraction failed',err);setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
@@ -200,6 +200,18 @@ function askDocument(id){
  const answer=ranked.length?ranked.map(x=>x.text).join('\\n\\n'):'No matching passage was found. Try the exact course name, subject code, date, or a phrase printed in the file.';
  modal('Answer from '+esc(doc.name),'<div class="document-answer"><p><b>Your question</b></p><p>'+esc(q)+'</p><p><b>Relevant text from the uploaded file</b></p><div class="answer-extract">'+esc(answer)+'</div><small class="muted">Source: '+esc(doc.name)+(ranked.length?' · Text extracted from this file':' · No matching passage')+'</small><p class="muted">This searches extracted text locally; it does not generate an AI answer. Confirm important dates against the original document.</p></div>','Close');
  document.querySelector('#modal-root .modal-actions .primary')?.setAttribute('type','button');
+}
+function splitDocumentIntoChunks(text){
+ const pages=String(text||'').split(/(?=\[Page\s+\d+\])/i),chunks=[];
+ pages.forEach(page=>{
+  const match=page.match(/^\[Page\s+(\d+)\]/i),pageNumber=match?Number(match[1]):null;
+  const lines=page.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
+  let block=[];
+  const flush=()=>{if(block.length){chunks.push({text:block.join(' '),page:pageNumber});block=[]}};
+  lines.forEach(line=>{if(block.length&&(/^[A-Z0-9][A-Z0-9\s:()/-]{2,}$/.test(line)||block.join(' ').length+line.length>850))flush();block.push(line);if(block.join(' ').length>=500)flush()});
+  flush();
+ });
+ return chunks;
 }
 function extractTimetableData(text){
  const records=[];
