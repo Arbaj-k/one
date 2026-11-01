@@ -14,28 +14,44 @@ const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
 function loadData(){try{return migrateData(JSON.parse(localStorage.getItem(KEY)||'{}'))}catch{return starter()}}
 let syncQueue=Promise.resolve();
-let cloudRetryTimer=null,cloudRetryDelay=1500;
+let cloudRetryTimer=null,cloudRetryDelay=1500,lastSyncedAt=null,cloudMode='offline',cloudLastError='';
+function cloudStatus(message){
+ const el=document.querySelector('#cloud-status');
+ if(el){
+  const label=cloudMode==='synced'?'Synced':cloudMode==='offline'?'Offline':cloudMode==='error'?'Error':cloudMode==='syncing'?'Syncing…':'Connecting…';
+  const time=lastSyncedAt?' · Last synced '+new Date(lastSyncedAt).toLocaleString():' · Not synced yet';
+  el.textContent=label+time;
+  el.title=cloudLastError||message||'';
+  el.dataset.state=cloudMode;
+ }
+}
+function setCloudMode(mode,error=''){
+ cloudMode=mode;cloudLastError=error;
+ cloudStatus();
+}
 function persist(){
  try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'-last-good',JSON.stringify(data))}
- catch(err){console.error('Local save failed',err);cloudStatus('Storage full · export backup');toast('Local save failed. Export a backup and free storage.');return}
+ catch(err){console.error('Local save failed',err);setCloudMode('error',err.message);toast('Local save failed. Export a backup and free storage.');return}
  if(cloudReady&&cloudClient&&cloudUser)queueCloudSave();
+ else setCloudMode(navigator.onLine?'connecting':'offline');
 }
 function queueCloudSave(){
  const snapshot=JSON.parse(JSON.stringify(data));
- cloudStatus('Saving to cloud…');
+ setCloudMode(navigator.onLine?'syncing':'offline');
  syncQueue=syncQueue.catch(()=>{}).then(()=>saveCloudSnapshot(snapshot));
 }
 async function saveCloudSnapshot(snapshot){
  try{
+  if(!navigator.onLine)throw Error('Device is offline');
   const {error}=await cloudClient.from('profiles').upsert({id:cloudUser.id,workspace_data:snapshot,updated_at:new Date().toISOString()},{onConflict:'id'});
   if(error)throw error;
-  cloudRetryDelay=1500;
-  cloudStatus('Cloud synced');
+  cloudRetryDelay=1500;lastSyncedAt=new Date().toISOString();
+  setCloudMode('synced');
  }catch(err){
   console.error('Cloud sync failed',err);
-  cloudStatus('Cloud sync failed · retrying');
+  setCloudMode(navigator.onLine?'error':'offline',err.message);
   if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
-  cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudClient&&cloudUser)queueCloudSave()},cloudRetryDelay);
+  cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudClient&&cloudUser&&navigator.onLine)queueCloudSave()},cloudRetryDelay);
   cloudRetryDelay=Math.min(cloudRetryDelay*2,60000);
  }
 }
@@ -43,7 +59,7 @@ async function initCloud(){
  try{
   if(!window.supabase?.createClient)return;
   cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY);
-  cloudStatus('Connecting…');
+  setCloudMode(navigator.onLine?'connecting':'offline');
   let {data:sessionData,error}=await cloudClient.auth.getSession();
   if(error)throw error;
   if(!sessionData.session){
@@ -65,7 +81,7 @@ async function initCloud(){
    localStorage.setItem(KEY,JSON.stringify(data));
   }
   cloudReady=true;
-  cloudStatus('Cloud connected');
+  setCloudMode('synced');
   if(!profile?.workspace_data||Object.values(data).some(v=>Array.isArray(v)&&v.length))queueCloudSave();
   render();
  }catch(err){console.error('Cloud connection failed',err);cloudStatus('Cloud unavailable · local changes kept');}
