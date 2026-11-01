@@ -95,12 +95,14 @@ function aiAnswer(q){
  };
  const hits=[];
  (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
+   const linkedNote=(data.notes||[]).find(n=>n.id===doc.sourceNoteId);
+   const sourceLabel=linkedNote?`${linkedNote.title||'Attached note'} · ${doc.name}`:doc.name;
    const lines=String(doc.extractedText||'').split(/\n+/).map(s=>s.trim()).filter(s=>s&&!/^\[Page \d+\]$/.test(s));
    // Score line and its immediate neighbors together; exam names and dates often wrap.
    lines.forEach((line,index)=>{
      const context=[lines[index-1],line,lines[index+1]].filter(Boolean).join(' ');
      const score=scoreText(context);
-     if(score>0)hits.push({score,text:context,source:doc.name,index});
+     if(score>0)hits.push({score,text:context,source:sourceLabel,index});
    });
  });
  (data.notes||[]).forEach(note=>{
