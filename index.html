@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student Brain — Your college life, remembered</title>
-<link rel="stylesheet" href="styles.css">\n<link rel="manifest" href="manifest.json">\n<meta name="theme-color" content="#4169e1">\n<link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4169e1">
+<link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
 </head>
 <body>
 <div class="app">
@@ -23,14 +26,17 @@
     <div class="sidebar-bottom"><div class="privacy-icon">✓</div><div><b>Your space, your data</b><small>Saved in this browser</small></div></div>
   </aside>
   <main class="main">
-    <header class="topbar"><div class="mobile-brand">✦ Student Brain</div><div class="topbar-right"><span class="demo-pill"><i></i> <span id="cloud-status">Cloud initializing…</span></span><div class="avatar">S</div></div></header>
+    <header class="topbar"><div class="mobile-brand">✦ Student Brain</div><div class="topbar-right"><button id="install-app" class="install-app" hidden>Install app</button><span class="demo-pill"><i></i> <span id="cloud-status">Cloud initializing…</span></span><div class="avatar">S</div></div></header>
     <section id="page-content" class="content"></section>
     <footer>Student Brain · MVP preview <span>Cloud sync status is shown above.</span></footer>
   </main>
 </div>
 <div id="modal-root"></div>
 <div id="toast" class="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>\n<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="app.js"></script>
-<script src="voice-assistant.js"></script>\n<script>if ("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));</script>
+<script src="voice-assistant.js"></script>
+<script>if ("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));</script>
 </body></html>
