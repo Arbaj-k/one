@@ -226,14 +226,19 @@ function aiAnswer(q){
    const records=extractTimetableData(doc.extractedText);
    if(records.length)allRows.push({doc,records});
   });
-  const requested=['AEC','VAC','SEC'].filter(course=>new RegExp('\\b'+course+'\\b','i').test(raw));
-  const wantAll=!requested.length||/all|aec.*vac|vac.*sec|aec.*sec|all three/i.test(raw);
-  const selected=allRows.flatMap(({doc,records})=>records.filter(r=>(wantAll||requested.includes(r.course))&&(!/mid\s*term|midterm/i.test(raw)||/mid\s*term|midterm/i.test(doc.extractedText))).map(r=>({doc,r})));
+  const requested=['AEC','VAC','SEC','OPEN ELECTIVE'].filter(course=>new RegExp('\\b'+course.replace(' ','\\s+')+'\\b','i').test(raw));
+  const allRecords=allRows.flatMap(({doc,records})=>records.map(r=>({doc,r})));
+  const dates=[...new Set(allRecords.map(x=>x.r.date))].sort((a,b)=>{const p=s=>{const [d,m,y]=s.split('.').map(Number);return new Date(y,m-1,d).getTime()};return p(a)-p(b)});
+  const normalized=raw.toLowerCase().replace(/[^a-z0-9]+/g,' ');
+  const ordinal=/(mid\s*term|midterm)\s*(2|ii|second|2nd)\b/.test(normalized)?2:/(mid\s*term|midterm)\s*(1|i|first|1st)\b/.test(normalized)?1:null;
+  const targetDate=ordinal?dates[ordinal-1]:null;
+  const selected=allRecords.filter(({r})=>(!requested.length||requested.includes(r.course))&&(!targetDate||r.date===targetDate));
   if(selected.length){
    const uniqueRows=[...new Map(selected.map(x=>[x.r.course+'|'+x.r.date+'|'+x.r.start,x])).values()];
    const lines=uniqueRows.map(({r})=>r.course+' — '+r.date+(r.day?' ('+r.day+')':'')+' · '+r.start+'–'+r.end);
    const src=[...new Set(uniqueRows.map(x=>x.doc.name))].map(name=>'Attachment: '+name);
-   return {answer:'Mid Term-I (Theory) schedule:\\n'+lines.join('\\n'),sources:src};
+   const label=ordinal?'Mid Term-'+ordinal:'Timetable';
+   return {answer:label+' schedule:\\n'+lines.join('\\n'),sources:src};
   }
  }
 
