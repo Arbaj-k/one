@@ -86,11 +86,7 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   else if(/food|lunch|dinner|breakfast|khana/i.test(lower))category='Food';
   else if(/travel|bus|cab|auto/i.test(lower))category='Travel';
   const desc=text.replace(/\b(i\s+)?(spent|paid|gave|lent|borrowed|returned|repaid)\b/ig,'').trim()||text;
-  if(!confirm('Save money record?
-
-'+category+': ₹'+amount.toLocaleString('en-IN')+'
-'+desc+'
-Date: '+dateFmt(due||today()))){toast('Not saved');return true}
+  if(!confirm('Save money record?\\n\\n'+category+': ₹'+amount.toLocaleString('en-IN')+'\\n'+desc+'\\nDate: '+dateFmt(due||today()))){toast('Not saved');return true}
   data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:due||today(),kind,updated:Date.now(),created:Date.now()});
   persist();page='expenses';window.expenseMonth=(due||today()).slice(0,7);render();toast('Money record saved');speakVoiceConfirmation('Money record saved.');return true;
  }
