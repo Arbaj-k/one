@@ -6,9 +6,63 @@ const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
 function loadData(){try{return {...starter(),...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return starter()}}
 let syncQueue=Promise.resolve();
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'-last-good',JSON.stringify(data))}catch(err){console.error('Local save failed',err);cloudStatus('Storage full · export backup');toast('Local save failed. Export a backup and free storage.');return}if(cloudReady&&cloudClient&&cloudUser){const snapshot=JSON.parse(JSON.stringify(data));cloudStatus('Saving to cloud…');syncQueue=syncQueue.then(async()=>{try{const {error}=await cloudClient.from('profiles').upsert({id:cloudUser.id,workspace_data:snapshot,updated_at:new Date().toISOString()},{onConflict:'id'});if(error)throw error;cloudStatus('Cloud synced')}catch(err){console.error('Cloud sync failed',err);cloudStatus('Offline · changes saved on device')}})}}
-function cloudStatus(label){const el=document.querySelector('#cloud-status');if(el)el.textContent=label}
-async function initCloud(){try{if(!window.supabase?.createClient)return;cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY);cloudStatus('Connecting…');let {data:sessionData,error}=await cloudClient.auth.getSession();if(error)throw error;if(!sessionData.session){const signed=await cloudClient.auth.signInAnonymously();if(signed.error)throw signed.error;sessionData={session:signed.data.session}}cloudUser=sessionData.session.user;const {data:profile,error:readError}=await cloudClient.from('profiles').select('workspace_data').eq('id',cloudUser.id).maybeSingle();if(readError)throw readError;if(profile?.workspace_data){data={...starter(),...profile.workspace_data};localStorage.setItem(KEY,JSON.stringify(data))}else{await cloudClient.from('profiles').upsert({id:cloudUser.id,workspace_data:data},{onConflict:'id'})}cloudReady=true;cloudStatus('Cloud synced');render()}catch(err){console.error('Cloud connection failed',err);cloudStatus('Cloud unavailable · local changes kept');}}function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let cloudRetryTimer=null,cloudRetryDelay=1500;
+function persist(){
+ try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'-last-good',JSON.stringify(data))}
+ catch(err){console.error('Local save failed',err);cloudStatus('Storage full · export backup');toast('Local save failed. Export a backup and free storage.');return}
+ if(cloudReady&&cloudClient&&cloudUser)queueCloudSave();
+}
+function queueCloudSave(){
+ const snapshot=JSON.parse(JSON.stringify(data));
+ cloudStatus('Saving to cloud…');
+ syncQueue=syncQueue.catch(()=>{}).then(()=>saveCloudSnapshot(snapshot));
+}
+async function saveCloudSnapshot(snapshot){
+ try{
+  const {error}=await cloudClient.from('profiles').upsert({id:cloudUser.id,workspace_data:snapshot,updated_at:new Date().toISOString()},{onConflict:'id'});
+  if(error)throw error;
+  cloudRetryDelay=1500;
+  cloudStatus('Cloud synced');
+ }catch(err){
+  console.error('Cloud sync failed',err);
+  cloudStatus('Cloud sync failed · retrying');
+  if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
+  cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudClient&&cloudUser)queueCloudSave()},cloudRetryDelay);
+  cloudRetryDelay=Math.min(cloudRetryDelay*2,60000);
+ }
+}
+async function initCloud(){
+ try{
+  if(!window.supabase?.createClient)return;
+  cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY);
+  cloudStatus('Connecting…');
+  let {data:sessionData,error}=await cloudClient.auth.getSession();
+  if(error)throw error;
+  if(!sessionData.session){
+   const signed=await cloudClient.auth.signInAnonymously();
+   if(signed.error)throw signed.error;
+   sessionData={session:signed.data.session};
+  }
+  cloudUser=sessionData.session.user;
+  const {data:profile,error:readError}=await cloudClient.from('profiles').select('workspace_data').eq('id',cloudUser.id).maybeSingle();
+  if(readError)throw readError;
+  if(profile?.workspace_data){
+   const cloudData={...starter(),...profile.workspace_data};
+   const localRaw=localStorage.getItem(KEY);
+   const localData=localRaw?JSON.parse(localRaw):starter();
+   const localHasData=Object.values(localData).some(v=>Array.isArray(v)&&v.length);
+   const cloudHasData=Object.values(cloudData).some(v=>Array.isArray(v)&&v.length);
+   // Keep populated local workspace if the cloud profile is empty; otherwise cloud is authoritative.
+   data=localHasData&&!cloudHasData?localData:cloudData;
+   localStorage.setItem(KEY,JSON.stringify(data));
+  }
+  cloudReady=true;
+  cloudStatus('Cloud connected');
+  if(!profile?.workspace_data||Object.values(data).some(v=>Array.isArray(v)&&v.length))queueCloudSave();
+  render();
+ }catch(err){console.error('Cloud connection failed',err);cloudStatus('Cloud unavailable · local changes kept');}
+}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
 function dateFmt(d){if(!d)return 'No date';const x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
