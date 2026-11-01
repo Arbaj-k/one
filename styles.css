@@ -7,3 +7,5 @@
 
 /* Chrome install affordance */
 .install-app{border:0;border-radius:10px;padding:9px 13px;background:#4169e1;color:#fff;font:600 13px inherit;cursor:pointer}.install-app[hidden]{display:none}
+
+.site-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.site-footer nav{display:flex;gap:16px}.site-footer a{color:var(--blue);text-decoration:none;font-weight:600}.site-footer a:hover{text-decoration:underline}
