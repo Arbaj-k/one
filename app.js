@@ -241,7 +241,7 @@ function aiAnswer(q){
  ranked.forEach(h=>{const key=(h.source.documentId||h.source.noteId||h.source.label)+'|'+(h.page??'');if(!seen.has(key)&&unique.length<5){seen.add(key);unique.push(h)}});
  if(!unique.length)return {answer:'I couldn’t find a strong match in your saved notes or extracted files. Try a related term, acronym, course name, or a shorter question. If the file is a scan, its text extraction may be incomplete.',sources:[]};
  const sourceLabels=unique.map(h=>h.source.file ? h.source.label+' — attachment: '+h.source.file+(h.page ? ' · Page '+h.page : (h.page===null ? ' · Page unavailable' : '')) : h.source.label);
- const answer='Closest matching source passages:\\n\\n'+unique.map(h=>h.text+(h.page?'\\n[Source page '+h.page+']':'')).join('\\n\\n')+'\\n\\nSearch uses local keyword/term matching with limited related-word overlap; it is not a full embedding-based semantic model. Verify important details against the original source.';
+ const answer='I found these relevant parts in your saved material:\\n\\n'+unique.map((h,i)=>(i+1)+'. '+h.text+(h.page?'\\nSource page: '+h.page:'')).join('\\n\\n')+'\\n\\nThese are excerpts from your source, not a complete explanation. The current search is based on matching terms and limited related-word overlap, so it may miss related ideas or select an imperfect passage. Check the original notes or file for full context.';
  return {answer,sources:sourceLabels};
 }
 function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();const el=document.querySelector('#chat-messages');if(el)el.scrollTop=el.scrollHeight}
