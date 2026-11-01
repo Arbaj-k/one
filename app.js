@@ -293,5 +293,4 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 
 render();
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.modal-backdrop'))action('close-modal');if(e.ctrlKey&&e.code==='Space'){e.preventDefault();toggleVoice()}else if(e.code==='Space'&&e.ctrlKey===false&&e.target===document.body){e.preventDefault();toggleVoice()}});
-ensureVoiceUI();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.modal-backdrop'))action('close-modal')});
