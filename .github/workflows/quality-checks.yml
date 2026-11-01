@@ -1,0 +1,23 @@
+name: Student Brain quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check app JavaScript syntax
+        run: node --check app.js
+      - name: Run smoke tests
+        run: node tests/smoke.test.cjs
