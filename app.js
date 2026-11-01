@@ -224,7 +224,7 @@ function aiAnswer(q){
  const unique=[],seen=new Set();
  ranked.forEach(h=>{const key=(h.source.documentId||h.source.noteId||h.source.label)+'|'+(h.page??'');if(!seen.has(key)&&unique.length<5){seen.add(key);unique.push(h)}});
  if(!unique.length)return {answer:'I couldn’t find a strong match in your saved notes or extracted files. Try a related term, acronym, course name, or a shorter question. If the file is a scan, its text extraction may be incomplete.',sources:[]};
- const sourceLabels=unique.map(h=>h.source.file?h.source.label+' — attachment: '+h.source.file+(h.page?' · Page '+h.page):(h.page===null?' · Page unavailable':''):h.source.label);
+ const sourceLabels=unique.map(h=>h.source.file ? h.source.label+' — attachment: '+h.source.file+(h.page ? ' · Page '+h.page : (h.page===null ? ' · Page unavailable' : '')) : h.source.label);
  const answer='Closest matching source passages:\\n\\n'+unique.map(h=>h.text+(h.page?'\\n[Source page '+h.page+']':'')).join('\\n\\n')+'\\n\\nSearch uses local keyword/term matching with limited related-word overlap; it is not a full embedding-based semantic model. Verify important details against the original source.';
  return {answer,sources:sourceLabels};
 }
