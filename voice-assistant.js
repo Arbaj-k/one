@@ -1,7 +1,8 @@
 /* Student Brain browser voice assistant (Web Speech API) */
 (() => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null, listening = false, voiceReplies = true;
+  let recognition = null, listening = false, voiceReplies = false;
+  window.isStudentBrainVoiceRepliesOn = () => voiceReplies;
   const style = document.createElement('style');
   style.textContent = `
     .quick-actions{display:flex;gap:8px;align-items:center}.voice-quick-btn{min-width:44px;padding:10px 13px;font-size:17px}.voice-quick-btn:hover{background:#edf1ff;color:#4263eb}.voice-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
@@ -46,7 +47,7 @@
     form.dataset.voiceReady = '1';
     const controls = document.createElement('div');
     controls.className = 'voice-controls';
-    controls.innerHTML = '<button type="button" class="voice-btn" id="voice-mic">🎙️ Speak</button><button type="button" class="voice-toggle" id="voice-replies">🔊 Voice replies: On</button><span class="voice-status" id="voice-status">Use your voice to ask a question</span>';
+    controls.innerHTML = '<button type="button" class="voice-btn" id="voice-mic">🎙️ Speak</button><button type="button" class="voice-toggle" id="voice-replies">🔊 Voice replies: Off</button><span class="voice-status" id="voice-status">Use your voice to ask a question</span>';
     form.insertAdjacentElement('afterend', controls);
     const mic = controls.querySelector('#voice-mic');
     const status = controls.querySelector('#voice-status');
