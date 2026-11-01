@@ -44,18 +44,34 @@ const arr=data[type==='note'?'notes':type==='task'?'tasks':type==='project'?'pro
 modal((id?'Edit ':'New ')+({note:'note',task:'task',study:'study session',project:'project',expense:'expense'}[type]),body,id?'Save changes':'Create');const firstField=document.querySelector('#edit-form input:not([type=file]),#edit-form textarea,#edit-form select');if(firstField){firstField.removeAttribute('readonly');firstField.removeAttribute('disabled');firstField.focus();}}
 async function saveForm(e){e.preventDefault();const fd=new FormData(e.target),v=Object.fromEntries(fd.entries()),key=formType==='note'?'notes':formType==='task'?'tasks':formType==='project'?'projects':'expenses';if(formType==='note'){delete v.attachment;const file=e.target.querySelector('input[name=attachment]')?.files?.[0];if(file){e.target._quickUploadFile=file;if(file.size>12*1024*1024){toast('File limit is 12 MB');return}if(!(file.type==='application/pdf'||file.type.startsWith('image/'))){toast('Please choose a PDF or image');return}try{v.attachmentName=file.name;v.attachmentType=file.type||'application/octet-stream';v.attachmentData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)})}catch(_){toast('Could not read this file');return}}}if(['task','expense'].includes(formType)&&v.projectId?.includes('|'))v.projectId=v.projectId.split('|')[0];if(!v.projectId)delete v.projectId;if(formType==='study'){data.studySessions=data.studySessions||[];data.studySessions.push({id:uid(),...v,created:Date.now()});persist();document.querySelector('#modal-root').innerHTML='';render();toast('Study session planned');return}if(formType==='expense'&&(!Number.isFinite(Number(v.amount))||Number(v.amount)<0)){toast('Enter a valid amount');return}let obj=editing?data[key].find(x=>x.id===editing):null;if(obj)Object.assign(obj,v,{updated:Date.now()});else data[key].push({id:uid(),...v,done:false,updated:Date.now(),created:Date.now()});persist();document.querySelector('#modal-root').innerHTML='';render();toast(editing?'Changes saved':'Created successfully');if(formType==='note'&&e.target._quickUploadFile){const savedNote=data.notes.find(n=>n.id===editing)||data.notes[data.notes.length-1];await processUploadedDocuments([e.target._quickUploadFile],savedNote?.id||null);e.target._quickUploadFile=null}}
 async function processUploadedDocuments(files,sourceNoteId=null){
- const list=Array.from(files||[]);if(!list.length)return;const status=document.querySelector('#document-upload-status');
- for(const file of list){if(file.size>12*1024*1024){toast(file.name+' is over 12 MB');continue}
-  if(status)status.textContent='Extracting text from '+file.name+'…';
-  try{let extracted='';const isPdf=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf');
-   if(isPdf){if(!window.pdfjsLib)throw Error('PDF reader could not load. Refresh and retry.');window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),content=await page.getTextContent();extracted+='\\n[Page '+p+']\\n'+content.items.map(i=>i.str).join(' ')}}
-   else if(file.type.startsWith('image/')){if(!window.Tesseract)throw Error('Image text reader could not load. Refresh and retry.');const result=await window.Tesseract.recognize(file,'eng');extracted=result.data.text||''}
-   else throw Error('Please upload a PDF or image file.');
-   if(!extracted.trim())throw Error('No text found. This file may be scanned or unclear; try a sharper image or PDF.');
-   data.documents=data.documents||[];data.documents.push({id:uid(),name:file.name,type:isPdf?'pdf':'image',extractedText:extracted.trim(),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file'});persist();render();toast('Text extracted from '+file.name);
-  }catch(err){console.error('Document extraction failed',err);toast(err.message||'Could not read this file')}
+ const list=Array.from(files||[]);if(!list.length)return;
+ const status=document.querySelector('#document-upload-status');
+ const setStatus=(message)=>{if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
+ for(const file of list){
+  if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB. Choose a smaller file.');toast('File is over 12 MB');continue}
+  if(!file.type.startsWith('image/')&&file.type!=='application/pdf'&&!/\\.pdf$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');continue}
+  setStatus('Reading '+file.name+'…');
+  try{
+   let extracted='';const isPdf=file.type==='application/pdf'||/\\.pdf$/i.test(file.name);
+   if(isPdf){
+    if(!window.pdfjsLib)throw Error('PDF text reader is unavailable. Check your connection and refresh.');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    if(pdf.numPages>100)throw Error('This PDF has more than 100 pages. Split it into smaller files.');
+    for(let p=1;p<=pdf.numPages;p++){setStatus('Extracting page '+p+' of '+pdf.numPages+' · '+file.name);const page=await pdf.getPage(p),content=await page.getTextContent();extracted+='\\n[Page '+p+']\\n'+content.items.map(i=>i.str).join(' ')}
+   }else{
+    if(!window.Tesseract)throw Error('Image OCR is unavailable. Check your connection and refresh.');
+    setStatus('Reading image text · '+file.name);
+    let result;
+    try{result=await window.Tesseract.recognize(file,'eng+hin')}catch(_){result=await window.Tesseract.recognize(file,'eng')}
+    extracted=result.data.text||'';
+   }
+   if(!extracted.trim())throw Error('No text detected. Try a clearer image or a text-based PDF.');
+   data.documents=data.documents||[];
+   data.documents.push({id:uid(),name:file.name,type:isPdf?'pdf':'image',extractedText:extracted.trim(),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file'});
+   persist();render();setStatus('Text extracted from '+file.name);toast('Text extracted');
+  }catch(err){console.error('Document extraction failed',err);setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
- if(status)status.textContent='PDF and image files · max 12 MB each';
 }
 function askDocument(id){
  const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
