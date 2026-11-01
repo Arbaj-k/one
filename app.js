@@ -203,25 +203,25 @@ function askDocument(id){
 }
 function aiAnswer(q){
  const raw=String(q||'').trim();
- const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\\bmid[\\s-]*term\\b/g,'midterm').replace(/\\b(m[\\s-]*t)[\\s-]*(\\d+)\\b/g,'midterm $2').replace(/\\b(first|1st|one)\\b/g,'1').replace(/\\b(second|2nd|two)\\b/g,'2').replace(/\\b(third|3rd|three)\\b/g,'3').replace(/\\b(fourth|4th|four)\\b/g,'4').replace(/\\b(exam|examination|paper|test)\\b/g,'exam').replace(/\\b(aec|vac|sec)\\b/g,'$1').replace(/\\b(kab|when|date|on which date|kis din|ki date)\\b/g,'date').replace(/[^a-z0-9\\s]/g,' ').replace(/\\s+/g,' ').trim();
+ const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\bmidterm[\s-]*i\b/g,'midterm 1').replace(/\bmidterm[\s-]*ii\b/g,'midterm 2').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
  const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do','or','to','a','an','as','at','by','it','be','schedule','time','timing']);
- const qnorm=normalize(raw),terms=[...new Set(qnorm.split(/\\s+/).filter(w=>w.length>1&&!stop.has(w)))];
+ const qnorm=normalize(raw),terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
  if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]};
- const dateQuestion=/\\b(date|when|kab|schedule|deadline|due)\\b/i.test(qnorm)||/\\b\\d+\\b/.test(qnorm);
+ const dateQuestion=/\b(date|when|kab|schedule|deadline|due)\b/i.test(qnorm)||/\b\d+\b/.test(qnorm);
  const candidates=[],add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
  (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
   const note=(data.notes||[]).find(n=>n.id===doc.sourceNoteId),source=note?{label:note.title||'Attached note',file:doc.name,noteId:note.id,documentId:doc.id}:{label:doc.name,file:doc.name,documentId:doc.id};
-  let page=null;const lines=String(doc.extractedText).split(/\\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{const marker=line.match(/^\\[Page\\s+(\\d+)\\]$/i);if(marker){page=Number(marker[1]);return null}return {text:line,page}}).filter(Boolean);
+  let page=null;const lines=String(doc.extractedText).split(/\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{const marker=line.match(/^\[Page\s+(\d+)\]$/i);if(marker){page=Number(marker[1]);return null}return {text:line,page}}).filter(Boolean);
   lines.forEach((line,i)=>add([lines[i-1]?.page===line.page?lines[i-1].text:null,line.text,lines[i+1]?.page===line.page?lines[i+1].text:null].filter(Boolean).join(' '),source,'document',{index:i,page:line.page}));
  });
  (data.notes||[]).forEach(n=>add([n.title,n.subject,n.tags,n.content].filter(Boolean).join(' '),{label:n.title||'Saved note',noteId:n.id},'note'));
- const tokens=s=>normalize(s).split(/\\s+/).filter(Boolean);
+ const tokens=s=>normalize(s).split(/\s+/).filter(Boolean);
  const score=cand=>{
   const docTokens=tokens(cand.text),docSet=new Set(docTokens),matched=terms.filter(t=>docSet.has(t)),partial=terms.filter(t=>!docSet.has(t)&&docTokens.some(w=>w.length>=3&&t.length>=3&&(w.includes(t)||t.includes(w))));
   if(!matched.length&&!partial.length)return 0;
   let s=matched.length*2.5+partial.length*0.8+(matched.length/terms.length)*3;
   if(terms.length>1&&matched.length===terms.length)s+=2;
-  if(dateQuestion&&/\\b\\d{1,2}[\\s./-]+(?:\\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(cand.text))s+=1.2;
+  if(dateQuestion&&/\b\d{1,2}[\s./-]+(?:\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(cand.text))s+=1.2;
   if(cand.kind==='note')s+=0.2;
   return s;
  };
@@ -229,7 +229,7 @@ function aiAnswer(q){
  const unique=[],seen=new Set();ranked.forEach(h=>{const key=(h.source.documentId||h.source.noteId||h.source.label)+'|'+(h.page??'');if(!seen.has(key)&&unique.length<5){seen.add(key);unique.push(h)}});
  if(!unique.length)return {answer:'I couldn’t find a matching passage. Try the course code (AEC, VAC, SEC), the date, or a short phrase from the document. Check the extracted text in My Knowledge if the image is unclear.',sources:[]};
  const sourceLabels=unique.map(h=>h.source.file?h.source.label+' — attachment: '+h.source.file+(h.page?' · Page '+h.page:(h.page===null?' · Page unavailable':'')):h.source.label);
- const answer=unique.slice(0,3).map((h,i)=>(i+1)+'. '+h.text+(h.page?' (Page '+h.page+')':'')).join('\\n\\n');
+ const answer=unique.slice(0,3).map((h,i)=>(i+1)+'. '+h.text+(h.page?' (Page '+h.page+')':'')).join('\n\n');
  return {answer,sources:sourceLabels};
 }
 function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();scrollChatToBottom()}
