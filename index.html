@@ -38,5 +38,12 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="app.js"></script>
 <script src="voice-assistant.js"></script>
-<script>if ("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));</script>
+<script>
+let installPromptEvent;
+const installButton=document.getElementById("install-app");
+window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();installPromptEvent=event;if(installButton)installButton.hidden=false;});
+installButton?.addEventListener("click",async()=>{if(!installPromptEvent)return;installPromptEvent.prompt();await installPromptEvent.userChoice;installPromptEvent=null;installButton.hidden=true;});
+window.addEventListener("appinstalled",()=>{if(installButton)installButton.hidden=true;});
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));
+</script>
 </body></html>
