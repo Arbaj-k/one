@@ -52,8 +52,10 @@
         recognition.onresult = event => {
           const phrase = event.results?.[0]?.[0]?.transcript?.trim();
           if (phrase) {
+            status.textContent = 'Heard: “' + phrase + '”';
+            if (window.handleStudentBrainVoiceCommand && window.handleStudentBrainVoiceCommand(phrase)) return;
             const input = document.querySelector('#chat-input');
-            if (input) { input.value = phrase; status.textContent = 'Heard: “' + phrase + '”'; form.requestSubmit(); }
+            if (input) { input.value = phrase; form.requestSubmit(); }
           }
         };
         recognition.onerror = event => { status.textContent = event.error === 'not-allowed' ? 'Please allow microphone access.' : 'Could not hear that. Try again.'; };
