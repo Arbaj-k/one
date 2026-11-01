@@ -4,13 +4,32 @@
   let recognition = null, listening = false, voiceReplies = true;
   const style = document.createElement('style');
   style.textContent = `
-    .voice-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+    .quick-actions{display:flex;gap:8px;align-items:center}.voice-quick-btn{min-width:44px;padding:10px 13px;font-size:17px}.voice-quick-btn:hover{background:#edf1ff;color:#4263eb}.voice-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
     .voice-btn{border:1px solid #e7ebf1;background:#fff;color:#17243a;border-radius:10px;padding:9px 12px;font:600 12px 'DM Sans',sans-serif;cursor:pointer}
     .voice-btn.mic-on{background:#4263eb;color:#fff;border-color:#4263eb}
     .voice-status{font-size:11px;color:#7a879a}
     .voice-toggle{font-size:11px;color:#4560cc;background:#edf1ff;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}
   `;
   document.head.appendChild(style);
+
+  window.startStudentBrainListening = function() {
+    if (!SpeechRecognition) { alert('Voice input works best in Chrome.'); return; }
+    if (listening && recognition) { recognition.stop(); return; }
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onstart = () => { listening = true; };
+    recognition.onresult = event => {
+      const phrase = event.results?.[0]?.[0]?.transcript?.trim();
+      if (!phrase) return;
+      if (window.handleStudentBrainVoiceCommand && window.handleStudentBrainVoiceCommand(phrase)) return;
+      alert('I heard: “' + phrase + '”\\nTry a task deadline or money command.');
+    };
+    recognition.onerror = event => { if (event.error === 'not-allowed') alert('Please allow microphone access.'); };
+    recognition.onend = () => { listening = false; };
+    try { recognition.start(); } catch (_) { alert('Microphone is busy. Try again.'); }
+  };
 
   function speak(text) {
     if (!voiceReplies || !('speechSynthesis' in window)) return;
