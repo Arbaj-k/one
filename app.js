@@ -218,6 +218,25 @@ function aiAnswer(q){
  const qnorm=normalize(raw);let terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
  if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]};
  const candidates=[],add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
+ // Directly answer timetable queries by extracting the matching schedule rows and returning all requested courses.
+ const timetableQuestion=/mid\s*term|midterm|timetable|time\s*table/i.test(raw);
+ if(timetableQuestion){
+  const allRows=[];
+  (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
+   const records=extractTimetableData(doc.extractedText);
+   if(records.length)allRows.push({doc,records});
+  });
+  const requested=['AEC','VAC','SEC'].filter(course=>new RegExp('\\b'+course+'\\b','i').test(raw));
+  const wantAll=!requested.length||/all|aec.*vac|vac.*sec|aec.*sec|all three/i.test(raw);
+  const selected=allRows.flatMap(({doc,records})=>records.filter(r=>(wantAll||requested.includes(r.course))&&(!/mid\s*term|midterm/i.test(raw)||/mid\s*term|midterm/i.test(doc.extractedText))).map(r=>({doc,r})));
+  if(selected.length){
+   const uniqueRows=[...new Map(selected.map(x=>[x.r.course+'|'+x.r.date+'|'+x.r.start,x])).values()];
+   const lines=uniqueRows.map(({r})=>r.course+' — '+r.date+(r.day?' ('+r.day+')':'')+' · '+r.start+'–'+r.end);
+   const src=[...new Set(uniqueRows.map(x=>x.doc.name))].map(name=>'Attachment: '+name);
+   return {answer:'Mid Term-I (Theory) schedule:\\n'+lines.join('\\n'),sources:src};
+  }
+ }
+
  (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
   const note=(data.notes||[]).find(n=>n.id===doc.sourceNoteId),source=note?{label:note.title||'Attached note',file:doc.name,noteId:note.id,documentId:doc.id}:{label:doc.name,file:doc.name,documentId:doc.id};
   let page=null;const lines=String(doc.extractedText).split(/\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{const marker=line.match(/^\[Page\s+(\d+)\]$/i);if(marker){page=Number(marker[1]);return null}return {text:line,page}}).filter(Boolean);
