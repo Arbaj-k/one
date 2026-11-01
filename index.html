@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Brain — Your college life, remembered</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">✦</div><div><b>Student Brain</b><small>Your personal workspace</small></div></div>
+    <div class="workspace-label">WORKSPACE</div>
+    <nav id="nav">
+      <button class="nav-item active" data-page="overview">▦ <span>Overview</span></button>
+      <button class="nav-item" data-page="ask">✧ <span>Ask AI</span></button>
+      <button class="nav-item" data-page="knowledge">▤ <span>My Knowledge</span></button>
+      <button class="nav-item" data-page="planner">◷ <span>Planner</span></button>
+      <button class="nav-item" data-page="projects">▣ <span>Projects</span></button>
+      <button class="nav-item" data-page="expenses">₹ <span>Expenses</span></button>
+    </nav>
+    <div class="sidebar-bottom"><div class="privacy-icon">✓</div><div><b>Your space, your data</b><small>Saved in this browser</small></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="mobile-brand">✦ Student Brain</div><div class="topbar-right"><span class="demo-pill"><i></i> Local demo mode</span><div class="avatar">S</div></div></header>
+    <section id="page-content" class="content"></section>
+    <footer>Student Brain · MVP preview <span>Data is stored locally in this browser.</span></footer>
+  </main>
+</div>
+<div id="modal-root"></div>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body></html>
