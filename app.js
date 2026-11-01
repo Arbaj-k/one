@@ -149,18 +149,27 @@ function askDocument(id){
 }
 function aiAnswer(q){
  const raw=String(q||'').trim();
- const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+ const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\\bmid[\\s-]*term\\b/g,'midterm').replace(/\\b(m[\\s-]*t)[\\s-]*(\\d+)\\b/g,'midterm $2').replace(/\\b(first|1st|one)\\b/g,'1').replace(/\\b(second|2nd|two)\\b/g,'2').replace(/\\b(third|3rd|three)\\b/g,'3').replace(/\\b(fourth|4th|four)\\b/g,'4').replace(/\\b(exam|examination|paper|test)\\b/g,'exam').replace(/\\b(kab|when|date|on which date|kis din|ki date)\\b/g,'date').replace(/[^a-z0-9\\s]/g,' ').replace(/\\s+/g,' ').trim();
  const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do']);
- const qnorm=normalize(raw),terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
+ const qnorm=normalize(raw),terms=[...new Set(qnorm.split(/\\s+/).filter(w=>w.length>1&&!stop.has(w)))];
  if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]};
- const dateQuestion=/\b(date|when|kab|schedule|deadline|due)\b/i.test(qnorm)||/\b\d+\b/.test(qnorm);
+ const dateQuestion=/\\b(date|when|kab|schedule|deadline|due)\\b/i.test(qnorm)||/\\b\\d+\\b/.test(qnorm);
  const candidates=[];
  const add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
  (data.documents||[]).filter(d=>d.extractedText).forEach(doc=>{
   const note=(data.notes||[]).find(n=>n.id===doc.sourceNoteId);
   const source=note?{label:note.title||'Attached note',file:doc.name,noteId:note.id,documentId:doc.id}:{label:doc.name,file:doc.name,documentId:doc.id};
-  const lines=String(doc.extractedText).split(/\n+/).map(s=>s.trim()).filter(s=>s&&!/^\[Page \d+\]$/.test(s));
-  lines.forEach((line,i)=>add([lines[i-1],line,lines[i+1]].filter(Boolean).join(' '),source,'document',{index:i}));
+  // Keep page markers attached to each extracted line; pdf.js extraction writes [Page N].
+  let currentPage=null;
+  const lines=String(doc.extractedText).split(/\\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{
+   const marker=line.match(/^\\[Page\\s+(\\d+)\\]$/i);
+   if(marker){currentPage=Number(marker[1]);return null;}
+   return {text:line,page:currentPage};
+  }).filter(Boolean);
+  lines.forEach((line,i)=>{
+   const context=[lines[i-1]?.page===line.page?lines[i-1].text:null,line.text,lines[i+1]?.page===line.page?lines[i+1].text:null].filter(Boolean).join(' ');
+   add(context,source,'document',{index:i,page:line.page});
+  });
  });
  (data.notes||[]).forEach(n=>add([n.title,n.subject,n.tags,n.content].filter(Boolean).join(' '),{label:n.title||'Saved note',noteId:n.id},'note'));
  const score=cand=>{
@@ -168,16 +177,16 @@ function aiAnswer(q){
   if(!matched.length)return 0;
   let s=matched.length*3+(matched.length/terms.length)*3;
   if(terms.length>1&&matched.length===terms.length)s+=4;
-  if(dateQuestion&&/\b\d{1,2}[\s./-]+(?:\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(cand.text))s+=2;
+  if(dateQuestion&&/\\b\\d{1,2}[\\s./-]+(?:\\d{1,2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(cand.text))s+=2;
   if(cand.kind==='note')s+=0.5;
   return s;
  };
  const ranked=candidates.map(x=>({...x,score:score(x)})).filter(x=>x.score>=3).sort((a,b)=>b.score-a.score||(a.index??0)-(b.index??0));
- const best=ranked.slice(0,4),unique=[],seen=new Set();
- best.forEach(h=>{const key=h.source.documentId||h.source.noteId||h.source.label;if(!seen.has(key)){seen.add(key);unique.push(h)}});
+ const unique=[],seen=new Set();
+ ranked.forEach(h=>{const key=(h.source.documentId||h.source.noteId||h.source.label)+'|'+(h.page??'');if(!seen.has(key)&&unique.length<4){seen.add(key);unique.push(h)}});
  if(!unique.length)return {answer:'I couldn’t find a strong match in your saved notes or extracted files. Try the exact course/exam name, a subject code, or a shorter phrase. If the file is a scan, its text extraction may be incomplete.',sources:[]};
- const sourceLabels=unique.map(h=>h.source.file?h.source.label+' — attachment: '+h.source.file:h.source.label);
- const answer='Closest matching source text:\n\n'+unique.map(h=>h.text).join('\n\n')+'\n\nThis is retrieved text, not a generated interpretation. Check the original source for important details.';
+ const sourceLabels=unique.map(h=>h.source.file?h.source.label+' — attachment: '+h.source.file+(h.page?' · Page '+h.page:'')+(h.page===null?' · Page unavailable':''):h.source.label);
+ const answer='Closest matching source text:\\n\\n'+unique.map(h=>h.text+(h.page?'\\n[Source page '+h.page+']':'')).join('\\n\\n')+'\\n\\nThis is retrieved text, not a generated interpretation. Page numbers are based on extracted PDF page markers; verify against the original file.';
  return {answer,sources:sourceLabels};
 }
 function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();const el=document.querySelector('#chat-messages');if(el)el.scrollTop=el.scrollHeight}
