@@ -14,12 +14,14 @@ execFileSync(process.execPath, ['--check', new URL('../voice-assistant.js', impo
 assert.ok(app.includes('window.submitStudentBrainVoiceText = function(raw)'), 'Global voice command handler is missing.');
 assert.ok(voice.includes('window.submitStudentBrainVoiceText(phrase)'), 'Speech recognition is not routed to the global command handler.');
 assert.ok(voice.includes('let submitted = false;'), 'Voice result must be processed only once per listening session.');
-assert.ok(app.includes('id="chat-file-upload"'), 'Ask My Brain chat file picker is missing.');
-assert.ok(app.includes('class="chat-attach-btn"'), 'Ask My Brain attachment control is missing.');
-assert.ok(app.includes("if(e.target.id==='chat-file-upload')"), 'Chat file selection is not wired to document processing.');
-assert.ok(app.includes("document.querySelector('#chat-upload-status')||document.querySelector('#document-upload-status')"), 'Chat upload progress is not reported in the chat.');
-assert.ok(css.includes('.chat-attach-btn'), 'Chat attachment control styling is missing.');
-assert.ok(css.includes('.chat-upload-status'), 'Chat upload status styling is missing.');
+assert.ok(!app.includes('id="chat-file-upload"'), 'Ask My Brain should not show a file picker.');
+assert.ok(!app.includes('id="chat-upload-status"'), 'Ask My Brain should not show an upload status row.');
+assert.ok(app.includes('id="quick-add-file-upload"'), 'Quick Add file picker is missing.');
+assert.ok(app.includes('data-action="quick-add-upload"'), 'Quick Add Upload file option is missing.');
+assert.ok(app.includes("'quick-add-upload':()=>document.querySelector('#quick-add-file-upload')?.click()"), 'Quick Add upload action is not wired to the file picker.');
+assert.ok(app.includes("if(e.target.id==='quick-add-file-upload')"), 'Quick Add file selection is not wired to document processing.');
+assert.ok(app.includes("document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status')"), 'Quick Add upload progress is not reported.');
+assert.ok(css.includes('.quick-add-upload-status'), 'Quick Add upload status styling is missing.');
 
 assert.ok(voice.includes("if (event.results[i].isFinal) finalText += part + ' ';"), 'Final speech fragments are not accumulated into a complete command.');
 assert.ok(voice.includes("const phrase = finalText.replace(/\\\\s+/g, ' ').trim();"), 'Voice command is not normalized after recognition ends.');
