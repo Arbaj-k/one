@@ -346,7 +346,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
    content+=(content?'\n\n':'')+block;
   }
   if(content){documents.push({name:doc.name,type:doc.type||'file',content});totalChars+=content.length}
-  if(targetDocId&&doc.fileStored&&Number(doc.size||0)<=3*1024*1024&&/^(application\/pdf|image\/(png|jpeg|webp))$/i.test(doc.mimeType||'')){
+  if(!inlineFile&&doc.fileStored&&Number(doc.size||0)<=3*1024*1024&&(targetDocId||score>0)&&/^(application\/pdf|image\/(png|jpeg|webp))$/i.test(doc.mimeType||'')){
    try{
     const saved=await getOriginalDocument(doc.id);
     if(saved?.blob){inlineFile={name:doc.name,mimeType:saved.type||doc.mimeType||'application/pdf',dataBase64:await fileToBase64(saved.blob)};sources.push('File: '+doc.name+' · original file')}
