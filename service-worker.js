@@ -1,4 +1,4 @@
-const CACHE_NAME = "student-brain-shell-v3";
+const CACHE_NAME = "student-brain-shell-v4";
 const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./voice-assistant.js", "./manifest.json", "./icons/student-brain.svg"];
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
