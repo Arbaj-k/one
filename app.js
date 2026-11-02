@@ -230,20 +230,20 @@ function aiAnswer(q){
  const qnorm=normalize(raw);let terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
  if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]};
  // Task-aware answers: include the user's live task list in Ask My Brain retrieval.
- const taskIntent=/\\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\\b/i.test(raw);
+ const taskIntent=/\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\b/i.test(raw);
  if(taskIntent){
   const openTasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
   const overdue=openTasks.filter(t=>t.due&&t.due<today()),dueToday=openTasks.filter(t=>t.due===today()),upcoming=openTasks.filter(t=>t.due>today());
   const allDone=(data.tasks||[]).filter(t=>t.done);
-  if(/\\b(completed|finished|done)\\b/i.test(raw)&&!/\\bnot done|pending\\b/i.test(raw)){
-   return {answer:allDone.length?'Completed tasks:\\n'+allDone.slice(-8).map(t=>'✓ '+t.title+(t.due?' — '+t.due:'')).join('\\n'):'You have no completed tasks yet.',sources:['Tasks']};
+  if(/\b(completed|finished|done)\b/i.test(raw)&&!/\bnot done|pending\b/i.test(raw)){
+   return {answer:allDone.length?'Completed tasks:\n'+allDone.slice(-8).map(t=>'✓ '+t.title+(t.due?' — '+t.due:'')).join('\n'):'You have no completed tasks yet.',sources:['Tasks']};
   }
   if(!openTasks.length)return {answer:'You have no pending tasks right now. You can add a task in Tasks & Reminders.',sources:['Tasks']};
-  let selected=/\\boverdue\\b/i.test(raw)?overdue:/\\btoday\\b|\\bdue today\\b/i.test(raw)?dueToday:openTasks;
-  if(/\\bnext|priority|important|urgent|what should i do\\b/i.test(raw))selected=[...overdue,...dueToday,...upcoming].slice(0,6);
+  let selected=/\boverdue\b/i.test(raw)?overdue:/\btoday\b|\bdue today\b/i.test(raw)?dueToday:openTasks;
+  if(/\bnext|priority|important|urgent|what should i do\b/i.test(raw))selected=[...overdue,...dueToday,...upcoming].slice(0,6);
   if(!selected.length)return {answer:'No tasks match that time filter. Your pending tasks are clear for that period.',sources:['Tasks']};
-  const lines=selected.slice(0,10).map(t=>'• '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':t.due===today()?'Due today · ':'Due ')+t.due:'No due date')+' · Priority: '+(t.priority||'Medium')+(t.category?' · '+t.category:'')+(t.notes?'\\n  Details: '+t.notes:''));
-  return {answer:(overdue.length?'You have '+overdue.length+' overdue task(s).\\n\\n':'')+'Here are your pending tasks:\\n'+lines.join('\\n'),sources:['Tasks & Reminders']};
+  const lines=selected.slice(0,10).map(t=>'• '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':t.due===today()?'Due today · ':'Due ')+t.due:'No due date')+' · Priority: '+(t.priority||'Medium')+(t.category?' · '+t.category:'')+(t.notes?'\n  Details: '+t.notes:''));
+  return {answer:(overdue.length?'You have '+overdue.length+' overdue task(s).\n\n':'')+'Here are your pending tasks:\n'+lines.join('\n'),sources:['Tasks & Reminders']};
  }
  const candidates=[],add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
  // Directly answer timetable queries by extracting the matching schedule rows and returning all requested courses.
