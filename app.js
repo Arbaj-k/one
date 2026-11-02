@@ -12,6 +12,68 @@ let data=loadData(),page='overview',chatBusy=false;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
+
+const AI_FILES_DB='student-brain-files-v1';
+let studentBrainAIClient=null,studentBrainAITokenPromise=null;
+function getStudentBrainAIClient(){
+ if(studentBrainAIClient)return studentBrainAIClient;
+ if(!window.supabase?.createClient)throw new Error('Supabase client did not load. Refresh and try again.');
+ studentBrainAIClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:'student-brain-ai-auth-v1'}});
+ return studentBrainAIClient;
+}
+async function getStudentBrainAIToken(){
+ const client=getStudentBrainAIClient(),current=await client.auth.getSession();
+ if(current.error)throw current.error;
+ if(current.data.session?.access_token)return current.data.session.access_token;
+ if(studentBrainAITokenPromise)return studentBrainAITokenPromise;
+ studentBrainAITokenPromise=(async()=>{
+  const result=await client.auth.signInAnonymously();
+  if(result.error){
+   if(/anonymous|disabled|not enabled|captcha/i.test(result.error.message||''))throw new Error('Supabase Anonymous Sign-Ins are not enabled. Open Supabase → Authentication → Sign In / Providers → Anonymous Sign-Ins, enable it, then retry.');
+   throw result.error;
+  }
+  const token=result.data.session?.access_token;
+  if(!token)throw new Error('Supabase did not create an AI session. Refresh and retry.');
+  return token;
+ })();
+ try{return await studentBrainAITokenPromise}finally{studentBrainAITokenPromise=null}
+}
+function openAIFileDB(){
+ return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window)){reject(new Error('This browser does not support local file storage.'));return}
+  const req=indexedDB.open(AI_FILES_DB,1);
+  req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('files'))db.createObjectStore('files',{keyPath:'id'})};
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||new Error('Could not open local file storage.'));
+ });
+}
+async function saveOriginalDocument(id,file){
+ const db=await openAIFileDB();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction('files','readwrite');
+  tx.objectStore('files').put({id,name:file.name,type:file.type||'',size:file.size,blob:file,updated:Date.now()});
+  tx.oncomplete=()=>{db.close();resolve(true)};
+  tx.onerror=()=>{const err=tx.error||new Error('Could not save original file.');db.close();reject(err)};
+  tx.onabort=()=>{const err=tx.error||new Error('Local file save was cancelled.');db.close();reject(err)};
+ });
+}
+async function getOriginalDocument(id){
+ const db=await openAIFileDB();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction('files','readonly'),req=tx.objectStore('files').get(id);
+  req.onsuccess=()=>{db.close();resolve(req.result||null)};
+  req.onerror=()=>{const err=req.error||new Error('Could not read original file.');db.close();reject(err)};
+ });
+}
+async function removeOriginalDocument(id){
+ try{const db=await openAIFileDB();await new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}catch(err){console.warn('Could not remove local original file',err)}
+}
+async function fileToBase64(blob){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();reader.onload=()=>{const value=String(reader.result||''),comma=value.indexOf(',');resolve(comma>=0?value.slice(comma+1):'')};reader.onerror=()=>reject(reader.error||new Error('Could not read original file.'));reader.readAsDataURL(blob);
+ });
+}
+
 function loadData(){try{return migrateData(JSON.parse(localStorage.getItem(KEY)||'{}'))}catch{return starter()}}
 let syncQueue=Promise.resolve();
 let cloudRetryTimer=null,cloudRetryDelay=1500,lastSyncedAt=null,cloudMode='offline',cloudLastError='';
@@ -149,48 +211,61 @@ async function runImageOCR(file){
  }
  return best;
 }
+
 async function processUploadedDocuments(files,sourceNoteId=null){
  const list=Array.from(files||[]);if(!list.length)return;
- const setStatus=(message)=>{const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
+ const setStatus=message=>{const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
  for(const file of list){
-  if(!file || file.size===0){setStatus((file?.name||'Selected file')+' is empty. Choose a file containing data.');toast('Empty file cannot be processed');continue}
-  if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB. Choose a smaller file.');toast('File is over 12 MB');continue}
-  if(!file.type.startsWith('image/')&&file.type!=='application/pdf'&&!/\\.pdf$/i.test(file.name)&&!/\\.(png|jpe?g|gif|webp|bmp|tiff?)$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
+  if(!file||file.size===0){setStatus((file?.name||'Selected file')+' is empty.');toast('Empty file cannot be processed');continue}
+  if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB.');toast('File is over 12 MB');continue}
+  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+  if(!isPdf&&!file.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|tiff?)$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
   setStatus('Reading '+file.name+'…');
   try{
-   let extracted='';const isPdf=file.type==='application/pdf'||/\\.pdf$/i.test(file.name);
+   let extracted='';
    if(isPdf){
-    if(!window.pdfjsLib)throw Error('PDF text reader is unavailable. Check your connection and refresh.');
+    if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and try again.');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    if(pdf.numPages>100)throw Error('This PDF has more than 100 pages. Split it into smaller files.');
-    for(let p=1;p<=pdf.numPages;p++){setStatus('Extracting page '+p+' of '+pdf.numPages+' · '+file.name);const page=await pdf.getPage(p),content=await page.getTextContent();extracted+='\\n[Page '+p+']\\n'+content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\\n')}
+    if(pdf.numPages>100)throw new Error('PDF has more than 100 pages. Split it into smaller files.');
+    for(let p=1;p<=pdf.numPages;p++){
+     setStatus('Reading page '+p+' of '+pdf.numPages+' · '+file.name);
+     const pdfPage=await pdf.getPage(p),content=await pdfPage.getTextContent();
+     let pageText=content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
+     if(pageText.trim().length<24&&window.Tesseract){
+      try{
+       setStatus('OCR scanning page '+p+' · '+file.name);
+       const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(1.8,1800/base.width)});
+       const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+       await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+       const ocr=await runImageOCR(canvas);if(ocr.trim())pageText='[OCR]\n'+ocr.trim();
+      }catch(ocrError){console.warn('Scanned PDF OCR failed',p,ocrError)}
+     }
+     extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
+    }
    }else{
-    if(!window.Tesseract)throw Error('Image OCR is unavailable. Check your connection and refresh.');
+    if(!window.Tesseract)throw new Error('Image OCR unavailable. Refresh and try again.');
     setStatus('Reading image text · '+file.name);
-    let result;
-    try{result=await window.Tesseract.recognize(file,'eng+hin')}catch(_){result=await window.Tesseract.recognize(file,'eng')}
-    extracted=result.data.text||'';
+    try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('Image OCR failed. The original image will still be saved for AI visual analysis.',ocrError)}
    }
-   if(!extracted.trim())throw Error('No text detected. Try a clearer image or a text-based PDF.');
+   const id=uid();let fileStored=false;
+   try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file could not be saved; keeping extracted text only.',storageError)}
+   const extractedText=extracted.trim()||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
-   const extractedText=extracted.trim();data.documents.push({id:uid(),name:file.name,type:isPdf?'pdf':'image',extractedText,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file'});
-   persist();render();setStatus('Text extracted from '+file.name);toast('Text extracted');
+   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored});
+   persist();render();setStatus('Saved '+file.name+'. Ask Brain can use extracted text'+(fileStored?' and original file.':'.'));toast('File saved to My Knowledge');
   }catch(err){console.error('Document extraction failed',err);setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
+
+
 function askDocument(id){
  const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
- const q=prompt('Ask a question about '+doc.name);if(!q||!q.trim())return;
- const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','date','sheet','the','and','for','are','was','is','in','on','of']);
- const terms=q.toLowerCase().replace(/[^\\w\\s]/g,' ').split(/\\s+/).filter(w=>w.length>2&&!stop.has(w));
- const lines=(doc.extractedText||'').split(/\\n+/).filter(s=>s.trim());
- const chunks=[];for(let i=0;i<lines.length;i++){const line=lines[i].trim();if(/^\\[Page \\d+\\]$/.test(line))continue;chunks.push(line)}
- const ranked=chunks.map((text,index)=>{const normalized=text.toLowerCase();const score=terms.reduce((n,t)=>n+(normalized.includes(t)?1:0),0);return {text,index,score}}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,5);
- const answer=ranked.length?ranked.map(x=>x.text).join('\\n\\n'):'No matching passage was found. Try the exact course name, subject code, date, or a phrase printed in the file.';
- modal('Answer from '+esc(doc.name),'<div class="document-answer"><p><b>Your question</b></p><p>'+esc(q)+'</p><p><b>Relevant text from the uploaded file</b></p><div class="answer-extract">'+esc(answer)+'</div><small class="muted">Source: '+esc(doc.name)+(ranked.length?' · Text extracted from this file':' · No matching passage')+'</small><p class="muted">This searches extracted text locally; it does not generate an AI answer. Confirm important dates against the original document.</p></div>','Close');
- document.querySelector('#modal-root .modal-actions .primary')?.setAttribute('type','button');
+ const q=prompt('Ask Brain anything about '+doc.name);
+ if(!q||!q.trim())return;
+ page='ask';render();sendChat(q.trim(),id);
 }
+
 function splitDocumentIntoChunks(text){
  const pages=String(text||'').split(/(?=\[Page\s+\d+\])/i),chunks=[];
  pages.forEach(page=>{
