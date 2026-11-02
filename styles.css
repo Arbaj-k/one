@@ -38,3 +38,29 @@
 .expense-quick-action[data-id="all"] .stat-icon{background:#eef2ff;color:var(--blue)}
 @media(max-width:700px){.expense-quick-action{min-height:142px;padding:14px;border-radius:13px}.expense-quick-action .stat-label{font-size:11px;line-height:1.4}.expense-quick-action .stat-number{font-size:clamp(18px,5.2vw,22px);margin:12px 0 7px;overflow-wrap:anywhere}.expense-quick-action .stat-note{font-size:10px}.expense-quick-action .stat-open-hint{display:block;margin-top:3px}.expense-quick-action .stat-icon{width:31px;height:31px;border-radius:9px}}
 @media(prefers-reduced-motion:reduce){.expense-quick-action{transition:none}.expense-quick-action:hover{transform:none}}
+
+/* UX polish: dashboard quick-add and mobile-first navigation */
+.quick-actions{display:flex;gap:9px;flex-wrap:wrap}
+.quick-actions .btn{min-height:42px}
+.quick-add-modal{width:min(620px,100%)}
+.quick-add-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.quick-add-option{border:1px solid var(--line);border-radius:13px;background:#fff;padding:15px;text-align:left;display:grid;grid-template-columns:36px 1fr;column-gap:10px;align-items:center;transition:background .15s,border-color .15s,transform .15s}
+.quick-add-option>span{grid-row:span 2;width:36px;height:36px;border-radius:11px;background:var(--blue-light);color:var(--blue);display:grid;place-items:center;font-size:18px}
+.quick-add-option b{font-size:13px}
+.quick-add-option small{font-size:11px;color:var(--muted);line-height:1.45;margin-top:3px}
+.quick-add-option:hover{border-color:#b9c7ff;background:#f8faff;transform:translateY(-1px)}
+.quick-add-option:focus-visible{outline:3px solid #9aabff;outline-offset:2px}
+.empty{padding:24px 12px;border-radius:12px;background:#fafbfe;line-height:1.6}
+.empty .empty-symbol{display:grid;place-items:center;width:42px;height:42px;margin:0 auto 10px;border-radius:13px;background:#eef2ff;color:var(--blue)}
+.stat-card[data-page]{cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}
+.stat-card[data-page]:hover{transform:translateY(-2px);border-color:#cbd5ff;box-shadow:0 12px 28px rgba(50,78,170,.08)}
+.stat-card[data-page]:focus-visible{outline:3px solid #9aabff;outline-offset:3px}
+@media(max-width:700px){
+ .quick-add-grid{grid-template-columns:1fr}
+ .quick-add-option{padding:12px}
+ .mobile-nav{justify-content:space-around}
+ .mobile-nav button{font-size:10px;min-height:48px}
+ .mobile-nav .mobile-quick-add{color:#fff;background:var(--blue);border-radius:14px;max-width:52px;margin:0 3px;box-shadow:0 4px 12px #315eea38;gap:2px}
+ .mobile-nav .mobile-quick-add strong{font-size:21px;line-height:1.1}
+ .mobile-nav .mobile-quick-add span{font-size:9px;font-weight:700}
+}
