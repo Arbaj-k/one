@@ -309,7 +309,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   rankedDocs=relevant.length?relevant.slice(0,4):rankedDocs.slice(0,2);
  }
  const documents=[],sources=[];let totalChars=0,inlineFile=null;
- for(const {doc} of rankedDocs){
+ for(const {doc,score} of rankedDocs){
   const chunks=(Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'')).map((chunk,index)=>({text:String(chunk.text||''),page:chunk.page??null,index}));
   let chosen=[];
   if(targetDocId&&String(doc.extractedText||'').length<=32000)chosen=[{text:String(doc.extractedText||''),page:null,index:0}];
@@ -330,7 +330,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   if(targetDocId&&doc.fileStored&&Number(doc.size||0)<=3*1024*1024&&/^(application\/pdf|image\/(png|jpeg|webp))$/i.test(doc.mimeType||'')){
    try{
     const saved=await getOriginalDocument(doc.id);
-    if(saved?.blob)inlineFile={name:doc.name,mimeType:saved.type||doc.mimeType||'application/pdf',dataBase64:await fileToBase64(saved.blob)};
+    if(saved?.blob){inlineFile={name:doc.name,mimeType:saved.type||doc.mimeType||'application/pdf',dataBase64:await fileToBase64(saved.blob)};sources.push('File: '+doc.name+' · original file')}
    }catch(error){console.warn('Original file is not available for visual AI analysis.',error)}
   }
  }
@@ -339,11 +339,11 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   const source='Note: '+(note.title||'Untitled note');sources.push(source);
   return {source,title:String(note.title||''),subject:String(note.subject||''),tags:String(note.tags||''),content:String(note.content||'').slice(0,2400)};
  });
- const tasks=(data.tasks||[]).slice(0,60).map(task=>({source:'Task: '+String(task.title||'Untitled task'),title:task.title||'',category:task.category||'',due:task.due||null,priority:task.priority||'Medium',completed:!!task.done,notes:String(task.notes||'').slice(0,500)}));
- const projects=(data.projects||[]).slice(0,20).map(project=>({source:'Project: '+String(project.name||project.title||'Untitled project'),name:project.name||project.title||'',description:String(project.description||'').slice(0,700),status:project.status||'In progress',targetDate:project.targetDate||null}));
- const memories=(data.memories||[]).slice(0,20).map(memory=>({source:'Personal memory: '+String(memory.title||'Memory'),title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}));
- const studySessions=(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined)));
- const expenses=(data.expenses||[]).slice(-40).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||''}));
+ const tasks=(data.tasks||[]).slice(0,60).map(task=>{const source='Task: '+String(task.title||'Untitled task');sources.push(source);return {source,title:task.title||'',category:task.category||'',due:task.due||null,priority:task.priority||'Medium',completed:!!task.done,notes:String(task.notes||'').slice(0,500)}});
+ const projects=(data.projects||[]).slice(0,20).map(project=>{const source='Project: '+String(project.name||project.title||'Untitled project');sources.push(source);return {source,name:project.name||project.title||'',description:String(project.description||'').slice(0,700),status:project.status||'In progress',targetDate:project.targetDate||null}});
+ const memories=(data.memories||[]).slice(0,20).map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
+ const studySessions=(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined)));if(studySessions.length)sources.push('Study sessions');
+ const expenses=(data.expenses||[]).slice(-40).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||''}));if(expenses.length)sources.push('Money & Udhaar');
  return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents},sources:[...new Set(sources)].slice(0,20),inlineFile};
 }
 async function requestStudentBrainAI(question,targetDocId=null){
