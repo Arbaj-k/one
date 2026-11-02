@@ -478,6 +478,25 @@ window.handleStudentBrainVoiceCommand = function(raw) {
  return false;
 };
 
+// Accept speech from the mobile Speak button on every page, not only Ask My Brain.
+window.submitStudentBrainVoiceText = function(raw) {
+ const phrase=String(raw||'').trim();
+ if(!phrase)return false;
+ try {
+  if(typeof window.handleStudentBrainVoiceCommand==='function'&&window.handleStudentBrainVoiceCommand(phrase))return true;
+  if(chatBusy){toast('Brain is still replying. Try speaking again in a moment.');return false;}
+  page='ask';
+  if(!history.state||history.state.sbPage!=='ask')history.pushState({sbPage:'ask'},'',location.href);
+  render();
+  sendChat(phrase);
+  return true;
+ } catch(err) {
+  console.error('Voice command failed',err);
+  toast('Could not process that voice command. Please try again.');
+  return false;
+ }
+};
+
 const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
 function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return new Date(y,m-1,d,hh||0,mm||0,0,0).getTime()}
 async function enableTaskReminders(){
