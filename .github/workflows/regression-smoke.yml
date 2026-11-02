@@ -18,4 +18,4 @@ jobs:
         with:
           node-version: 20
       - name: Run static regression guardrails
-        run: node tests/regression-smoke.mjs
+        run: node tests/smoke.test.cjs
