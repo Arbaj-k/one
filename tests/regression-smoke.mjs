@@ -25,11 +25,13 @@ for (const feature of [
   'data-action="delete-note"', 'data-action="delete-document"',
   'id="note-search"', 'id="subject-filter"', 'id="document-upload"',
   'data-action="go-ask"', 'function render()', 'data-action="planner-view"',
-  'new-memory', 'edit-memory', 'delete-memory', 'data-page="memory"',
+  'new-memory', 'edit-memory', 'delete-memory',
   "'memories'", 'data.memories',
 ]) {
   assert.ok(app.includes(feature), `Regression guard missing: ${feature}`);
 }
+
+assert.ok(html.includes('data-page="memory"'), 'Personal memory navigation entry is missing from the app shell.');
 
 // Ensure CRUD and local persistence hooks stay present.
 for (const action of [
