@@ -21,9 +21,12 @@ for (const feature of [
   'function processUploadedDocuments(', 'function askDocument(',
   'function restoreData()', 'function exportData()',
   'function studyPlanner()', 'function projects()', 'function expenses()',
+  'function planner()', 'function personalMemory()', 'function openMemoryForm(',
   'data-action="delete-note"', 'data-action="delete-document"',
   'id="note-search"', 'id="subject-filter"', 'id="document-upload"',
-  'data-action="go-ask"', 'function render()'
+  'data-action="go-ask"', 'function render()', 'data-action="planner-view"',
+  'new-memory', 'edit-memory', 'delete-memory', 'data-page="memory"',
+  "'memories'", 'data.memories',
 ]) {
   assert.ok(app.includes(feature), `Regression guard missing: ${feature}`);
 }
@@ -43,5 +46,5 @@ assert.match(app, /function splitDocumentIntoChunks\(text\)/);
 assert.match(app, /if\(!file \|\| file\.size===0\)/);
 assert.match(app, /Unsupported file type\. Upload a PDF or image\./);
 
-console.log('Student Brain static regression guardrails passed.');
+console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, data safety and CRUD routes.');
 console.log('Note: UI behavior, OCR extraction, backup round-trip, and mobile layout still require browser/device testing.');
