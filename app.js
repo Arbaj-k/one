@@ -362,7 +362,54 @@ async function requestStudentBrainAI(question,targetDocId=null){
 function isStructuredWorkspaceQuestion(question){
  return /\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
 }
-async async function sendChat(question,targetDocId=null){
+async 
+function aiAnswer(question){
+ const raw=String(question||''),terms=aiQueryTerms(raw);
+ if(/\b(spend|spent|expense|expenses|money|kharch|udhaar|lent|borrowed|owe|repaid)\b/i.test(raw)){
+  const expenses=data.expenses||[],fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
+  const total=expenses.filter(e=>(e.kind||'expense')==='expense').reduce((sum,e)=>sum+Number(e.amount||0),0);
+  const lent=expenses.filter(e=>e.kind==='lent').reduce((sum,e)=>sum+Number(e.amount||0),0)-expenses.filter(e=>e.kind==='lent_repayment').reduce((sum,e)=>sum+Number(e.amount||0),0);
+  const borrowed=expenses.filter(e=>e.kind==='borrowed').reduce((sum,e)=>sum+Number(e.amount||0),0)-expenses.filter(e=>e.kind==='borrowed_repayment').reduce((sum,e)=>sum+Number(e.amount||0),0);
+  return {answer:'Saved records show expenses of '+fmt(total)+', people owe you '+fmt(lent)+', and you owe others '+fmt(borrowed)+'. These totals use your saved Money & Udhaar records.',sources:['Money & Udhaar']};
+ }
+ if(/\b(task|tasks|todo|to-do|pending|overdue|deadline|planner)\b/i.test(raw)){
+  const tasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  return {answer:tasks.length?'Your pending tasks:\n'+tasks.slice(0,15).map((t,i)=>(i+1)+'. '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':'Due ')+dateFmt(t.due):'No due date')+' · '+(t.priority||'Medium')).join('\n'):'You have no pending tasks saved right now.',sources:['Tasks & Planner']};
+ }
+ const hits=[];
+ (data.documents||[]).forEach(doc=>{
+  const chunks=(Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||''));
+  chunks.forEach(chunk=>{const text=String(chunk.text||'');const score=aiTextScore(text,terms);if(score>0)hits.push({text,score,source:'File: '+doc.name+(chunk.page?' · Page '+chunk.page:'')})});
+ });
+ (data.notes||[]).forEach(note=>{const text=[note.title,note.subject,note.tags,note.content].filter(Boolean).join(' '),score=aiTextScore(text,terms);if(score>0)hits.push({text,score,source:'Note: '+(note.title||'Untitled note')})});
+ (data.memories||[]).forEach(memory=>{const text=[memory.title,memory.category,memory.content].filter(Boolean).join(' '),score=aiTextScore(text,terms);if(score>0)hits.push({text,score,source:'Personal memory: '+(memory.title||'Memory')})});
+ hits.sort((a,b)=>b.score-a.score);
+ const selected=hits.slice(0,5);
+ return selected.length?{answer:selected.map((hit,index)=>(index+1)+'. '+hit.text).join('\n\n'),sources:[...new Set(selected.map(hit=>hit.source))]}:{answer:'I could not find matching saved content. Try mentioning a course name, keyword, or phrase from your file. When AI is connected, Brain can explain the relevant content in natural language.',sources:[]};
+}
+function chatActionIntent(question){
+ const raw=String(question||'').trim(),lower=raw.toLowerCase();
+ const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit)\b/i.test(lower);
+ if(addTask){
+  let title=raw.replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|a|an|the|task|todo|assignment|deadline|homework|exam|submit|due|today|tomorrow|kal|aaj|on|by)\b/ig,' ').replace(/\s+/g,' ').trim();
+  if(!title)return {answer:'Task ka naam bhi batao. Example: Add DSA assignment due tomorrow.',sources:['Planner']};
+  let due='';
+  if(/\b(?:tomorrow|kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()+1);due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  else if(/\b(?:today|aaj)\b/i.test(lower))due=today();
+  const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':'Personal',due,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
+  data.tasks.push(task);persist();return {answer:'Task added: '+title+(due?' · Due '+dateFmt(due):' · No due date set')+'.',sources:['Planner']};
+ }
+ const complete=/\b(?:complete|finish|mark)\b/i.test(lower)&&/\b(?:task|assignment|todo|done)\b/i.test(lower);
+ if(complete){
+  const needle=raw.replace(/\b(?:please|complete|finish|mark|as|done|task|the|my|todo)\b/ig,' ').trim().toLowerCase();
+  const found=(data.tasks||[]).filter(t=>!t.done&&needle&&String(t.title||'').toLowerCase().includes(needle));
+  if(found.length===1){found[0].done=true;found[0].updated=Date.now();persist();return {answer:'Marked "'+found[0].title+'" as completed.',sources:['Planner']}}
+  return {answer:found.length?'I found multiple tasks. Mention a more specific task title.':'I could not find that task. Please use its saved title.',sources:['Planner']};
+ }
+ return null;
+}
+
+async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});persist();
  const actionResult=chatActionIntent(query);
