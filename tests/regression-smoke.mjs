@@ -123,7 +123,7 @@ assert.match(app, /localStorage\.setItem\(KEY,JSON\.stringify\(data\)\)/);
 assert.match(app, /localStorage\.getItem\(KEY\)/);
 assert.match(app, /function migrateData\(raw\)/);
 assert.match(app, /function splitDocumentIntoChunks\(text\)/);
-assert.match(app, /if\(!file \|\| file\.size===0\)/);
+assert.match(app, /if\(!file\s*\|\|\s*file\.size===0\)/);
 assert.match(app, /Unsupported file type\. Upload a PDF or image\./);
 
 console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, spoken task-save behavior, chat file uploads, data safety and CRUD routes.');
