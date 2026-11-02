@@ -228,7 +228,6 @@ function aiAnswer(q){
  const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term[\s-]*i{1,3}\b/g,(m)=>'midterm '+(m.match(/i{1,3}$/)?.[0].length||1)).replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
  const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do','or','to','a','an','as','at','by','it','be','schedule','time','timing']);
  const qnorm=normalize(raw);let terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
- if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]};
  // Task-aware answers: include the user's live task list in Ask My Brain retrieval.
  const taskIntent=/\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\b/i.test(raw);
  if(taskIntent){
@@ -245,7 +244,8 @@ function aiAnswer(q){
   const lines=selected.slice(0,10).map(t=>'• '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':t.due===today()?'Due today · ':'Due ')+t.due:'No due date')+' · Priority: '+(t.priority||'Medium')+(t.category?' · '+t.category:'')+(t.notes?'\n  Details: '+t.notes:''));
   return {answer:(overdue.length?'You have '+overdue.length+' overdue task(s).\n\n':'')+'Here are your pending tasks:\n'+lines.join('\n'),sources:['Tasks & Reminders']};
  }
- const candidates=[],add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
+
+ if(!terms.length)return {answer:'Please include a topic, course, or exam name so I can search your saved knowledge.',sources:[]}; const candidates=[],add=(text,source,kind,meta={})=>{const clean=String(text||'').trim();if(clean)candidates.push({text:clean,source,kind,...meta})};
  // Directly answer timetable queries by extracting the matching schedule rows and returning all requested courses.
  const timetableQuestion=/mid\s*term|midterm|timetable|time\s*table/i.test(raw);
  if(timetableQuestion){
