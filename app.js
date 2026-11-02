@@ -329,6 +329,12 @@ function aiAnswer(q){
   lines.forEach((line,i)=>add([lines[i-1]?.page===line.page?lines[i-1].text:null,line.text,lines[i+1]?.page===line.page?lines[i+1].text:null].filter(Boolean).join(' '),source,'document',{index:i,page:line.page}));
  });
  (data.notes||[]).forEach(n=>add([n.title,n.subject,n.tags,n.content].filter(Boolean).join(' '),{label:n.title||'Saved note',noteId:n.id},'note'));
+ // Index every saved workspace section for Ask Brain retrieval, not just notes and OCR documents.
+ (data.projects||[]).forEach(p=>add([p.name,p.title,p.description,p.status,p.category,p.notes,p.goals,p.milestones].filter(Boolean).join(' '),{label:'Project: '+(p.name||p.title||'Untitled'),projectId:p.id},'project'));
+ (data.tasks||[]).forEach(t=>add([t.title,t.category,t.notes,t.priority,t.due,t.projectId,t.done?'completed':'pending'].filter(Boolean).join(' '),{label:'Task: '+(t.title||'Untitled'),taskId:t.id},'task'));
+ (data.studySessions||[]).forEach(x=>add(Object.entries(x||{}).filter(([k,v])=>!['id','created','updated'].includes(k)&&v!==null&&v!==undefined).map(([k,v])=>k+': '+(typeof v==='object'?JSON.stringify(v):v)).join(' '),{label:'Study session',sessionId:x.id},'study'));
+ (data.expenses||[]).forEach(e=>add([e.description,e.category,e.person,e.kind,e.amount,e.date,e.projectId].filter(Boolean).join(' '),{label:'Money record: '+(e.description||e.category||'Transaction'),expenseId:e.id},'expense'));
+ (data.messages||[]).forEach(m=>{const textValue=[m.question,m.prompt,m.answer,m.content,m.text].filter(Boolean).join(' ');if(textValue)add(textValue,{label:'Saved AI conversation',messageId:m.id},'message')});
  const tokens=s=>normalize(s).split(/\s+/).filter(Boolean);
  // Queries like "mid term 1" should match the heading "Mid Term-I" even if OCR drops punctuation or Roman numerals.
  const queryMidterm=/\bmidterm\s*1\b/.test(qnorm),queryCourse=terms.some(t=>['aec','vac','sec'].includes(t));
