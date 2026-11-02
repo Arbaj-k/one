@@ -152,8 +152,9 @@ async function processUploadedDocuments(files,sourceNoteId=null){
  const status=document.querySelector('#document-upload-status');
  const setStatus=(message)=>{if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
  for(const file of list){
+  if(!file || file.size===0){setStatus((file?.name||'Selected file')+' is empty. Choose a file containing data.');toast('Empty file cannot be processed');continue}
   if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB. Choose a smaller file.');toast('File is over 12 MB');continue}
-  if(!file.type.startsWith('image/')&&file.type!=='application/pdf'&&!/\\.pdf$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');continue}
+  if(!file.type.startsWith('image/')&&file.type!=='application/pdf'&&!/\\.pdf$/i.test(file.name)&&!/\\.(png|jpe?g|gif|webp|bmp|tiff?)$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
   setStatus('Reading '+file.name+'…');
   try{
    let extracted='';const isPdf=file.type==='application/pdf'||/\\.pdf$/i.test(file.name);
