@@ -377,7 +377,7 @@ function chatActionIntent(q){
  const raw=String(q||'').trim(),lower=raw.toLowerCase();
  const pushReply=(answer,source='Student Brain action')=>({answer,sources:[source]});
  // Require a clear imperative before changing the user's data.
- const addTaskCue=/\\b(?:add|create|make|remind me|schedule|set up|bana do|banao|add kar|task bana)\\b/i.test(lower);
+ const addTaskCue=/\\b(?:add|create|make|remind me|schedule|set up|bana do|banao|add kar|task bana|make a task|add a task)\\b/i.test(lower);
  const taskCue=/\\b(?:task|todo|to-do|assignment|deadline|homework|exam|submit)\\b/i.test(lower);
  const completeCue=/\\b(?:complete|completed|finish|finished|mark.*done|done|task khatam|ho gaya)\\b/i.test(lower);
  if(addTaskCue&&taskCue){
@@ -398,7 +398,7 @@ function chatActionIntent(q){
   if(matches.length!==1)return pushReply(matches.length?'I found more than one matching task. Please mention a more specific title.':'I couldn’t identify the task. Say “mark [task title] done.”','Planner');
   matches[0].done=true;matches[0].updated=Date.now();persist();return pushReply('Marked “'+matches[0].title+'” as completed.','Planner');
  }
- const moneyCue=/\\b(?:record|add|log|save|track)\\b/i.test(lower)&&/\\b(?:spent|expense|rupees?|₹|rs\\.?|udhaar|lent|borrowed|repaid|repayment)\\b/i.test(lower);
+ const moneyCue=(/\\b(?:record|add|log|save|track)\\b/i.test(lower)&&/\\b(?:spent|expense|rupees?|₹|rs\\.?|udhaar|lent|borrowed|repaid|repayment)\\b/i.test(lower))||/\\b(?:i\\s+)?(?:spent|paid|lent|borrowed|repaid|gave|udhaar diya|udhaar liya)\\b/i.test(lower);
  const amountMatch=raw.match(/(?:₹|rs\\.?\\s*)?([0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?)(?:\\s*(?:rupees?|rs\\.?))?/i);
  if(moneyCue){
   const amount=amountMatch?Number(amountMatch[1].replace(/,/g,'')):0;
@@ -407,7 +407,7 @@ function chatActionIntent(q){
   const person=personMatch?personMatch[1].trim():'';
   if(!amount||!Number.isFinite(amount)||amount<=0)return pushReply('Amount clear nahi hai. Example: “Record ₹250 spent on lunch.”');
   if(kind!=='expense'&&!person)return pushReply('Udhaar/repayment ke liye person ka naam bhi batao. Example: “Record ₹500 lent to Rahul.”');
-  const description=raw.replace(/\\b(?:please|record|add|log|save|track|my|money|transaction)\\b/ig,' ').replace(/\\s+/g,' ').trim();
+  const description=raw.replace(/\\b(?:please|record|add|log|save|track|my|money|transaction|i|spent|paid|lent|borrowed|repaid|gave|rupees?|rs\\.?)\\b/ig,' ').replace(/\\s+/g,' ').trim();
   data.expenses.push({id:uid(),description,amount:String(amount),person,kind,category:kind==='expense'?'Other':kind==='lent'?'Udhaar':'Repayment',date:today(),created:Date.now(),updated:Date.now()});
   persist();return pushReply('Saved '+(kind==='expense'?'expense':kind==='lent'?'money lent':kind==='borrowed'?'money borrowed':'repayment')+' of ₹'+amount.toLocaleString('en-IN')+(person?' · '+person:'')+'.','Money & Udhaar');
  }
