@@ -20,6 +20,17 @@ No build step is currently required; this is a static HTML/CSS/JavaScript app.
 - PDF text extraction, OCR for images and scanned PDF pages (English/Hindi attempt with English fallback), plus original PDF/image preservation in browser IndexedDB for supported visual analysis. Uploads are limited to 12 MB and 100 PDF pages; smaller files are sent inline to Gemini.
 - Responsive layout and PWA install/service-worker support.
 
+## AI setup (one-time)
+
+Ask My Brain uses the existing Supabase Edge Function `student-brain-ai` and Gemini 3.5 Flash-Lite. The Gemini key is stored only as a Supabase Function secret; it is not committed to GitHub or sent to the browser.
+
+1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. Open the [Student Brain Supabase Function secrets](https://supabase.com/dashboard/project/tcthrfpkydcmenxwajfg/functions/secrets) page. Add a secret named `GEMINI_API_KEY` with the Google AI Studio key as its value, then save it.
+3. Open [Supabase Auth Providers](https://supabase.com/dashboard/project/tcthrfpkydcmenxwajfg/auth/providers) and enable **Anonymous Sign-Ins**. The app creates a persistent anonymous session; students do not need to enter an email or password.
+4. Hard-refresh the website and ask a question about a saved note or upload. If the function reports missing configuration, recheck the secret name exactly as `GEMINI_API_KEY`.
+
+The deployed function source is mirrored at `supabase/functions/student-brain-ai/index.ts`. The live function is deployed separately in Supabase; pushing this source file to GitHub does not deploy it automatically.
+
 ## Data and privacy
 
 - Browser storage is not a guaranteed backup. Export a JSON backup regularly and before testing restore, clearing data, or changing browsers/devices.
