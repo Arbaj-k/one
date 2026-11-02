@@ -373,7 +373,47 @@ function aiAnswer(q){
  const sourceLabels=unique.map(h=>h.source.file?h.source.label+' — attachment: '+h.source.file+(h.page?' · Page '+h.page:(h.page===null?' · Page unavailable':'')):h.source.label);
  return {answer:unique.slice(0,3).map((h,i)=>(i+1)+'. '+h.text+(h.page?' (Page '+h.page+')':'')).join('\n\n'),sources:sourceLabels};
 }
-function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();scrollChatToBottom()}
+function chatActionIntent(q){
+ const raw=String(q||'').trim(),lower=raw.toLowerCase();
+ const pushReply=(answer,source='Student Brain action')=>({answer,sources:[source]});
+ // Require a clear imperative before changing the user's data.
+ const addTaskCue=/\\b(?:add|create|make|remind me|schedule|set up|bana do|banao|add kar|task bana)\\b/i.test(lower);
+ const taskCue=/\\b(?:task|todo|to-do|assignment|deadline|homework|exam|submit)\\b/i.test(lower);
+ const completeCue=/\\b(?:complete|completed|finish|finished|mark.*done|done|task khatam|ho gaya)\\b/i.test(lower);
+ if(addTaskCue&&taskCue){
+  let title=raw.replace(/\\b(?:please|can you|could you|add|create|make|remind me to|remind me|schedule|set up|bana do|banao|add kar do|add kar|task bana do|task bana|a|an|the|task|todo|to-do|assignment|deadline|homework|exam|submit|in my planner)\\b/ig,' ')
+   .replace(/\\b(?:today|aaj|tomorrow|kal|on|by|due|deadline)\\b/ig,' ').replace(/\\b(?:\d{1,2}\\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\\s+\d{4})?\\b/ig,' ').replace(/\\s+/g,' ').replace(/^[\\s,.:;-]+|[\\s,.:;-]+$/g,'').trim();
+  const dm=lower.match(/\\b(\d{1,2})\\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\\s+(\d{4}))?\\b/i);
+  let due='';
+  if(dm){const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};const mon=months[dm[2].slice(0,3).toLowerCase()];let year=dm[3]?Number(dm[3]):new Date().getFullYear();const dt=new Date(year,mon,Number(dm[1]));if(!dm[3]&&dt<new Date(new Date().setHours(0,0,0,0)))dt.setFullYear(year+1);due=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0')}
+  else if(/\\b(?:tomorrow|kal)\\b/i.test(lower)){const dt=new Date();dt.setDate(dt.getDate()+1);due=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0')}
+  else if(/\\b(?:today|aaj)\\b/i.test(lower))due=today();
+  if(!title||title.length<2)return pushReply('Task add karne ke liye task ka naam batao. Example: “Add DSA assignment due tomorrow.”');
+  const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':'Personal',due,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
+  data.tasks.push(task);persist();return pushReply('Task added: “'+task.title+'”'+(due?' — due '+dateFmt(due):' — no due date set')+'. You can find it in Planner.','Planner');
+ }
+ if(completeCue&&taskCue){
+  const needle=raw.replace(/\\b(?:please|complete|completed|finish|finished|mark|as|done|task|the|my|to-do|todo|khatam|ho gaya)\\b/ig,' ').replace(/\\s+/g,' ').trim().toLowerCase();
+  const matches=data.tasks.filter(t=>!t.done&&needle&&String(t.title||'').toLowerCase().includes(needle));
+  if(matches.length!==1)return pushReply(matches.length?'I found more than one matching task. Please mention a more specific title.':'I couldn’t identify the task. Say “mark [task title] done.”','Planner');
+  matches[0].done=true;matches[0].updated=Date.now();persist();return pushReply('Marked “'+matches[0].title+'” as completed.','Planner');
+ }
+ const moneyCue=/\\b(?:record|add|log|save|track)\\b/i.test(lower)&&/\\b(?:spent|expense|rupees?|₹|rs\\.?|udhaar|lent|borrowed|repaid|repayment)\\b/i.test(lower);
+ const amountMatch=raw.match(/(?:₹|rs\\.?\\s*)?([0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?)(?:\\s*(?:rupees?|rs\\.?))?/i);
+ if(moneyCue){
+  const amount=amountMatch?Number(amountMatch[1].replace(/,/g,'')):0;
+  const kind=/\\b(?:lent|udhaar diya|gave)\\b/i.test(lower)?'lent':/\\b(?:borrowed|udhaar liya)\\b/i.test(lower)?'borrowed':/\\b(?:repaid|paid back|returned|wapas kiya)\\b/i.test(lower)?'borrowed_repayment':'expense';
+  const personMatch=raw.match(/\\b(?:to|from|ko|se)\\s+([a-z][a-z'-]*(?:\\s+[a-z][a-z'-]*)?)/i);
+  const person=personMatch?personMatch[1].trim():'';
+  if(!amount||!Number.isFinite(amount)||amount<=0)return pushReply('Amount clear nahi hai. Example: “Record ₹250 spent on lunch.”');
+  if(kind!=='expense'&&!person)return pushReply('Udhaar/repayment ke liye person ka naam bhi batao. Example: “Record ₹500 lent to Rahul.”');
+  const description=raw.replace(/\\b(?:please|record|add|log|save|track|my|money|transaction)\\b/ig,' ').replace(/\\s+/g,' ').trim();
+  data.expenses.push({id:uid(),description,amount:String(amount),person,kind,category:kind==='expense'?'Other':kind==='lent'?'Udhaar':'Repayment',date:today(),created:Date.now(),updated:Date.now()});
+  persist();return pushReply('Saved '+(kind==='expense'?'expense':kind==='lent'?'money lent':kind==='borrowed'?'money borrowed':'repayment')+' of ₹'+amount.toLocaleString('en-IN')+(person?' · '+person:'')+'.','Money & Udhaar');
+ }
+ return null;
+}
+function sendChat(q){q=(q||'').trim();if(!q||chatBusy)return;data.messages.push({role:'user',content:q});const r=chatActionIntent(q)||aiAnswer(q);data.messages.push({role:'assistant',content:r.answer,sources:r.sources});persist();render();scrollChatToBottom()}
 function action(name,id){const map={ 'open-quick-add':()=>openQuickAdd(),'new-note':()=>openForm('note'),'voice-quick-command':()=>{if(window.startStudentBrainListening)window.startStudentBrainListening();else toast('Voice assistant is loading. Try again.');},'edit-note':()=>openForm('note',id),'delete-note':()=>confirmDelete('notes',id),'delete-document':()=>{data.documents=(data.documents||[]).filter(d=>d.id!==id);persist();render();toast('Document deleted')},'retry-document-ocr':()=>retryDocumentOCR(id),'ask-document':()=>askDocument(id),'new-task':()=>openForm('task'),'enable-reminders':()=>enableTaskReminders(),'new-study':()=>openForm('study'),'edit-task':()=>openForm('task',id),'delete-task':()=>confirmDelete('tasks',id),'new-project':()=>openForm('project'),'edit-project':()=>openForm('project',id),'new-expense':()=>openForm('expense'),'expense-quick-action':()=>{if(id==='all'){window.expenseMonth='';render();return}openForm('expense');const typeField=document.querySelector('#edit-form [name=kind]');if(typeField){typeField.value=id;typeField.dispatchEvent(new Event('change',{bubbles:true}))}const descriptionField=document.querySelector('#edit-form [name=description]');if(descriptionField){descriptionField.focus();descriptionField.setSelectionRange?.(0,descriptionField.value.length)}const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField&&id.includes('repayment'))categoryField.value='Repayment';const personField=document.querySelector('#edit-form [name=person]');if(personField&&id!=='expense')personField.placeholder='Who was the money for/from?'},'edit-expense':()=>openForm('expense',id),'delete-expense':()=>confirmDelete('expenses',id),'delete-study':()=>{data.studySessions=(data.studySessions||[]).filter(x=>x.id!==id);persist();render();toast('Study session removed')},'go-ask':()=>{page='ask';render()},'go-planner':()=>{page='planner';render()},'go-knowledge':()=>{page='knowledge';render()},'toggle-task':()=>{let t=data.tasks.find(x=>x.id===id);if(t)t.done=!t.done;persist();render()},'all-expenses':()=>{window.expenseMonth='';render()},'export-data':()=>exportData(),'restore-data':()=>restoreData(),'clear-data':()=>clearData(),'close-modal':()=>document.querySelector('#modal-root').innerHTML=''};map[name]?.()}
 function confirmDelete(key,id){const item=data[key].find(x=>x.id===id);if(!item)return;if(confirm(`Delete "${item.title||item.name||item.description}"? This cannot be undone.`)){data[key]=data[key].filter(x=>x.id!==id);persist();render();toast('Deleted')}}
 function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid backup');if(!confirm('Restore this backup and replace current workspace data?'))return;data={...starter(),...parsed};persist();page='overview';render();toast('Backup restored')}catch(e){toast('Invalid Student Brain backup file')}};reader.readAsText(f)}
