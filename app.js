@@ -409,7 +409,7 @@ function chatActionIntent(question){
  return null;
 }
 
-async function sendChat(question,targetDocId=null){
+async async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});persist();
  const actionResult=chatActionIntent(query);
