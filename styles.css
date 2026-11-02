@@ -6,7 +6,7 @@
 \n.document-upload-card{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:18px 0}.document-upload-card h2{margin:0 0 6px}.document-upload-card p{margin:0;font-size:12px}.document-grid{margin-bottom:20px}.document-card h3{font-size:14px;overflow-wrap:anywhere;margin:14px 0 7px}.document-card details{margin-top:12px;font-size:12px;color:var(--blue)}.document-extract,.answer-extract{white-space:pre-wrap;max-height:280px;overflow:auto;color:var(--ink);font-size:12px;line-height:1.7;background:#f7f9fc;padding:12px;border-radius:9px}.document-answer p{font-size:13px;line-height:1.6}.document-answer .answer-extract{margin:8px 0 12px}
 
 /* Chrome install affordance */
-.install-app{border:0;border-radius:10px;padding:9px 13px;background:#4169e1;color:#fff;font:600 13px inherit;cursor:pointer}.install-app[hidden]{display:none}
+.install-app{width:54px;height:54px;display:grid;place-items:center;border:0;border-radius:20px;padding:0;background:#eef2ff;color:#315ed8;cursor:pointer;flex:0 0 auto}.install-app svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}.install-app[hidden]{display:none}
 
 .site-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.site-footer nav{display:flex;gap:16px}.site-footer a{color:var(--blue);text-decoration:none;font-weight:600}.site-footer a:hover{text-decoration:underline}
 
