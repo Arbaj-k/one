@@ -213,6 +213,25 @@ function extractTimetableData(text){
 }
 function aiAnswer(q){
  const raw=String(q||'').trim();
+ // Money ledger questions are answered separately from ordinary spending.
+ const loanIntent=/\\b(udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|whom do i owe|wapas|mujhe dena|maine liya)\\b/i.test(raw);
+ if(loanIntent){
+  const ledger=(data.expenses||[]).filter(e=>['lent','borrowed','lent_repayment','borrowed_repayment'].includes(e.kind)&&Number.isFinite(Number(e.amount)));
+  const fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
+  const nameMatch=raw.match(/\\b(?:to|from|with|ko|se)\\s+([a-z][a-z'-]{1,30})/i);
+  const name=nameMatch?.[1]?.toLowerCase();
+  const rows=name?ledger.filter(e=>String(e.person||'').toLowerCase().includes(name)):ledger;
+  const sum=(kind)=>rows.filter(e=>e.kind===kind).reduce((n,e)=>n+Number(e.amount||0),0);
+  const lent=sum('lent'),gotBack=sum('lent_repayment'),borrowed=sum('borrowed'),paid=sum('borrowed_repayment');
+  if(/who|whom|people|person|kisko|kis se|list/i.test(raw)){
+   const by={};ledger.forEach(e=>{const p=String(e.person||'Unnamed').trim();by[p]??={toMe:0,fromMe:0};if(e.kind==='lent')by[p].toMe+=Number(e.amount||0);if(e.kind==='lent_repayment')by[p].toMe-=Number(e.amount||0);if(e.kind==='borrowed')by[p].fromMe+=Number(e.amount||0);if(e.kind==='borrowed_repayment')by[p].fromMe-=Number(e.amount||0)});
+   const lines=Object.entries(by).filter(([,v])=>v.toMe>0||v.fromMe>0).map(([p,v])=>p+': owes you '+fmt(Math.max(0,v.toMe))+'; you owe '+fmt(Math.max(0,v.fromMe)));
+   return {answer:lines.length?'Person-wise outstanding balances:\\n'+lines.join('\\n'):'No outstanding money balances recorded.',sources:['Money ledger']};
+  }
+  if(/borrow|borrowed|owe|mujhe dena|maine liya/i.test(raw)&&!/lent|lending|mujhe lena|owed to me/i.test(raw))return {answer:(name?name+' — ':'')+'Borrowed '+fmt(borrowed)+', repaid '+fmt(paid)+', still owed '+fmt(borrowed-paid)+'.',sources:['Money ledger']};
+  if(/lent|lending|mujhe lena|owed to me|udhaar diya/i.test(raw))return {answer:(name?name+' — ':'')+'Lent '+fmt(lent)+', received back '+fmt(gotBack)+', still owed to you '+fmt(lent-gotBack)+'.',sources:['Money ledger']};
+  return {answer:'Outstanding: people owe you '+fmt(ledger.filter(e=>e.kind==='lent').reduce((n,e)=>n+Number(e.amount||0),0)-ledger.filter(e=>e.kind==='lent_repayment').reduce((n,e)=>n+Number(e.amount||0),0))+'. You owe others '+fmt(ledger.filter(e=>e.kind==='borrowed').reduce((n,e)=>n+Number(e.amount||0),0)-ledger.filter(e=>e.kind==='borrowed_repayment').reduce((n,e)=>n+Number(e.amount||0),0))+'.',sources:['Money ledger']};
+ }
  // Expense questions should be answered from saved expense data before knowledge retrieval.
  const expenseIntent=/\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|cost)\b/i.test(raw);
  if(expenseIntent){
