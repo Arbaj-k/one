@@ -3,10 +3,15 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 // Syntax validation catches startup-breaking parse errors.
 execFileSync(process.execPath, ['--check', new URL('../app.js', import.meta.url).pathname]);
+execFileSync(process.execPath, ['--check', new URL('../voice-assistant.js', import.meta.url).pathname]);
+assert.ok(app.includes('window.submitStudentBrainVoiceText = function(raw)'), 'Global voice command handler is missing.');
+assert.ok(voice.includes('window.submitStudentBrainVoiceText(phrase)'), 'Speech recognition is not routed to the global command handler.');
+assert.ok(voice.includes('let submitted = false;'), 'Voice result must be processed only once per listening session.');
 
 // App shell and major interaction routes must remain wired.
 for (const selector of ['#page-content', '#modal-root', '#toast']) {
@@ -48,5 +53,5 @@ assert.match(app, /function splitDocumentIntoChunks\(text\)/);
 assert.match(app, /if\(!file \|\| file\.size===0\)/);
 assert.match(app, /Unsupported file type\. Upload a PDF or image\./);
 
-console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, data safety and CRUD routes.');
+console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, data safety and CRUD routes.');
 console.log('Note: UI behavior, OCR extraction, backup round-trip, and mobile layout still require browser/device testing.');
