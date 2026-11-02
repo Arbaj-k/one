@@ -6,6 +6,7 @@ import vm from 'node:vm';
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
 // Syntax validation catches startup-breaking parse errors.
 execFileSync(process.execPath, ['--check', new URL('../app.js', import.meta.url).pathname]);
@@ -13,6 +14,13 @@ execFileSync(process.execPath, ['--check', new URL('../voice-assistant.js', impo
 assert.ok(app.includes('window.submitStudentBrainVoiceText = function(raw)'), 'Global voice command handler is missing.');
 assert.ok(voice.includes('window.submitStudentBrainVoiceText(phrase)'), 'Speech recognition is not routed to the global command handler.');
 assert.ok(voice.includes('let submitted = false;'), 'Voice result must be processed only once per listening session.');
+assert.ok(app.includes('id="chat-file-upload"'), 'Ask My Brain chat file picker is missing.');
+assert.ok(app.includes('class="chat-attach-btn"'), 'Ask My Brain attachment control is missing.');
+assert.ok(app.includes("if(e.target.id==='chat-file-upload')"), 'Chat file selection is not wired to document processing.');
+assert.ok(app.includes("document.querySelector('#chat-upload-status')||document.querySelector('#document-upload-status')"), 'Chat upload progress is not reported in the chat.');
+assert.ok(css.includes('.chat-attach-btn'), 'Chat attachment control styling is missing.');
+assert.ok(css.includes('.chat-upload-status'), 'Chat upload status styling is missing.');
+
 assert.ok(voice.includes("if (event.results[i].isFinal) finalText += part + ' ';"), 'Final speech fragments are not accumulated into a complete command.');
 assert.ok(voice.includes("const phrase = finalText.replace(/\\\\s+/g, ' ').trim();"), 'Voice command is not normalized after recognition ends.');
 assert.ok(voice.indexOf('recognition.onend = () =>') < voice.indexOf('window.submitStudentBrainVoiceText(phrase)'), 'Voice command must be submitted after recognition has ended.');
@@ -101,5 +109,5 @@ assert.match(app, /function splitDocumentIntoChunks\(text\)/);
 assert.match(app, /if\(!file \|\| file\.size===0\)/);
 assert.match(app, /Unsupported file type\. Upload a PDF or image\./);
 
-console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing and spoken task-save behavior, data safety and CRUD routes.');
+console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, spoken task-save behavior, chat file uploads, data safety and CRUD routes.');
 console.log('Note: UI behavior, OCR extraction, backup round-trip, and mobile layout still require browser/device testing.');
