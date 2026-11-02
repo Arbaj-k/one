@@ -71,3 +71,11 @@
 
 /* Personal memory cards */
 .memory-explainer{margin:18px 0}.memory-explainer h2{margin-bottom:8px}.memory-explainer p{line-height:1.65;max-width:760px}.memory-card h3{margin:16px 0 8px}.memory-card p{line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;min-height:36px}.memory-card .row:last-child{margin-top:15px}
+
+/* Ask My Brain chat attachments */
+.chat-attach-btn{width:42px;min-width:42px;height:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:#f5f7ff;color:var(--blue);font-size:19px;cursor:pointer;transition:background .15s,border-color .15s}
+.chat-attach-btn:hover{background:#eaf0ff;border-color:#c4d0ff}
+.chat-attach-btn:focus-visible{outline:3px solid #9aabff;outline-offset:2px}
+.chat-upload-status{font-size:11px;color:var(--muted);margin:8px 3px 0;min-height:16px;line-height:1.5}
+.chat-form #chat-input{flex:1;min-width:0}
+@media(max-width:520px){.chat-form{gap:6px;padding:6px}.chat-attach-btn{width:38px;min-width:38px;height:38px}.chat-form .btn{padding:9px 11px;font-size:12px}}
