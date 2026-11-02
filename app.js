@@ -30,10 +30,15 @@ function setCloudMode(mode,error=''){
  cloudStatus();
 }
 function persist(){
- try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'-last-good',JSON.stringify(data))}
- catch(err){console.error('Local save failed',err);setCloudMode('error',err.message);toast('Local save failed. Export a backup and free storage.');return}
- if(cloudReady&&cloudClient&&cloudUser)queueCloudSave();
- else setCloudMode(navigator.onLine?'connecting':'offline');
+ try{
+  localStorage.setItem(KEY,JSON.stringify(data));
+  localStorage.setItem(KEY+'-last-good',JSON.stringify(data));
+  setCloudMode('offline','Saved locally on this device.');
+ }catch(err){
+  console.error('Local save failed',err);
+  setCloudMode('error',err.message);
+  toast('Local save failed. Export a backup and free storage.');
+ }
 }
 function queueCloudSave(){
  const snapshot=JSON.parse(JSON.stringify(data));
@@ -55,37 +60,12 @@ async function saveCloudSnapshot(snapshot){
   cloudRetryDelay=Math.min(cloudRetryDelay*2,60000);
  }
 }
-async function initCloud(){
- try{
-  if(!window.supabase?.createClient)return;
-  cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY);
-  setCloudMode(navigator.onLine?'connecting':'offline');
-  let {data:sessionData,error}=await cloudClient.auth.getSession();
-  if(error)throw error;
-  if(!sessionData.session){
-   const signed=await cloudClient.auth.signInAnonymously();
-   if(signed.error)throw signed.error;
-   sessionData={session:signed.data.session};
-  }
-  cloudUser=sessionData.session.user;
-  const {data:profile,error:readError}=await cloudClient.from('profiles').select('workspace_data').eq('id',cloudUser.id).maybeSingle();
-  if(readError)throw readError;
-  if(profile?.workspace_data){
-   const cloudData={...starter(),...profile.workspace_data};
-   const localRaw=localStorage.getItem(KEY);
-   const localData=localRaw?JSON.parse(localRaw):starter();
-   const localHasData=Object.values(localData).some(v=>Array.isArray(v)&&v.length);
-   const cloudHasData=Object.values(cloudData).some(v=>Array.isArray(v)&&v.length);
-   // Keep populated local workspace if the cloud profile is empty; otherwise cloud is authoritative.
-   data=localHasData&&!cloudHasData?localData:cloudData;
-   localStorage.setItem(KEY,JSON.stringify(data));
-  }
-  cloudReady=true;
-  setCloudMode('synced');
-  if(!profile?.workspace_data||Object.values(data).some(v=>Array.isArray(v)&&v.length))queueCloudSave();
-  render();
- }catch(err){console.error('Cloud connection failed',err);cloudStatus('Cloud unavailable · local changes kept');}
+// Local-first storage: all workspace records stay in this browser/device.
+const LOCAL_ONLY=true;
+function initCloud(){
+ setCloudMode('offline','Local-only mode: data is saved on this device.');
 }
+
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
