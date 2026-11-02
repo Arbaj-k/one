@@ -214,7 +214,7 @@ function extractTimetableData(text){
 function aiAnswer(q){
  const raw=String(q||'').trim();
  // Answer direct questions about projects from the saved project records.
- if(/\\b(my|our|mera|hamara|humara|created|saved|made|banaya|banaye|project name|project title|project ka naam|project names|projects)\\b/i.test(raw)&&/\\b(name|naam|title|which|what|kaunsa|kaun|kya|tell|bata|show|list)\\b/i.test(raw)){
+ if(/\b(my|our|mera|hamara|humara|created|saved|made|banaya|banaye|project name|project title|project ka naam|project names|projects)\b/i.test(raw)&&/\b(name|naam|title|which|what|kaunsa|kaun|kya|tell|bata|show|list)\b/i.test(raw)){
   const projects=(data.projects||[]).filter(p=>String(p.name||p.title||'').trim());
   if(projects.length){
    const lines=projects.map((p,i)=>(i+1)+'. '+String(p.name||p.title).trim()+(p.status?' — '+p.status:'')+(p.targetDate?' · target '+p.targetDate:''));
