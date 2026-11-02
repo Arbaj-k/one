@@ -1,43 +1,149 @@
-/* Student Brain browser voice assistant (Web Speech API) */
+/* Student Brain voice controller — browser-native speech APIs, no paid service. */
 (() => {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null, listening = false, voiceReplies = false;
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let listening = false;
+  let voiceReplies = false;
+  let selectedLanguage = 'en-IN';
+  let lastSpokenBubble = null;
+
+  const languages = [
+    ['en-IN', 'English (India)'],
+    ['hi-IN', 'हिन्दी'],
+    ['en-US', 'English (US)']
+  ];
+
   window.isStudentBrainVoiceRepliesOn = () => voiceReplies;
+
   const style = document.createElement('style');
   style.textContent = `
-    .quick-actions{display:flex;gap:8px;align-items:center}.voice-quick-btn{min-width:44px;padding:10px 13px;font-size:17px}.voice-quick-btn:hover{background:#edf1ff;color:#4263eb}.voice-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
-    .voice-btn{border:1px solid #e7ebf1;background:#fff;color:#17243a;border-radius:10px;padding:9px 12px;font:600 12px 'DM Sans',sans-serif;cursor:pointer}
+    .voice-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 3px}
+    .voice-btn,.voice-toggle,.voice-language{border:1px solid #e4e9f2;background:#fff;color:#17243a;border-radius:11px;padding:10px 12px;font:600 12px 'DM Sans',sans-serif;cursor:pointer}
+    .voice-btn{display:inline-flex;align-items:center;gap:7px}
+    .voice-btn:disabled{opacity:.5;cursor:not-allowed}
     .voice-btn.mic-on{background:#4263eb;color:#fff;border-color:#4263eb}
-    .voice-status{font-size:11px;color:#7a879a}
-    .voice-toggle{font-size:11px;color:#4560cc;background:#edf1ff;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}
+    .voice-toggle{background:#edf1ff;color:#4560cc;border-color:#edf1ff}
+    .voice-status{font-size:11px;color:#7a879a;flex:1;min-width:150px}
+    .voice-status[data-state="error"]{color:#c24141}
+    .voice-status[data-state="listening"]{color:#4263eb;font-weight:600}
+    .voice-transcript{font-size:12px;color:#58677e;padding:7px 10px;background:#f6f8fc;border-radius:9px;margin-top:6px;display:none}
+    .voice-transcript.visible{display:block}
+    @media(max-width:600px){.voice-controls{gap:6px}.voice-status{flex-basis:100%;padding:2px 3px}}
   `;
   document.head.appendChild(style);
 
-  window.startStudentBrainListening = function() {
-    if (!SpeechRecognition) { alert('Voice input works best in Chrome.'); return; }
-    if (listening && recognition) { recognition.stop(); return; }
-    recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.onstart = () => { listening = true; };
-    recognition.onresult = event => {
-      const phrase = event.results?.[0]?.[0]?.transcript?.trim();
-      if (!phrase) return;
-      if (window.handleStudentBrainVoiceCommand && window.handleStudentBrainVoiceCommand(phrase)) return;
-      alert('I heard: “' + phrase + '”\\nTry a task deadline or money command.');
-    };
-    recognition.onerror = event => { if (event.error === 'not-allowed') alert('Please allow microphone access.'); };
-    recognition.onend = () => { listening = false; };
-    try { recognition.start(); } catch (_) { alert('Microphone is busy. Try again.'); }
-  };
+  function status(message, state = 'idle') {
+    const node = document.querySelector('#voice-status');
+    if (node) {
+      node.textContent = message;
+      node.dataset.state = state;
+    }
+  }
+
+  function updateMic() {
+    const mic = document.querySelector('#voice-mic');
+    if (!mic) return;
+    mic.classList.toggle('mic-on', listening);
+    mic.textContent = listening ? '⏹ Stop' : '🎙 Speak';
+    mic.setAttribute('aria-pressed', String(listening));
+  }
+
+  function stopListening() {
+    if (recognition && listening) recognition.stop();
+  }
+
+  function startListening() {
+    if (!Recognition) {
+      status('Speech input is not supported here. Try Chrome or Edge.', 'error');
+      return;
+    }
+    if (listening) {
+      stopListening();
+      return;
+    }
+
+    try {
+      recognition = new Recognition();
+      recognition.lang = selectedLanguage;
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      let finalText = '';
+
+      recognition.onstart = () => {
+        listening = true;
+        updateMic();
+        status('Listening… speak clearly, then pause.', 'listening');
+      };
+
+      recognition.onresult = event => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const part = event.results[i][0]?.transcript || '';
+          if (event.results[i].isFinal) finalText += part;
+          else interim += part;
+        }
+        const transcript = document.querySelector('#voice-transcript');
+        if (transcript) {
+          transcript.textContent = finalText || interim || 'Listening…';
+          transcript.classList.add('visible');
+        }
+        if (finalText.trim()) {
+          const phrase = finalText.trim();
+          status('Heard: “' + phrase + '”', 'idle');
+          const input = document.querySelector('#chat-input');
+          if (input) {
+            input.value = phrase;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            // Voice commands and normal questions now use the same chat flow.
+            const form = document.querySelector('#chat-form');
+            if (form) form.requestSubmit();
+          } else {
+            status('Open Ask My Brain to send your voice prompt.', 'error');
+          }
+          finalText = '';
+        }
+      };
+
+      recognition.onerror = event => {
+        const messages = {
+          'not-allowed': 'Microphone permission is blocked. Allow it in browser site settings.',
+          'service-not-allowed': 'Speech service is blocked by the browser.',
+          'no-speech': 'I didn’t hear anything. Tap Speak and try again.',
+          'audio-capture': 'No microphone found. Check your mic connection.',
+          'network': 'Speech recognition needs a network connection.'
+        };
+        status(messages[event.error] || 'Could not hear that. Please try again.', 'error');
+      };
+
+      recognition.onend = () => {
+        listening = false;
+        updateMic();
+        if (document.querySelector('#voice-status')?.dataset.state === 'listening') {
+          status('Ready when you are. Tap Speak to try again.');
+        }
+      };
+
+      recognition.start();
+    } catch (error) {
+      listening = false;
+      updateMic();
+      status('Microphone is busy. Try again in a moment.', 'error');
+    }
+  }
 
   function speak(text) {
-    if (!voiceReplies || !('speechSynthesis' in window)) return;
+    if (!voiceReplies || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-IN';
-    utterance.rate = 1;
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = selectedLanguage;
+    utterance.rate = 0.96;
+    utterance.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.lang.toLowerCase() === selectedLanguage.toLowerCase())
+      || voices.find(v => v.lang.toLowerCase().startsWith(selectedLanguage.split('-')[0]));
+    if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   }
 
@@ -45,68 +151,60 @@
     const form = document.querySelector('#chat-form');
     if (!form || form.dataset.voiceReady) return;
     form.dataset.voiceReady = '1';
+
     const controls = document.createElement('div');
     controls.className = 'voice-controls';
-    controls.innerHTML = '<button type="button" class="voice-btn" id="voice-mic">🎙️ Speak</button><button type="button" class="voice-toggle" id="voice-replies">🔊 Voice replies: Off</button><span class="voice-status" id="voice-status">Use your voice to ask a question</span>';
+    controls.innerHTML = `
+      <button type="button" class="voice-btn" id="voice-mic" aria-label="Speak to Student Brain" aria-pressed="false">🎙 Speak</button>
+      <select class="voice-language" id="voice-language" aria-label="Voice language">
+        ${languages.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
+      </select>
+      <button type="button" class="voice-toggle" id="voice-replies" aria-pressed="false">🔇 Read replies: Off</button>
+      <span class="voice-status" id="voice-status" role="status" aria-live="polite">Tap Speak to ask by voice</span>
+      <div class="voice-transcript" id="voice-transcript" aria-live="polite"></div>
+    `;
     form.insertAdjacentElement('afterend', controls);
-    const mic = controls.querySelector('#voice-mic');
-    const status = controls.querySelector('#voice-status');
-    const toggle = controls.querySelector('#voice-replies');
 
-    if (!SpeechRecognition) {
+    const mic = controls.querySelector('#voice-mic');
+    const toggle = controls.querySelector('#voice-replies');
+    const language = controls.querySelector('#voice-language');
+
+    if (!Recognition) {
       mic.disabled = true;
-      mic.title = 'Speech recognition is not supported in this browser. Try Chrome.';
-      status.textContent = 'Voice input works best in Chrome.';
-      mic.style.opacity = '.55';
-    } else {
-      mic.addEventListener('click', () => {
-        if (listening && recognition) { recognition.stop(); return; }
-        recognition = new SpeechRecognition();
-        recognition.lang = 'en-IN';
-        recognition.interimResults = false;
-        recognition.continuous = false;
-        recognition.onstart = () => {
-          listening = true; mic.classList.add('mic-on'); mic.textContent = '⏹ Stop listening';
-          status.textContent = 'Listening… speak now';
-        };
-        recognition.onresult = event => {
-          const phrase = event.results?.[0]?.[0]?.transcript?.trim();
-          if (phrase) {
-            status.textContent = 'Heard: “' + phrase + '”';
-            if (window.handleStudentBrainVoiceCommand && window.handleStudentBrainVoiceCommand(phrase)) return;
-            const input = document.querySelector('#chat-input');
-            if (input) { input.value = phrase; form.requestSubmit(); }
-          }
-        };
-        recognition.onerror = event => { status.textContent = event.error === 'not-allowed' ? 'Please allow microphone access.' : 'Could not hear that. Try again.'; };
-        recognition.onend = () => {
-          listening = false; mic.classList.remove('mic-on'); mic.textContent = '🎙️ Speak';
-          if (status.textContent === 'Listening… speak now') status.textContent = 'Use your voice to ask a question';
-        };
-        try { recognition.start(); } catch (_) { status.textContent = 'Microphone is busy. Try again.'; }
-      });
+      mic.title = 'Speech recognition is not supported in this browser.';
+      status('Voice input is unavailable in this browser. Try Chrome or Edge.', 'error');
     }
+    mic.addEventListener('click', startListening);
+    language.addEventListener('change', () => {
+      selectedLanguage = language.value;
+      status('Voice language: ' + languages.find(x => x[0] === selectedLanguage)?.[1]);
+    });
     toggle.addEventListener('click', () => {
       voiceReplies = !voiceReplies;
-      toggle.textContent = voiceReplies ? '🔊 Voice replies: On' : '🔇 Voice replies: Off';
-      if (!voiceReplies && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+      toggle.textContent = voiceReplies ? '🔊 Read replies: On' : '🔇 Read replies: Off';
+      toggle.setAttribute('aria-pressed', String(voiceReplies));
+      if (!voiceReplies && window.speechSynthesis) window.speechSynthesis.cancel();
+      status(voiceReplies ? 'Voice replies enabled.' : 'Voice replies disabled.');
     });
   }
 
-  let lastAssistantText = '';
+  // The mobile navigation Speak shortcut uses the exact same controller.
+  window.startStudentBrainListening = startListening;
+
   const observer = new MutationObserver(() => {
     addControls();
     const bubbles = document.querySelectorAll('#chat-messages .bubble.assistant');
     const latest = bubbles[bubbles.length - 1];
-    if (latest) {
-      const text = latest.innerText.trim();
-      if (text && text !== lastAssistantText) {
-        lastAssistantText = text;
-        // Speak only responses added after the user has entered a prompt.
-        if (document.querySelector('#chat-messages .bubble.user')) speak(text);
-      }
-    }
+    if (!latest || latest === lastSpokenBubble) return;
+    lastSpokenBubble = latest;
+    const text = latest.innerText?.trim();
+    if (text) speak(text);
   });
   observer.observe(document.body, { childList: true, subtree: true });
   addControls();
+
+  window.addEventListener('pagehide', () => {
+    stopListening();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  });
 })();
