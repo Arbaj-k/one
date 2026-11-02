@@ -103,7 +103,7 @@ function field(label,name,value='',type='text',opts={}){let val=esc(value??'');i
 let editing=null,formType='';
 function openForm(type,id){editing=id||null;formType=type;let obj=id?data[type==='note'?'notes':type==='task'?'tasks':type==='project'?'projects':'expenses'].find(x=>x.id===id)||{}:{};let body='';
 if(type==='note')body=(id?'':field('Attach PDF / image (up to 12 MB)','attachment','', 'file',{full:true,accept:'.pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff'}))+field('Title','title',obj.title,'text',{full:true})+field('Subject','subject',obj.subject,'text',{placeholder:'e.g. Data Structures'})+field('Tags','tags',obj.tags,'text',{placeholder:'e.g. exam, unit 2'})+field('Content','content',obj.content,'textarea',{full:true,placeholder:'Write or paste your notes here… (optional if attaching a file)'});
-if(type==='task')body=field('Task title','title',obj.title,'text',{required:true,full:true})+field('Subject / category','category',obj.category||'Assignment')+field('Due date','due',obj.due,'date')+field('Priority','priority',obj.priority||'Medium','select',{options:['Low','Medium','High']})+field('Related project','projectId',obj.projectId||'','select',{options:['',...data.projects.map(p=>p.id+'|'+p.name)].map(x=>x.includes('|')?x:x),full:true})+field('Notes','notes',obj.notes,'textarea',{full:true});
+if(type==='task')body=field('Task title','title',obj.title,'text',{required:true,full:true})+field('Subject / category','category',obj.category||'Assignment')+field('Due date','due',obj.due,'date')+field('Reminder time','reminderTime',obj.reminderTime||'09:00','time')+field('Priority','priority',obj.priority||'Medium','select',{options:['Low','Medium','High']})+field('Related project','projectId',obj.projectId||'','select',{options:['',...data.projects.map(p=>p.id+'|'+p.name)].map(x=>x.includes('|')?x:x),full:true})+field('Notes','notes',obj.notes,'textarea',{full:true});
 if(type==='study')body=field('Subject','subject','','text',{required:true,full:true})+field('Topic / chapter','topic','','text',{full:true})+field('Date','date',today(),'date',{required:true})+field('Duration (minutes)','duration','45','number',{required:true,min:1});
 if(type==='project')body=field('Project name','name',obj.name,'text',{required:true,full:true})+field('Description','description',obj.description,'textarea',{full:true})+field('Status','status',obj.status||'In progress','select',{options:['In progress','On hold','Completed']})+field('Target date','targetDate',obj.targetDate,'date');
 if(type==='expense')body=field('Transaction type','kind',obj.kind||'expense','select',{options:['expense|Expense / spending','lent|I lent money','borrowed|I borrowed money','lent_repayment|Money returned to me','borrowed_repayment|I repaid money']})+field('Description','description',obj.description,'text',{required:true,full:true})+field('Person','person',obj.person||'','text',{full:true,placeholder:'Name of person (optional for expense)'})+field('Amount (₹)','amount',obj.amount,'number',{required:true,min:0})+field('Category','category',obj.category||'Food','select',{options:['Food','Travel','Books & supplies','College fees','Entertainment','Shopping','Other','Udhaar','Repayment']})+field('Date','date',obj.date||today(),'date',{required:true})+field('Related project (optional)','projectId',obj.projectId||'','select',{options:['',...data.projects.map(p=>p.id+'|'+p.name)] .map(x=>x.includes('|')?x:x),full:true});
@@ -418,7 +418,7 @@ window.handleStudentBrainVoiceCommand = function(raw) {
 };
 
 const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
-function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number);return new Date(y,m-1,d,9,0,0,0).getTime()}
+function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return new Date(y,m-1,d,hh||0,mm||0,0,0).getTime()}
 async function enableTaskReminders(){
  if(!('Notification' in window)){toast('This browser does not support notifications');return}
  try{const permission=await Notification.requestPermission();if(permission==='granted'){toast('Task reminders enabled');checkTaskReminders()}else toast('Notifications blocked. Allow them in browser site settings.')}
@@ -433,7 +433,7 @@ async function checkTaskReminders(){
   const when=taskReminderDayTime(task);
   if(when!==null&&now>=when&&now<when+24*60*60*1000){
    const title='Student Brain · Task due today';
-   const body=task.title+' is due today.';
+   const body=task.title+' is due '+(task.reminderTime||'09:00')+' today.';
    try{
     const reg=await navigator.serviceWorker?.ready;
     if(reg?.showNotification)await reg.showNotification(title,{body,icon:'./icons/student-brain.svg',tag:'task-'+task.id,data:{url:'./'}});
