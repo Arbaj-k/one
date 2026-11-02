@@ -319,13 +319,15 @@ window.handleStudentBrainVoiceCommand = function(raw) {
  else if(/\btomorrow\b|\bkal\b/i.test(lower)){let d=new Date();d.setDate(d.getDate()+1);due=d.toISOString().slice(0,10)}
  else if(/\btoday\b|\baaj\b/i.test(lower))due=new Date().toISOString().slice(0,10);
  else {const w=lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);if(w){const days={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};let d=new Date(),delta=(days[w[1]]-d.getDay()+7)%7||7;d.setDate(d.getDate()+delta);due=d.toISOString().slice(0,10)}}
- const taskListIntent=/\b(what task|which task|what did i save|what have i saved|my tasks|show tasks|list tasks|pending tasks|mere task|mere tasks|maine kya save|kya save kiya|kaun sa task|kaunse task|task batao|tasks batao|task padh|tasks padh|read my tasks|tell me my tasks)\b/i.test(lower);
+ const taskListIntent=/\b(?:what(?:'s| is)?\s+(?:my\s+)?(?:task|tasks|todo|to-do)|which\s+tasks?|show\s+(?:my\s+)?tasks?|list\s+(?:my\s+)?tasks?|(?:my|mere|meri|mera)\s+(?:pending\s+)?tasks?|pending\s+tasks?|maine\s+(?:kya|kaun\s+sa|kaunse)\s+(?:task|tasks)?\s*(?:save|saved|add|kiya|kiye|kiye\s+the)?|kya\s+(?:task|tasks)\s*(?:hai|hain|the|thi)?|(?:task|tasks)\s+(?:batao|batana|dikhao|sunao|padh(?:o)?|kya\s+hai)|(?:batao|dikhao|sunao)\s+(?:mere|meri|mera)?\s*(?:task|tasks)|read\s+(?:my\s+)?tasks?|tell\s+me\s+(?:my\s+)?tasks?|what\s+did\s+i\s+save)\b/i.test(lower);
  if(taskListIntent){
-  const tasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
-  const done=(data.tasks||[]).filter(t=>t.done);
-  const say=tasks.length?'Your pending tasks are: '+tasks.slice(0,8).map((t,i)=>(i+1)+'. '+t.title+(t.due?', due '+dateFmt(t.due):'')).join('. ')+'. You have '+tasks.length+' pending tasks.': 'You have no pending tasks saved.';
-  toast(tasks.length?('Found '+tasks.length+' pending task(s).'):'No pending tasks.');
+  const all=(data.tasks||[]);
+  const includeDone=/completed|done|finished|complete|ho\s+gaye|kar\s+liye/i.test(lower);
+  const tasks=all.filter(t=>includeDone||!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  const say=tasks.length?(includeDone?'Your saved tasks are: ':'Your pending tasks are: ')+tasks.slice(0,8).map((t,i)=>(i+1)+'. '+t.title+(t.due?', due '+dateFmt(t.due):'')+(t.done?', completed':'')).join('. ')+'. '+(tasks.length>8?'And '+(tasks.length-8)+' more. ':'')+'Total '+tasks.length+'.':'No matching tasks are saved.';
+  toast(tasks.length?'Found '+tasks.length+' task(s).':'No matching tasks.');
   speakVoiceConfirmation(say);
+  const voiceStatus=document.querySelector('#voice-status');if(voiceStatus)voiceStatus.textContent=say;
   alert(say);
   return true;
  }
