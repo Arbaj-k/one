@@ -319,6 +319,16 @@ window.handleStudentBrainVoiceCommand = function(raw) {
  else if(/\btomorrow\b|\bkal\b/i.test(lower)){let d=new Date();d.setDate(d.getDate()+1);due=d.toISOString().slice(0,10)}
  else if(/\btoday\b|\baaj\b/i.test(lower))due=new Date().toISOString().slice(0,10);
  else {const w=lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);if(w){const days={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};let d=new Date(),delta=(days[w[1]]-d.getDay()+7)%7||7;d.setDate(d.getDate()+delta);due=d.toISOString().slice(0,10)}}
+ const taskListIntent=/\b(what task|which task|what did i save|what have i saved|my tasks|show tasks|list tasks|pending tasks|mere task|mere tasks|maine kya save|kya save kiya|kaun sa task|kaunse task|task batao|tasks batao|task padh|tasks padh|read my tasks|tell me my tasks)\b/i.test(lower);
+ if(taskListIntent){
+  const tasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  const done=(data.tasks||[]).filter(t=>t.done);
+  const say=tasks.length?'Your pending tasks are: '+tasks.slice(0,8).map((t,i)=>(i+1)+'. '+t.title+(t.due?', due '+dateFmt(t.due):'')).join('. ')+'. You have '+tasks.length+' pending tasks.': 'You have no pending tasks saved.';
+  toast(tasks.length?('Found '+tasks.length+' pending task(s).'):'No pending tasks.');
+  speakVoiceConfirmation(say);
+  alert(say);
+  return true;
+ }
  const moneyIntent=amount!==null&&/rupee|rs\.?|₹|udhaar|lend|lent|borrow|paid|spent|kharch|diye|diya|wapas|return|expense|lunch|food|रुपये|रुपए/i.test(lower);
  if(moneyIntent){
   let category='Other',kind='expense';
