@@ -23,6 +23,17 @@ assert.ok(app.includes("if(e.target.id==='quick-add-file-upload')"), 'Quick Add 
 assert.ok(app.includes("document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status')"), 'Quick Add upload progress is not reported.');
 assert.ok(css.includes('.quick-add-upload-status'), 'Quick Add upload status styling is missing.');
 
+assert.ok(app.includes('async function requestStudentBrainAI('), 'Ask My Brain must call the secure AI function.');
+assert.ok(app.includes('/functions/v1/student-brain-ai'), 'Ask My Brain AI endpoint is missing.');
+assert.ok(app.includes('signInAnonymously()'), 'Ask My Brain must create an anonymous Supabase session without email login.');
+assert.ok(app.includes('const AI_FILES_DB='), 'Original file browser storage is missing.');
+assert.ok(app.includes('dataBase64:await fileToBase64(saved.blob)'), 'Original PDF/image is not prepared for multimodal AI analysis.');
+assert.ok(app.includes('async function sendChat('), 'Ask My Brain must use the asynchronous AI response flow.');
+assert.ok(app.includes('function chatActionIntent('), 'Quick task and money actions must remain available.');
+assert.ok(!app.includes('GEMINI_API_KEY'), 'Gemini API secret must never be present in browser code.');
+assert.ok(app.includes('File: '+ ' '), 'Document citation labels should remain in the AI context builder.');
+
+
 assert.ok(voice.includes("if (event.results[i].isFinal) finalText += part + ' ';"), 'Final speech fragments are not accumulated into a complete command.');
 assert.ok(voice.includes("const phrase = finalText.replace(/\\\\s+/g, ' ').trim();"), 'Voice command is not normalized after recognition ends.');
 assert.ok(voice.indexOf('recognition.onend = () =>') < voice.indexOf('window.submitStudentBrainVoiceText(phrase)'), 'Voice command must be submitted after recognition has ended.');
