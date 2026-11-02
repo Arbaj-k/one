@@ -17,7 +17,7 @@ for (const id of ['page-content', 'modal-root', 'toast']) {
 
 // Core pages, data safety, document handling and CRUD routes.
 for (const token of [
-  'function render()', 'function aiAnswer(q)', 'function processUploadedDocuments',
+  'function render()', 'function aiAnswer(question)', 'function processUploadedDocuments',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
   'function exportData()', 'function studyPlanner()', 'function projects()',
   'function expenses()', 'function saveForm(', 'function splitDocumentIntoChunks(text)',
