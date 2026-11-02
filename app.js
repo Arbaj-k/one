@@ -433,13 +433,14 @@ window.handleStudentBrainVoiceCommand = function(raw) {
  if(!text)return false;
  const m=text.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const amount=m?Number(m[1].replace(/,/g,'')):null;
+ const localDateString=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
  const months={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sep:8,sept:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
  let due='';
  const dm=lower.match(/\b(\d{1,2})\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?\b/i);
- if(dm){let y=dm[3]?+dm[3]:new Date().getFullYear(),mo=months[dm[2]];if(!dm[3]&&new Date(y,mo,+dm[1])<new Date(new Date().setHours(0,0,0,0)))y++;due=new Date(y,mo,+dm[1]).toISOString().slice(0,10)}
- else if(/\btomorrow\b|\bkal\b/i.test(lower)){let d=new Date();d.setDate(d.getDate()+1);due=d.toISOString().slice(0,10)}
- else if(/\btoday\b|\baaj\b/i.test(lower))due=new Date().toISOString().slice(0,10);
- else {const w=lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);if(w){const days={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};let d=new Date(),delta=(days[w[1]]-d.getDay()+7)%7||7;d.setDate(d.getDate()+delta);due=d.toISOString().slice(0,10)}}
+ if(dm){let y=dm[3]?+dm[3]:new Date().getFullYear(),mo=months[dm[2]];if(!dm[3]&&new Date(y,mo,+dm[1])<new Date(new Date().setHours(0,0,0,0)))y++;due=localDateString(new Date(y,mo,+dm[1]))}
+ else if(/\btomorrow\b|\bkal\b/i.test(lower)){let d=new Date();d.setDate(d.getDate()+1);due=localDateString(d)}
+ else if(/\btoday\b|\baaj\b/i.test(lower))due=today();
+ else {const w=lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);if(w){const days={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};let d=new Date(),delta=(days[w[1]]-d.getDay()+7)%7||7;d.setDate(d.getDate()+delta);due=localDateString(d)}}
  const taskListIntent=/\b(?:what(?:'s| is)?\s+(?:my\s+)?(?:task|tasks|todo|to-do)|which\s+tasks?|show\s+(?:my\s+)?tasks?|list\s+(?:my\s+)?tasks?|(?:my|mere|meri|mera)\s+(?:pending\s+)?tasks?|pending\s+tasks?|maine\s+(?:kya|kaun\s+sa|kaunse)\s+(?:task|tasks)?\s*(?:save|saved|add|kiya|kiye|kiye\s+the)?|kya\s+(?:task|tasks)\s*(?:hai|hain|the|thi)?|(?:task|tasks)\s+(?:batao|batana|dikhao|sunao|padh(?:o)?|kya\s+hai)|(?:batao|dikhao|sunao)\s+(?:mere|meri|mera)?\s*(?:task|tasks)|read\s+(?:my\s+)?tasks?|tell\s+me\s+(?:my\s+)?tasks?|what\s+did\s+i\s+save)\b/i.test(lower);
  if(taskListIntent){
   const all=(data.tasks||[]);
@@ -464,16 +465,31 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:due||today(),kind,updated:Date.now(),created:Date.now()});
   persist();page='expenses';window.expenseMonth=(due||today()).slice(0,7);render();toast('Money record saved');speakVoiceConfirmation('Money record saved.');return true;
  }
- const taskCue=/\b(task|tasks|to[ -]?do|assignment|deadline|last date|due date|due|submit|exam|remind(?:er)?|project|homework|kaam|karna hai|yaad dilana|add kar(?:o|na)|bana(?:o|na))\b/i.test(lower);
- if(taskCue||due){
+ const taskCue=/\b(task|tasks|to[ -]?do|assignment|homework|deadline|last date|due date|due|submit|exam|remind(?:er)?|project|kaam|padhai|revision|karna hai|yaad dilana)\b/i.test(lower);
+ const taskQuestionIntent=taskCue&&/\b(what|which|show|list|tell me|how many|do i have|are there|kya|kaunse|kaunsa|batao|dikhao|mere tasks|meri tasks)\b/i.test(lower);
+ const taskCreateIntent=/\b(add|create|make|save|remind me|schedule|set up|i need to|i have to|need to|have to|must|should|finish|complete|submit|prepare|revise|study|don't forget|do not forget|bana(?:o|na)|likh(?:o|na)|karna hai|yaad rakh(?:na|na hai)|mujhe)\b/i.test(lower);
+ if(taskCue&&!taskQuestionIntent&&(taskCreateIntent||!!due)){
   let title=text
-   .replace(/\b(?:please|mere liye|mere|mujhe|add|create|make|new|a|an|the|task|tasks|to[ -]?do|remind(?:er)?|yaad dilana|kar do|karna hai|bana do|banao|save|in planner)\b/ig,' ')
-   .replace(/\b(?:kal|tomorrow|today|aaj|on|by|due|deadline|last date|submit karna hai|submit)\b/ig,' ')
+   .replace(/\b(?:please|i|need|have|to|must|should|don't|do|not|forget|me|mere liye|mere|mujhe|my|add|create|make|new|a|an|the|task|tasks|to[ -]?do|remind(?:er)?|yaad dilana|kar do|karna hai|bana do|banao|save|in planner|finish|complete|submit|prepare|revise|study)\b/ig,' ')
+   .replace(/\b(?:kal|tomorrow|today|aaj|on|by|due|deadline|last date|next)\b/ig,' ')
+   .replace(/\b\d{1,2}\s+(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+\d{4})?\b/ig,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title)title=text.trim();
-  if(!confirm('Create task?\\n\\n'+title+'\\nDue: '+dateFmt(due))){toast('Task not saved');return true}
-  data.tasks.push({id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam|paper/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,priority:'Medium',done:false,updated:Date.now(),created:Date.now()});
-  persist();page='planner';render();toast('Task saved to Planner');speakVoiceConfirmation('Task saved to Planner.');return true;
+  const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam|paper/i.test(lower)?'Exam':/project/i.test(lower)?'Project':/study|revise|padhai/i.test(lower)?'Study':'Personal',due,priority:/urgent|important|high priority|jaldi/i.test(lower)?'High':'Medium',done:false,updated:Date.now(),created:Date.now()};
+  data.tasks.push(task);
+  persist();
+  page='planner';
+  const taskToday=today();
+  const nextDay=new Date(taskToday+'T12:00:00');
+  nextDay.setDate(nextDay.getDate()+1);
+  const tomorrowKey=nextDay.getFullYear()+'-'+String(nextDay.getMonth()+1).padStart(2,'0')+'-'+String(nextDay.getDate()).padStart(2,'0');
+  window.plannerView=!due?'All':due<taskToday?'Overdue':due===taskToday?'Today':due===tomorrowKey?'Tomorrow':'Upcoming';
+  render();
+  toast('Task saved: '+title);
+  const voiceStatus=document.querySelector('#voice-status');
+  if(voiceStatus)voiceStatus.textContent='Saved to Planner: '+title+(due?' · '+dateFmt(due):'');
+  speakVoiceConfirmation('Task saved to Planner.');
+  return true;
  }
  return false;
 };
