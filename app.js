@@ -213,7 +213,7 @@ function extractTimetableData(text){
 }
 function aiAnswer(q){
  const raw=String(q||'').trim();
- // Expense-aware answers: Ask My Brain can read the user's saved expense records.
+ // Expense questions should be answered from saved expense data before knowledge retrieval.
  const expenseIntent=/\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|cost)\b/i.test(raw);
  if(expenseIntent){
   const all=(data.expenses||[]).filter(e=>e.date&&Number.isFinite(Number(e.amount)));
@@ -228,16 +228,17 @@ function aiAnswer(q){
   else if(/\b(all time|overall|total ever|all records)\b/i.test(raw)){start='0000-01-01';end='9999-12-31';label='all recorded time'}
   const rows=all.filter(e=>e.date>=start&&e.date<=end);
   const total=rows.reduce((sum,e)=>sum+Number(e.amount||0),0);
+  const fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
   if(/\b(category|categories|where|breakdown|kis cheez|kis par)\b/i.test(raw)){
    const by={};rows.forEach(e=>{const k=e.category||'Other';by[k]=(by[k]||0)+Number(e.amount||0)});
-   const detail=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+money(v));
-   return {answer:rows.length?'Your spending breakdown for '+label+':\n'+detail.join('\n')+'\n\nTotal: '+money(total)+' ('+rows.length+' records).':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
+   const detail=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+fmt(v));
+   return {answer:rows.length?'Your spending breakdown for '+label+':\n'+detail.join('\n')+'\n\nTotal: '+fmt(total)+' ('+rows.length+' records).':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
   }
   if(/\b(list|show|transactions|records|details)\b/i.test(raw)){
-   const lines=rows.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12).map(e=>e.date+' · '+(e.description||e.category||'Expense')+' · '+money(e.amount));
-   return {answer:rows.length?'Expense records for '+label+':\n'+lines.join('\n')+'\n'+(rows.length>12?'…and '+(rows.length-12)+' more.\n':'')+'Total: '+money(total):'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
+   const lines=rows.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12).map(e=>e.date+' · '+(e.description||e.category||'Expense')+' · '+fmt(e.amount));
+   return {answer:rows.length?'Expense records for '+label+':\n'+lines.join('\n')+'\n'+(rows.length>12?'…and '+(rows.length-12)+' more.\n':'')+'Total: '+fmt(total):'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
   }
-  return {answer:rows.length?'You spent '+money(total)+' '+label+' across '+rows.length+' expense record'+(rows.length===1?'':'s')+'.':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
+  return {answer:rows.length?'You spent '+fmt(total)+' '+label+' across '+rows.length+' expense record'+(rows.length===1?'':'s')+'.':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
  }
  const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term[\s-]*i{1,3}\b/g,(m)=>'midterm '+(m.match(/i{1,3}$/)?.[0].length||1)).replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
  const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do','or','to','a','an','as','at','by','it','be','schedule','time','timing']);
