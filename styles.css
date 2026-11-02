@@ -21,3 +21,20 @@
  .mobile-nav .mobile-mic strong{font-size:20px;line-height:1.1}
  .mobile-nav .mobile-mic span{font-size:9px;font-weight:700}
 }
+
+
+/* Money & Udhaar: friendly, accessible quick-action cards */
+.expense-quick-action{appearance:none;width:100%;text-align:left;color:var(--ink);font:inherit;display:flex;flex-direction:column;gap:0;cursor:pointer;position:relative;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;min-height:150px}
+.expense-quick-action .row{width:100%}
+.expense-quick-action .stat-number{display:block;width:100%;font-variant-numeric:tabular-nums}
+.expense-quick-action .stat-note{display:block;line-height:1.5;width:100%}
+.expense-quick-action .stat-open-hint{color:var(--blue);font-weight:700;white-space:nowrap}
+.expense-quick-action:hover{transform:translateY(-2px);border-color:#cbd5ff;box-shadow:0 12px 28px rgba(50,78,170,.10);background:linear-gradient(145deg,#fff,#fbfcff)}
+.expense-quick-action:active{transform:translateY(0);box-shadow:var(--shadow)}
+.expense-quick-action:focus-visible{outline:3px solid #9aabff;outline-offset:3px}
+.expense-quick-action[data-id="expense"] .stat-icon{background:#fff1e9;color:#b65d24}
+.expense-quick-action[data-id="lent"] .stat-icon{background:#e9f8f0;color:#16865b}
+.expense-quick-action[data-id="borrowed"] .stat-icon{background:#fff4e4;color:#a96711}
+.expense-quick-action[data-id="all"] .stat-icon{background:#eef2ff;color:var(--blue)}
+@media(max-width:700px){.expense-quick-action{min-height:142px;padding:14px;border-radius:13px}.expense-quick-action .stat-label{font-size:11px;line-height:1.4}.expense-quick-action .stat-number{font-size:clamp(18px,5.2vw,22px);margin:12px 0 7px;overflow-wrap:anywhere}.expense-quick-action .stat-note{font-size:10px}.expense-quick-action .stat-open-hint{display:block;margin-top:3px}.expense-quick-action .stat-icon{width:31px;height:31px;border-radius:9px}}
+@media(prefers-reduced-motion:reduce){.expense-quick-action{transition:none}.expense-quick-action:hover{transform:none}}
