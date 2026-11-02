@@ -223,11 +223,11 @@ function aiAnswer(q){
   return {answer:'I could not find a saved project name in your Projects section yet. Open Projects and check whether the project was saved successfully.',sources:['Saved projects']};
  }
  // Money ledger questions are answered separately from ordinary spending.
- const loanIntent=/\\b(udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|whom do i owe|wapas|mujhe dena|maine liya)\\b/i.test(raw);
+ const loanIntent=/\b(udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|whom do i owe|wapas|mujhe dena|maine liya)\b/i.test(raw);
  if(loanIntent){
   const ledger=(data.expenses||[]).filter(e=>['lent','borrowed','lent_repayment','borrowed_repayment'].includes(e.kind)&&Number.isFinite(Number(e.amount)));
   const fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
-  const nameMatch=raw.match(/\\b(?:to|from|with|ko|se)\\s+([a-z][a-z'-]{1,30})/i);
+  const nameMatch=raw.match(/\b(?:to|from|with|ko|se)\\s+([a-z][a-z'-]{1,30})/i);
   const name=nameMatch?.[1]?.toLowerCase();
   const rows=name?ledger.filter(e=>String(e.person||'').toLowerCase().includes(name)):ledger;
   const sum=(kind)=>rows.filter(e=>e.kind===kind).reduce((n,e)=>n+Number(e.amount||0),0);
@@ -273,19 +273,19 @@ function aiAnswer(q){
  const qnorm=normalize(raw);let terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
  // Search task titles, categories and notes when the question relates to saved work.
  const taskCorpus=(data.tasks||[]).filter(t=>!t.done).map(t=>({task:t,text:[t.title,t.category,t.notes].filter(Boolean).join(' ')}));
- const taskQuery=/\\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\\b/i.test(raw);
+ const taskQuery=/\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\b/i.test(raw);
  const matchedTasks=taskCorpus.map(x=>({...x,score:terms.reduce((n,w)=>n+(normalize(x.text).split(' ').includes(w)?2:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
  if(taskQuery||matchedTasks.length){
   const openTasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
   const overdue=openTasks.filter(t=>t.due&&t.due<today()),dueToday=openTasks.filter(t=>t.due===today());
   const allDone=(data.tasks||[]).filter(t=>t.done);
-  if(/\\b(completed|finished|done)\\b/i.test(raw)&&!/\\bnot done|pending\\b/i.test(raw))
+  if(/\b(completed|finished|done)\b/i.test(raw)&&!/\bnot done|pending\b/i.test(raw))
    return {answer:allDone.length?'Completed tasks:\\n'+allDone.slice(-8).map(t=>'✓ '+t.title+(t.due?' — '+t.due:'')).join('\\n'):'You have no completed tasks yet.',sources:['Tasks']};
   if(!openTasks.length)return {answer:'You have no pending tasks right now. Add a task in Tasks & Reminders first.',sources:['Tasks & Reminders']};
   let selected=matchedTasks.length?matchedTasks.map(x=>x.task):openTasks;
-  if(/\\boverdue\\b/i.test(raw))selected=overdue;
-  else if(/\\btoday\\b|\\bdue today\\b/i.test(raw))selected=dueToday;
-  else if(/\\bnext|priority|important|urgent|what should i do\\b/i.test(raw))selected=[...overdue,...openTasks.filter(t=>!overdue.includes(t))].slice(0,6);
+  if(/\boverdue\b/i.test(raw))selected=overdue;
+  else if(/\btoday\b|\bdue today\b/i.test(raw))selected=dueToday;
+  else if(/\bnext|priority|important|urgent|what should i do\b/i.test(raw))selected=[...overdue,...openTasks.filter(t=>!overdue.includes(t))].slice(0,6);
   if(!selected.length)return {answer:'I could not find a pending task matching that query. Try searching with a word from the task title.',sources:['Tasks & Reminders']};
   const lines=selected.slice(0,8).map(t=>'• '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':t.due===today()?'Due today · ':'Due ')+t.due:'No due date')+' · Priority: '+(t.priority||'Medium')+(t.category?' · '+t.category:'')+(t.notes?'\\n  Details: '+t.notes:''));
   return {answer:'I found these matching pending tasks:\\n'+lines.join('\\n'),sources:['Tasks & Reminders']};
@@ -316,7 +316,7 @@ function aiAnswer(q){
    const records=extractTimetableData(doc.extractedText);
    if(records.length)allRows.push({doc,records});
   });
-  const requested=['AEC','VAC','SEC','OPEN ELECTIVE'].filter(course=>new RegExp('\\b'+course.replace(' ','\\s+')+'\\b','i').test(raw));
+  const requested=['AEC','VAC','SEC','OPEN ELECTIVE'].filter(course=>new RegExp('\b'+course.replace(' ','\\s+')+'\b','i').test(raw));
   const allRecords=allRows.flatMap(({doc,records})=>records.map(r=>({doc,r})));
   const dates=[...new Set(allRecords.map(x=>x.r.date))].sort((a,b)=>{const p=s=>{const [d,m,y]=s.split('.').map(Number);return new Date(y,m-1,d).getTime()};return p(a)-p(b)});
   const normalized=raw.toLowerCase().replace(/[^a-z0-9]+/g,' ');
@@ -343,7 +343,7 @@ function aiAnswer(q){
  (data.tasks||[]).forEach(t=>add([t.title,t.category,t.notes,t.priority,t.due,t.projectId,t.done?'completed':'pending'].filter(Boolean).join(' '),{label:'Task: '+(t.title||'Untitled'),taskId:t.id},'task'));
  (data.studySessions||[]).forEach(x=>add(Object.entries(x||{}).filter(([k,v])=>!['id','created','updated'].includes(k)&&v!==null&&v!==undefined).map(([k,v])=>k+': '+(typeof v==='object'?JSON.stringify(v):v)).join(' '),{label:'Study session',sessionId:x.id},'study'));
  (data.expenses||[]).forEach(e=>add([e.description,e.category,e.person,e.kind,e.amount,e.date,e.projectId].filter(Boolean).join(' '),{label:'Money record: '+(e.description||e.category||'Transaction'),expenseId:e.id},'expense'));
- (data.messages||[]).forEach(m=>{const textValue=[m.question,m.prompt,m.answer,m.content,m.text].filter(Boolean).join(' ');if(textValue)add(textValue,{label:'Saved AI conversation',messageId:m.id},'message')});
+ (data.messages||[]).forEach(m=>{const textValue=[m.question,m.prompt,m.answer,m.content,m.text].filter(Boolean).join(' ');if(textValue)add(textValue,{label:(m.role==='user'?'Your question':'Brain answer')+(m.content?' · '+String(m.content).slice(0,70):''),messageId:m.id},'message')});
  const tokens=s=>normalize(s).split(/\s+/).filter(Boolean);
  // Queries like "mid term 1" should match the heading "Mid Term-I" even if OCR drops punctuation or Roman numerals.
  const queryMidterm=/\bmidterm\s*1\b/.test(qnorm),queryCourse=terms.some(t=>['aec','vac','sec'].includes(t));
