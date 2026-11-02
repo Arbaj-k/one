@@ -1,48 +1,53 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
+const { execFileSync } = require('node:child_process');
 
 const source = fs.readFileSync('app.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
+const css = fs.readFileSync('styles.css', 'utf8');
 
-// Parse check: catches syntax errors before a broken app reaches GitHub Pages.
+// Parse the application before checking that its key routes remain wired.
 new vm.Script(source, { filename: 'app.js' });
 
-// Validate actual HTML IDs, not CSS-style selector text.
+// The static app shell must retain the containers required by app.js.
 for (const id of ['page-content', 'modal-root', 'toast']) {
-  assert.match(html, new RegExp(`\\bid=["']${id}["']`), `Missing app shell id: ${id}`);
+  assert.ok(html.includes('id="' + id + '"'), 'Missing app shell id: ' + id);
 }
 
-// Core pages, persistence, uploads, restore, and rendering must remain present.
+// Core pages, data safety, document handling and CRUD routes.
 for (const token of [
   'function render()', 'function aiAnswer(q)', 'function processUploadedDocuments',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
   'function exportData()', 'function studyPlanner()', 'function projects()',
   'function expenses()', 'function saveForm(', 'function splitDocumentIntoChunks(text)',
-  "'delete-document'", 'Unsupported file type. Upload a PDF or image.'
+  "'delete-document'", 'Unsupported file type. Upload a PDF or image.',
+  'localStorage.setItem(KEY,JSON.stringify(data))',
+  'localStorage.getItem(KEY)'
 ]) {
-  assert.ok(source.includes(token), `Missing expected app feature: ${token}`);
+  assert.ok(source.includes(token), 'Missing expected app feature: ' + token);
 }
 
-// Every Money & Udhaar quick action must still have a source card and action route.
-for (const kind of ['expense', 'lent', 'borrowed', 'all']) {
-  assert.ok(source.includes(`'\${kind}'`) || source.includes(`"${kind}"`), `Missing quick-action kind: ${kind}`);
+// Money & Udhaar: four summary cards, clickable action routing and form defaults.
+for (const token of [
+  "expenseStat('Spending this month'",
+  "expenseStat('You are owed'",
+  "expenseStat('You owe others'",
+  "expenseStat('Records'",
+  'data-action="expense-quick-action"',
+  "'expense-quick-action':()=>",
+  "openForm('expense')",
+  'typeField.value=id',
+  "if(id==='all')",
+  "field('Transaction type','kind'",
+  "field('Person','person'",
+  'expense-quick-action'
+]) {
+  assert.ok(source.includes(token) || css.includes(token), 'Money & Udhaar quick-action wiring missing: ' + token);
 }
-assert.match(source, /function expenseStat\\(/);
-assert.match(source, /data-action="expense-quick-action"/);
-assert.match(source, /'expense-quick-action':\\(\\)=>/);
-assert.match(source, /name="kind"/);
-assert.match(source, /name="description"/);
-assert.match(source, /name="person"/);
+assert.ok(css.includes('.expense-quick-action'), 'Money & Udhaar quick-action styles are missing');
 
-// CRUD routes and local data recovery must remain wired.
-for (const action of [
-  'new-note', 'edit-note', 'delete-note', 'new-task', 'edit-task',
-  'delete-task', 'new-project', 'edit-project', 'new-expense',
-  'edit-expense', 'delete-expense', 'new-study', 'delete-study',
-  'export-data', 'restore-data'
-]) assert.ok(source.includes(action), `Missing workflow action: ${action}`);
+// Keep the extended regression suite in sync with this single CI entry point.
+execFileSync(process.execPath, ['tests/regression-smoke.mjs'], { stdio: 'inherit' });
 
-assert.match(source, /localStorage\\.setItem\\(KEY,JSON\\.stringify\\(data\\)\\)/);
-assert.match(source, /localStorage\\.getItem\\(KEY\\)/);
-console.log('Student Brain smoke checks passed: syntax, app shell, core features, persistence, and Money & Udhaar quick actions.');
+console.log('Student Brain smoke checks passed: syntax, app shell, core features, data safety, CRUD and Money & Udhaar quick actions.');
