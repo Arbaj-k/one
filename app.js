@@ -228,6 +228,25 @@ function aiAnswer(q){
  const normalize=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[’']/g,'').replace(/\bmid[\s-]*term[\s-]*i{1,3}\b/g,(m)=>'midterm '+(m.match(/i{1,3}$/)?.[0].length||1)).replace(/\bmid[\s-]*term\b/g,'midterm').replace(/\b(m[\s-]*t)[\s-]*(\d+)\b/g,'midterm $2').replace(/\b(first|1st|one)\b/g,'1').replace(/\b(second|2nd|two)\b/g,'2').replace(/\b(third|3rd|three)\b/g,'3').replace(/\b(fourth|4th|four)\b/g,'4').replace(/\b(exam|examination|paper|test)\b/g,'exam').replace(/\b(kab|when|date|on which date|kis din|ki date)\b/g,'date').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
  const stop=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','kab','hai','h','ki','ka','ke','kya','bata','do','or','to','a','an','as','at','by','it','be','schedule','time','timing']);
  const qnorm=normalize(raw);let terms=[...new Set(qnorm.split(/\s+/).filter(w=>w.length>1&&!stop.has(w)))];
+ // Search task titles, categories and notes when the question relates to saved work.
+ const taskCorpus=(data.tasks||[]).filter(t=>!t.done).map(t=>({task:t,text:[t.title,t.category,t.notes].filter(Boolean).join(' ')}));
+ const taskQuery=/\\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\\b/i.test(raw);
+ const matchedTasks=taskCorpus.map(x=>({...x,score:terms.reduce((n,w)=>n+(normalize(x.text).split(' ').includes(w)?2:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+ if(taskQuery||matchedTasks.length){
+  const openTasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  const overdue=openTasks.filter(t=>t.due&&t.due<today()),dueToday=openTasks.filter(t=>t.due===today());
+  const allDone=(data.tasks||[]).filter(t=>t.done);
+  if(/\\b(completed|finished|done)\\b/i.test(raw)&&!/\\bnot done|pending\\b/i.test(raw))
+   return {answer:allDone.length?'Completed tasks:\\n'+allDone.slice(-8).map(t=>'✓ '+t.title+(t.due?' — '+t.due:'')).join('\\n'):'You have no completed tasks yet.',sources:['Tasks']};
+  if(!openTasks.length)return {answer:'You have no pending tasks right now. Add a task in Tasks & Reminders first.',sources:['Tasks & Reminders']};
+  let selected=matchedTasks.length?matchedTasks.map(x=>x.task):openTasks;
+  if(/\\boverdue\\b/i.test(raw))selected=overdue;
+  else if(/\\btoday\\b|\\bdue today\\b/i.test(raw))selected=dueToday;
+  else if(/\\bnext|priority|important|urgent|what should i do\\b/i.test(raw))selected=[...overdue,...openTasks.filter(t=>!overdue.includes(t))].slice(0,6);
+  if(!selected.length)return {answer:'I could not find a pending task matching that query. Try searching with a word from the task title.',sources:['Tasks & Reminders']};
+  const lines=selected.slice(0,8).map(t=>'• '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':t.due===today()?'Due today · ':'Due ')+t.due:'No due date')+' · Priority: '+(t.priority||'Medium')+(t.category?' · '+t.category:'')+(t.notes?'\\n  Details: '+t.notes:''));
+  return {answer:'I found these matching pending tasks:\\n'+lines.join('\\n'),sources:['Tasks & Reminders']};
+ }
  // Task-aware answers: include the user's live task list in Ask My Brain retrieval.
  const taskIntent=/\b(task|tasks|todo|to do|pending|unfinished|incomplete|overdue|deadline|remind|reminder|work on next|what should i do|what do i have to do)\b/i.test(raw);
  if(taskIntent){
