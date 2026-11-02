@@ -203,8 +203,7 @@ async function retryDocumentOCR(id){
      pg.cleanup?.();
     }
    }else{
-    if(!window.Tesseract)throw new Error('OCR engine unavailable. Refresh and retry.');
-    try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('OCR could not read image; preserving it for Gemini vision.',ocrError)}
+    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('OCR could not read image; preserving it for Gemini vision.',ocrError)}}
    }
    await saveOriginalDocument(id,file);
    doc.extractedText=extracted.trim()||'[No readable text detected. Original file is available for AI analysis.]';
@@ -243,7 +242,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
   try{
    let extracted='';
    if(isPdf){
-    if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and try again.');
+    if(!window.pdfjsLib){console.warn('PDF.js unavailable; preserving the original PDF for AI analysis.');}else{
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     if(pdf.numPages>100)throw new Error('PDF has more than 100 pages. Split it into smaller files.');
@@ -262,10 +261,10 @@ async function processUploadedDocuments(files,sourceNoteId=null){
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
     }
+    }
    }else{
-    if(!window.Tesseract)throw new Error('Image OCR unavailable. Refresh and try again.');
-    setStatus('Reading image text · '+file.name);
-    try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('Image OCR failed. The original image will still be saved for AI visual analysis.',ocrError)}
+    setStatus(window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
+    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('Image OCR failed. The original image will still be saved for AI visual analysis.',ocrError)}}
    }
    const id=uid();let fileStored=false;
    try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file could not be saved; keeping extracted text only.',storageError)}
