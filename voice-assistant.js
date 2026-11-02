@@ -25,7 +25,7 @@
     .voice-toggle{background:#edf1ff;color:#4560cc;border-color:#edf1ff}
     .voice-status{font-size:11px;color:#7a879a;flex:1;min-width:150px}
     .voice-status[data-state="error"]{color:#c24141}
-    .voice-status[data-state="listening"]{color:#4263eb;font-weight:600}
+    .voice-status[data-state="listening"],.voice-status[data-state="processing"]{color:#4263eb;font-weight:600}
     .voice-transcript{font-size:12px;color:#58677e;padding:7px 10px;background:#f6f8fc;border-radius:9px;margin-top:6px;display:none}
     .voice-transcript.visible{display:block}
     @media(max-width:600px){.voice-controls{gap:6px}.voice-status{flex-basis:100%;padding:2px 3px}}
@@ -68,6 +68,7 @@
       recognition.interimResults = true;
       recognition.continuous = false;
       let finalText = '';
+      let submitted = false;
 
       recognition.onstart = () => {
         listening = true;
@@ -87,18 +88,16 @@
           transcript.textContent = finalText || interim || 'Listening…';
           transcript.classList.add('visible');
         }
-        if (finalText.trim()) {
+        if (finalText.trim() && !submitted) {
+          submitted = true;
           const phrase = finalText.trim();
-          status('Heard: “' + phrase + '”', 'idle');
-          const input = document.querySelector('#chat-input');
-          if (input) {
-            input.value = phrase;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            // Voice commands and normal questions now use the same chat flow.
-            const form = document.querySelector('#chat-form');
-            if (form) form.requestSubmit();
+          status('Heard: “' + phrase + '” · processing…', 'processing');
+          if (typeof window.submitStudentBrainVoiceText === 'function') {
+            const accepted = window.submitStudentBrainVoiceText(phrase);
+            if (accepted) status('Command received: “' + phrase + '”', 'idle');
+            else status('Could not process that command. Tap Speak and try again.', 'error');
           } else {
-            status('Open Ask My Brain to send your voice prompt.', 'error');
+            status('Voice command handler is not ready. Refresh and try again.', 'error');
           }
           finalText = '';
         }
