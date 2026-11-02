@@ -214,28 +214,28 @@ function extractTimetableData(text){
 function aiAnswer(q){
  const raw=String(q||'').trim();
  // Expense-aware answers: Ask My Brain can read the user's saved expense records.
- const expenseIntent=/\\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|cost)\\b/i.test(raw);
+ const expenseIntent=/\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|cost)\b/i.test(raw);
  if(expenseIntent){
   const all=(data.expenses||[]).filter(e=>e.date&&Number.isFinite(Number(e.amount)));
   const now=today(),month=now.slice(0,7);
   let label='this month',start=month+'-01',end=now;
-  if(/\\b(last month|previous month|pichhle mahine)\\b/i.test(raw)){
+  if(/\b(last month|previous month|pichhle mahine)\b/i.test(raw)){
    const d=new Date(now+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()-1);
    start=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';
    const last=new Date(d.getFullYear(),d.getMonth()+1,0);
    end=last.getFullYear()+'-'+String(last.getMonth()+1).padStart(2,'0')+'-'+String(last.getDate()).padStart(2,'0');label='last month';
-  }else if(/\\b(today|aaj)\\b/i.test(raw)){start=end=now;label='today'}
-  else if(/\\b(all time|overall|total ever|all records)\\b/i.test(raw)){start='0000-01-01';end='9999-12-31';label='all recorded time'}
+  }else if(/\b(today|aaj)\b/i.test(raw)){start=end=now;label='today'}
+  else if(/\b(all time|overall|total ever|all records)\b/i.test(raw)){start='0000-01-01';end='9999-12-31';label='all recorded time'}
   const rows=all.filter(e=>e.date>=start&&e.date<=end);
   const total=rows.reduce((sum,e)=>sum+Number(e.amount||0),0);
-  if(/\\b(category|categories|where|breakdown|kis cheez|kis par)\\b/i.test(raw)){
+  if(/\b(category|categories|where|breakdown|kis cheez|kis par)\b/i.test(raw)){
    const by={};rows.forEach(e=>{const k=e.category||'Other';by[k]=(by[k]||0)+Number(e.amount||0)});
    const detail=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+money(v));
-   return {answer:rows.length?'Your spending breakdown for '+label+':\\n'+detail.join('\\n')+'\\n\\nTotal: '+money(total)+' ('+rows.length+' records).':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
+   return {answer:rows.length?'Your spending breakdown for '+label+':\n'+detail.join('\n')+'\n\nTotal: '+money(total)+' ('+rows.length+' records).':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
   }
-  if(/\\b(list|show|transactions|records|details)\\b/i.test(raw)){
+  if(/\b(list|show|transactions|records|details)\b/i.test(raw)){
    const lines=rows.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12).map(e=>e.date+' · '+(e.description||e.category||'Expense')+' · '+money(e.amount));
-   return {answer:rows.length?'Expense records for '+label+':\\n'+lines.join('\\n')+'\\n'+(rows.length>12?'…and '+(rows.length-12)+' more.\\n':'')+'Total: '+money(total):'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
+   return {answer:rows.length?'Expense records for '+label+':\n'+lines.join('\n')+'\n'+(rows.length>12?'…and '+(rows.length-12)+' more.\n':'')+'Total: '+money(total):'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
   }
   return {answer:rows.length?'You spent '+money(total)+' '+label+' across '+rows.length+' expense record'+(rows.length===1?'':'s')+'.':'No expense records found for '+label+'. Add expenses in the Expenses section first.',sources:['Expenses']};
  }
