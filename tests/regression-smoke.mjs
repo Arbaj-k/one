@@ -13,6 +13,10 @@ execFileSync(process.execPath, ['--check', new URL('../voice-assistant.js', impo
 assert.ok(app.includes('window.submitStudentBrainVoiceText = function(raw)'), 'Global voice command handler is missing.');
 assert.ok(voice.includes('window.submitStudentBrainVoiceText(phrase)'), 'Speech recognition is not routed to the global command handler.');
 assert.ok(voice.includes('let submitted = false;'), 'Voice result must be processed only once per listening session.');
+assert.ok(voice.includes("if (event.results[i].isFinal) finalText += part + ' ';"), 'Final speech fragments are not accumulated into a complete command.');
+assert.ok(voice.includes("const phrase = finalText.replace(/\\\\s+/g, ' ').trim();"), 'Voice command is not normalized after recognition ends.');
+assert.ok(voice.indexOf('recognition.onend = () =>') < voice.indexOf('window.submitStudentBrainVoiceText(phrase)'), 'Voice command must be submitted after recognition has ended.');
+
 assert.ok(app.includes("const taskCue=/"), 'Voice task intent matcher is missing.');
 assert.ok(app.includes("data.tasks.push(task);"), 'Voice task handler does not save captured tasks.');
 
