@@ -10,7 +10,11 @@ execFileSync(process.execPath, ['--check', new URL('../app.js', import.meta.url)
 
 // App shell and major interaction routes must remain wired.
 for (const selector of ['#page-content', '#modal-root', '#toast']) {
-  assert.ok(html.includes(selector), `Missing app shell selector: ${selector}`);
+  const id = selector.slice(1);
+  assert.ok(
+    new RegExp(`id=["']${id}["']`).test(html),
+    `Missing app shell selector: ${selector}`
+  );
 }
 for (const feature of [
   'function notesCards()', 'function saveForm(', 'function persist()',
