@@ -331,11 +331,15 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:due||today(),kind,updated:Date.now(),created:Date.now()});
   persist();page='expenses';window.expenseMonth=(due||today()).slice(0,7);render();toast('Money record saved');speakVoiceConfirmation('Money record saved.');return true;
  }
- const taskCue=/task|assignment|deadline|last date|due|submit|exam|remind|project|homework/i.test(lower);
+ const taskCue=/\b(task|tasks|to[ -]?do|assignment|deadline|last date|due date|due|submit|exam|remind(?:er)?|project|homework|kaam|karna hai|yaad dilana|add kar(?:o|na)|bana(?:o|na))\b/i.test(lower);
  if(taskCue||due){
-  const title=text.replace(/\b(the )?(last date|deadline|due date)\s*(is|hai|on)?\s*/ig,' ').trim();
+  let title=text
+   .replace(/\b(?:please|mere liye|mere|mujhe|add|create|make|new|a|an|the|task|tasks|to[ -]?do|remind(?:er)?|yaad dilana|kar do|karna hai|bana do|banao|save|in planner)\b/ig,' ')
+   .replace(/\b(?:kal|tomorrow|today|aaj|on|by|due|deadline|last date|submit karna hai|submit)\b/ig,' ')
+   .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  if(!title)title=text.trim();
   if(!confirm('Create task?\\n\\n'+title+'\\nDue: '+dateFmt(due))){toast('Task not saved');return true}
-  data.tasks.push({id:uid(),title,category:/assignment/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':'Personal',due,priority:'Medium',done:false,updated:Date.now(),created:Date.now()});
+  data.tasks.push({id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam|paper/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,priority:'Medium',done:false,updated:Date.now(),created:Date.now()});
   persist();page='planner';render();toast('Task saved to Planner');speakVoiceConfirmation('Task saved to Planner.');return true;
  }
  return false;
