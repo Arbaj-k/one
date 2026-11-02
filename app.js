@@ -465,13 +465,13 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:due||today(),kind,updated:Date.now(),created:Date.now()});
   persist();page='expenses';window.expenseMonth=(due||today()).slice(0,7);render();toast('Money record saved');speakVoiceConfirmation('Money record saved.');return true;
  }
- const taskCue=/\b(task|tasks|to[ -]?do|assignment|homework|deadline|last date|due date|due|submit|exam|remind(?:er)?|project|kaam|padhai|revision|karna hai|yaad dilana)\b/i.test(lower);
+ const taskCue=/\b(task|tasks|to[ -]?do|assignment|homework|deadline|last date|due date|due|submit|exam|remind(?:er)?|project|study|studying|revise|revision|prepare|preparation|read|reading|practice|practise|write|writing|call|buy|kaam|padhai|karna hai|yaad dilana)\b/i.test(lower);
  const taskQuestionIntent=taskCue&&/\b(what|which|show|list|tell me|how many|do i have|are there|kya|kaunse|kaunsa|batao|dikhao|mere tasks|meri tasks)\b/i.test(lower);
- const taskCreateIntent=/\b(add|create|make|save|remind me|schedule|set up|i need to|i have to|need to|have to|must|should|finish|complete|submit|prepare|revise|study|don't forget|do not forget|bana(?:o|na)|likh(?:o|na)|karna hai|yaad rakh(?:na|na hai)|mujhe)\b/i.test(lower);
+ const taskCreateIntent=/\b(add|create|make|save|remind me|schedule|set up|i need to|i have to|need to|have to|i will|will|must|should|finish|complete|submit|prepare|revise|study|read|practice|practise|write|call|buy|don't forget|do not forget|bana(?:o|na)|likh(?:o|na)|karna hai|yaad rakh(?:na|na hai)|mujhe)\b/i.test(lower);
  if(taskCue&&!taskQuestionIntent&&(taskCreateIntent||!!due)){
   let title=text
    .replace(/\b(?:please|i|need|have|to|must|should|don't|do|not|forget|me|mere liye|mere|mujhe|my|add|create|make|new|a|an|the|task|tasks|to[ -]?do|remind(?:er)?|yaad dilana|kar do|karna hai|bana do|banao|save|in planner|finish|complete|submit|prepare|revise|study)\b/ig,' ')
-   .replace(/\b(?:kal|tomorrow|today|aaj|on|by|due|deadline|last date|next)\b/ig,' ')
+   .replace(/\b(?:kal|tomorrow|today|aaj|on|by|due|deadline|last date|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/ig,' ')
    .replace(/\b\d{1,2}\s+(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+\d{4})?\b/ig,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title)title=text.trim();
