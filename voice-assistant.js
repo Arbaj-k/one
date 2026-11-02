@@ -80,26 +80,13 @@
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const part = event.results[i][0]?.transcript || '';
-          if (event.results[i].isFinal) finalText += part;
+          if (event.results[i].isFinal) finalText += part + ' ';
           else interim += part;
         }
         const transcript = document.querySelector('#voice-transcript');
         if (transcript) {
-          transcript.textContent = finalText || interim || 'Listening…';
+          transcript.textContent = (finalText + interim).trim() || 'Listening…';
           transcript.classList.add('visible');
-        }
-        if (finalText.trim() && !submitted) {
-          submitted = true;
-          const phrase = finalText.trim();
-          status('Heard: “' + phrase + '” · processing…', 'processing');
-          if (typeof window.submitStudentBrainVoiceText === 'function') {
-            const accepted = window.submitStudentBrainVoiceText(phrase);
-            if (accepted) status('Command received: “' + phrase + '”', 'idle');
-            else status('Could not process that command. Tap Speak and try again.', 'error');
-          } else {
-            status('Voice command handler is not ready. Refresh and try again.', 'error');
-          }
-          finalText = '';
         }
       };
 
@@ -117,8 +104,20 @@
       recognition.onend = () => {
         listening = false;
         updateMic();
-        if (document.querySelector('#voice-status')?.dataset.state === 'listening') {
-          status('Ready when you are. Tap Speak to try again.');
+        const phrase = finalText.replace(/\\s+/g, ' ').trim();
+        if (phrase && !submitted) {
+          submitted = true;
+          status('Heard: “' + phrase + '” · processing…', 'processing');
+          if (typeof window.submitStudentBrainVoiceText === 'function') {
+            const accepted = window.submitStudentBrainVoiceText(phrase);
+            if (accepted) status('Command received: “' + phrase + '”', 'idle');
+            else status('Could not process that command. Tap Speak and try again.', 'error');
+          } else {
+            status('Voice command handler is not ready. Refresh and try again.', 'error');
+          }
+          finalText = '';
+        } else if (document.querySelector('#voice-status')?.dataset.state === 'listening') {
+          status('No complete words were detected. Tap Speak and try again.', 'error');
         }
       };
 
