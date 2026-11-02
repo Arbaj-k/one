@@ -177,25 +177,44 @@ async function saveForm(e){e.preventDefault();const fd=new FormData(e.target),v=
 async function retryDocumentOCR(id){
  const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
  const picker=document.createElement('input');picker.type='file';picker.accept=doc.type==='pdf'?'.pdf':'image/*';
- picker.onchange=async()=>{const file=picker.files?.[0];if(!file)return;if(file.size>12*1024*1024){toast('File is over 12 MB');return}
- try{
-  let text='';
-  if(doc.type==='pdf'){
-   if(!window.pdfjsLib)throw Error('PDF reader unavailable. Refresh and retry.');
-   window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-   const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-   if(pdf.numPages>100)throw Error('PDF exceeds 100 pages.');
-   for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p),ct=await pg.getTextContent();text+='\\n[Page '+p+']\\n'+ct.items.map(x=>x.str).join(' ')}
-  }else{
-   if(!window.Tesseract)throw Error('OCR engine unavailable. Refresh and retry.');
-   text=await runImageOCR(file);
-  }
-  if(!text.trim())throw Error('No text detected. Try a sharper image or crop to the text area.');
-  doc.extractedText=text.trim();doc.name=file.name;doc.created=Date.now();persist();render();toast('Document text refreshed');
- }catch(err){console.error(err);toast(err.message||'OCR retry failed')}
+ picker.onchange=async()=>{
+  const file=picker.files?.[0];if(!file)return;
+  if(file.size>12*1024*1024){toast('File is over 12 MB');return}
+  try{
+   let extracted='';
+   const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+   if(isPdf){
+    if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and retry.');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    if(pdf.numPages>100)throw new Error('PDF exceeds 100 pages.');
+    for(let p=1;p<=pdf.numPages;p++){
+     const pg=await pdf.getPage(p),ct=await pg.getTextContent();
+     let pageText=ct.items.filter(x=>String(x.str||'').trim()).map(x=>x.str).join(' ');
+     if(pageText.trim().length<24&&window.Tesseract){
+      try{
+       const base=pg.getViewport({scale:1}),viewport=pg.getViewport({scale:Math.min(1.8,1800/base.width)});
+       const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+       await pg.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+       const ocr=await runImageOCR(canvas);if(ocr.trim())pageText='[OCR]\n'+ocr.trim();
+      }catch(ocrError){console.warn('Scanned PDF OCR failed',p,ocrError)}
+     }
+     extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No readable text found.]')+'\n';
+     pg.cleanup?.();
+    }
+   }else{
+    if(!window.Tesseract)throw new Error('OCR engine unavailable. Refresh and retry.');
+    try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('OCR could not read image; preserving it for Gemini vision.',ocrError)}
+   }
+   await saveOriginalDocument(id,file);
+   doc.extractedText=extracted.trim()||'[No readable text detected. Original file is available for AI analysis.]';
+   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.mimeType=file.type||'';doc.size=file.size;doc.fileStored=true;doc.created=Date.now();
+   persist();render();toast('Original file and extracted text refreshed');
+  }catch(err){console.error(err);toast(err.message||'OCR retry failed')}
  };
  picker.click();
 }
+
 async function runImageOCR(file){
  const recognize=async source=>{let out;try{out=await window.Tesseract.recognize(source,'eng+hin')}catch(_){out=await window.Tesseract.recognize(source,'eng')}return out.data.text||''};
  let best=await recognize(file);
@@ -362,7 +381,6 @@ async function requestStudentBrainAI(question,targetDocId=null){
 function isStructuredWorkspaceQuestion(question){
  return /\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
 }
-async 
 function aiAnswer(question){
  const raw=String(question||''),terms=aiQueryTerms(raw);
  if(/\b(spend|spent|expense|expenses|money|kharch|udhaar|lent|borrowed|owe|repaid)\b/i.test(raw)){
@@ -409,7 +427,7 @@ function chatActionIntent(question){
  return null;
 }
 
-async async function sendChat(question,targetDocId=null){
+async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});persist();
  const actionResult=chatActionIntent(query);
