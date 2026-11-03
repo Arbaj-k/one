@@ -156,6 +156,18 @@ const query = (question, targetDocId = null) => vm.runInContext(
  'aiBuildDocumentEvidence(testDocs,' + JSON.stringify(question) + ',' + JSON.stringify(targetDocId) + ',{maxDocs:4,maxChunks:8,maxChars:8000})',
  retrievalSandbox
 );
+const tableWithBlankCell = vm.runInContext(
+ "extractStructuredTables('[Page 4]\\nSubject | Date | Start | End\\nAEC | 31.10.2026 |  | 10:00 AM')",
+ retrievalSandbox
+);
+assert.equal(tableWithBlankCell[0].page, 4, 'Structured table must retain its source page.');
+assert.deepEqual(Array.from(tableWithBlankCell[0].columns), ['Subject','Date','Start','End'], 'Structured table headers must remain ordered.');
+assert.deepEqual(Array.from(tableWithBlankCell[0].rows[0]), ['AEC','31.10.2026','','10:00 AM'], 'Blank table cells must remain blank instead of shifting the End value into Start.');
+const tableWithMarkdownSeparator = vm.runInContext(
+ "extractStructuredTables('Subject | Date | Start | End\\n--- | --- | --- | ---\\nAEC | 31.10.2026 | 08:30 AM | 10:00 AM')",
+ retrievalSandbox
+);
+assert.equal(tableWithMarkdownSeparator[0].rows.length, 1, 'Markdown table separator rows must not be treated as data.');
 const aec = query('AEC ka exam kab hai aur kitne baje?');
 assert.ok(aec.evidence.length > 0, 'AEC question should retrieve timetable evidence.');
 assert.equal(aec.evidence[0].doc.id, 'timetable', 'AEC question must rank the timetable above unrelated files.');
