@@ -129,7 +129,11 @@ for (const action of [
   'export-data', 'restore-data'
 ]) assert.ok(app.includes(action), `Missing workflow action: ${action}`);
 
-assert.match(app, /localStorage\.setItem\(KEY,JSON\.stringify\(data\)\)/);
+// Persistence serializes the workspace once, then stores the primary and recovery snapshots.
+assert.match(app, /const snapshot=JSON\.stringify\(data\)/, 'Workspace data must be serialized before persistence.');
+assert.match(app, /localStorage\.setItem\(KEY,snapshot\)/, 'Primary localStorage persistence must remain active.');
+assert.match(app, /localStorage\.setItem\(KEY\+'-last-good',snapshot\)/, 'A last-good recovery snapshot must be written.');
+assert.match(app, /saveWorkspaceSnapshot\(data\)/, 'IndexedDB workspace safety copy must be written.');
 assert.match(app, /localStorage\.getItem\(KEY\)/);
 assert.match(app, /localStorage\.getItem\(KEY\+'-last-good'\)/, 'Corrupt primary local data must attempt recovery from the last-good snapshot.');
 assert.match(app, /function parseBackupPayload\(parsed\)/, 'Restore must validate the backup payload before replacing workspace data.');
