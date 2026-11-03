@@ -318,39 +318,61 @@ function aiTextScore(text,terms){
  return score/Math.sqrt(terms.length);
 }
 async function buildStudentBrainAIRequest(question,targetDocId=null){
- const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(d=>d&&d.id);
- let rankedDocs=allDocs.map(doc=>({doc,score:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),terms)}));
- if(targetDocId)rankedDocs=rankedDocs.filter(item=>item.doc.id===targetDocId);
- else{
-  rankedDocs.sort((a,b)=>b.score-a.score||Number(b.doc.created||0)-Number(a.doc.created||0));
-  const relevant=rankedDocs.filter(item=>item.score>0);
-  rankedDocs=relevant.length?relevant.slice(0,4):rankedDocs.slice(0,2);
+ const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
+ // Search every uploaded document first; retrieval is not limited to the top few files.
+ const docCandidates=allDocs.map(doc=>{
+  const chunks=(Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||''))
+   .map((chunk,index)=>({text:String(chunk.text||''),page:chunk.page??null,index,score:aiTextScore(chunk.text,terms)}))
+   .filter(chunk=>chunk.text.trim());
+  const docScore=aiTextScore((doc.name||'')+' '+(doc.extractedText||''),terms);
+  return {doc,docScore,chunks};
+ }).filter(item=>!targetDocId||item.doc.id===targetDocId);
+ const perDoc=[];
+ for(const item of docCandidates){
+  const relevant=item.chunks.filter(chunk=>!terms.length||chunk.score>0)
+   .sort((a,b)=>b.score-a.score||a.index-b.index);
+  // When a query has matches, only include matching passages. If no match exists,
+  // preserve a small sample so the model can explain that evidence was not found.
+  const picked=relevant.length?relevant.slice(0,targetDocId?24:4):item.chunks.slice(0,1);
+  if(picked.length)perDoc.push({...item,picked});
+ }
+ const globalRanked=perDoc.flatMap(item=>item.picked.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore})))
+  .sort((a,b)=>b.score-a.score||b.docScore-a.docScore||a.index-b.index);
+ const selected=[],seen=new Set();
+ // First pass: retain at least one relevant passage from every file that matched.
+ for(const item of perDoc){
+  const first=item.picked[0];
+  if(first){selected.push({...first,doc:item.doc});seen.add(item.doc.id)}
+ }
+ // Second pass: fill remaining context with the strongest passages across all files.
+ for(const hit of globalRanked){
+  if(selected.length>=32)break;
+  if(selected.some(item=>item.doc.id===hit.doc.id&&item.index===hit.index))continue;
+  selected.push(hit);
  }
  const documents=[],sources=[];let totalChars=0,inlineFile=null;
- for(const {doc,score} of rankedDocs){
-  const chunks=(Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'')).map((chunk,index)=>({text:String(chunk.text||''),page:chunk.page??null,index}));
-  let chosen=[];
-  if(targetDocId&&String(doc.extractedText||'').length<=32000)chosen=[{text:String(doc.extractedText||''),page:null,index:0}];
-  else{
-   chosen=chunks.map(chunk=>({...chunk,score:aiTextScore(chunk.text,terms)})).sort((a,b)=>b.score-a.score||a.index-b.index);
-   if(!terms.length||!chosen.some(chunk=>chunk.score>0))chosen=chunks;
-   chosen=chosen.slice(0,targetDocId?28:7);
-  }
-  let content='';
-  for(const chunk of chosen){
-   const label='File: '+doc.name+(chunk.page?' · Page '+chunk.page:'');
-   if(!sources.includes(label))sources.push(label);
-   const block='['+label+']\n'+chunk.text;
-   if(totalChars+content.length+block.length>32000)break;
-   content+=(content?'\n\n':'')+block;
-  }
-  if(content){documents.push({name:doc.name,type:doc.type||'file',content});totalChars+=content.length}
-  if(!inlineFile&&doc.fileStored&&Number(doc.size||0)<=3*1024*1024&&(targetDocId||score>0)&&/^(application\/pdf|image\/(png|jpeg|webp))$/i.test(doc.mimeType||'')){
-   try{
-    const saved=await getOriginalDocument(doc.id);
-    if(saved?.blob){inlineFile={name:doc.name,mimeType:saved.type||doc.mimeType||'application/pdf',dataBase64:await fileToBase64(saved.blob)};sources.push('File: '+doc.name+' · original file')}
-   }catch(error){console.warn('Original file is not available for visual AI analysis.',error)}
-  }
+ for(const hit of selected){
+  const doc=hit.doc,label='File: '+doc.name+(hit.page?' · Page '+hit.page:'');
+  const block='['+label+']\\n'+hit.text;
+  if(totalChars+block.length>39000)continue;
+  let target=documents.find(entry=>entry.id===doc.id);
+  if(!target){target={id:doc.id,name:doc.name,type:doc.type||'file',content:''};documents.push(target)}
+  target.content+=(target.content?'\\n\\n':'')+block;
+  totalChars+=block.length;
+  if(!sources.includes(label))sources.push(label);
+ }
+ // Keep original visual-file analysis as an optional enhancement, while all uploaded
+ // files participate in text retrieval and cross-file synthesis.
+ const visualCandidates=docCandidates.filter(item=>item.doc.fileStored&&Number(item.doc.size||0)<=3*1024*1024&&
+  (targetDocId||item.docScore>0)&&/^(application\\/pdf|image\\/(png|jpeg|webp))$/i.test(item.doc.mimeType||''));
+ for(const item of visualCandidates.slice(0,1)){
+  try{
+   const saved=await getOriginalDocument(item.doc.id);
+   if(saved?.blob){
+    inlineFile={name:item.doc.name,mimeType:saved.type||item.doc.mimeType||'application/pdf',dataBase64:await fileToBase64(saved.blob)};
+    const label='File: '+item.doc.name+' · original file';if(!sources.includes(label))sources.push(label);
+   }
+  }catch(error){console.warn('Original file is not available for visual AI analysis.',error)}
  }
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  const notes=rankedNotes.filter(item=>!terms.length||item.score>0).slice(0,10).map(({note})=>{
@@ -362,7 +384,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  const memories=(data.memories||[]).slice(0,20).map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
  const studySessions=(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined)));if(studySessions.length)sources.push('Study sessions');
  const expenses=(data.expenses||[]).slice(-40).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||''}));if(expenses.length)sources.push('Money & Udhaar');
- return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents},sources:[...new Set(sources)].slice(0,20),inlineFile};
+ return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents},sources:[...new Set(sources)].slice(0,40),inlineFile};
 }
 async function requestStudentBrainAI(question,targetDocId=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
@@ -375,7 +397,7 @@ async function requestStudentBrainAI(question,targetDocId=null){
  let result={};try{result=await response.json()}catch{}
  if(!response.ok)throw new Error(result.error||('AI request failed ('+response.status+').'));
  if(typeof result.answer!=='string'||!result.answer.trim())throw new Error('AI returned an empty answer. Please try again.');
- return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,8):[]};
+ return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
 function isStructuredWorkspaceQuestion(question){
  return /\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
