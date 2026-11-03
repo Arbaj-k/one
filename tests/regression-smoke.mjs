@@ -31,7 +31,7 @@ assert.ok(!app.includes('dataBase64:await fileToBase64(saved.blob)'), 'Ask My Br
 assert.ok(app.includes('async function sendChat('), 'Ask My Brain must use the asynchronous AI response flow.');
 assert.ok(app.includes('function chatActionIntent('), 'Quick task and money actions must remain available.');
 assert.ok(!app.includes('GEMINI_API_KEY'), 'Gemini API secret must never be present in browser code.');
-assert.ok(app.includes("const label='File: '+doc.name"), 'Document citation labels should remain in the AI context builder.');
+assert.ok(app.includes("const label='File: '+hit.doc.name"), 'Document citation labels should remain in the query-aware evidence builder.');
 assert.ok(app.includes('async function retryDocumentOCR('), 'Uploaded documents must support a retry/re-upload path.');
 assert.ok(app.includes('async function runImageOCR(file)'), 'Image OCR extraction must be available.');
 assert.ok(app.includes('const extractedJson=documentTextToJSON('), 'Uploaded document text must be normalized into JSON.');
