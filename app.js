@@ -271,7 +271,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file could not be saved; keeping extracted text only.',storageError)}
    const extractedText=extracted.trim()||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
-   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored});
+   const extractedJson=documentTextToJSON(file.name,extractedText);\n   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored});
    persist();render();setProgress(100,'Saved '+file.name+'. Ask Brain can use extracted text'+(fileStored?' and original file.':'.'));toast('File saved to My Knowledge');
   }catch(err){console.error('Document extraction failed',err);setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
@@ -283,6 +283,15 @@ function askDocument(id){
  const q=prompt('Ask Brain anything about '+doc.name);
  if(!q||!q.trim())return;
  page='ask';render();sendChat(q.trim(),id);
+}
+
+function documentTextToJSON(name,text){
+ const pages=String(text||'').split(/(?=\\[Page\\s+\\d+\\])/i).map((part,index)=>{
+  const match=part.match(/^\\[Page\\s+(\\d+)\\]/i),page=match?Number(match[1]):index+1;
+  const content=part.replace(/^\\[Page\\s+\\d+\\]\\s*/i,'').split(/\\n+/).map(line=>line.replace(/\\s+/g,' ').trim()).filter(line=>line&&!/^\\[(?:OCR|No selectable text detected|No readable text found)[^\\]]*\\]$/i.test(line));
+  return {page,text:content};
+ }).filter(item=>item.text.length);
+ return {document_name:String(name||'Untitled document'),pages,extraction_status:pages.length?'success':'no_text'};
 }
 
 function splitDocumentIntoChunks(text){
@@ -362,20 +371,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   totalChars+=block.length;
   if(!sources.includes(label))sources.push(label);
  }
- // Keep original visual-file analysis as an optional enhancement, while all uploaded
- // files participate in text retrieval and cross-file synthesis.
- const visualCandidates=docCandidates.filter(item=>item.doc.fileStored&&Number(item.doc.size||0)<=3*1024*1024&&
-  (targetDocId||item.docScore>0)&&/^(application\/pdf|image\/(png|jpeg|webp))$/i.test(item.doc.mimeType||''));
- for(const item of visualCandidates.slice(0,1)){
-  try{
-   const saved=await getOriginalDocument(item.doc.id);
-   if(saved?.blob){
-    inlineFile={name:item.doc.name,mimeType:saved.type||item.doc.mimeType||'application/pdf',dataBase64:await fileToBase64(saved.blob)};
-    const label='File: '+item.doc.name+' · original file';if(!sources.includes(label))sources.push(label);
-   }
-  }catch(error){console.warn('Original file is not available for visual AI analysis.',error)}
- }
- const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
+ const inlineFile=null;\n const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  const notes=rankedNotes.filter(item=>!terms.length||item.score>0).slice(0,10).map(({note})=>{
   const source='Note: '+(note.title||'Untitled note');sources.push(source);
   return {source,title:String(note.title||''),subject:String(note.subject||''),tags:String(note.tags||''),content:String(note.content||'').slice(0,2400)};
