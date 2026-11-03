@@ -374,7 +374,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  }
  const documents=[],sources=[];
   let totalChars=0;
-  let inlineFile=null;
+  let inlineFile;
  for(const hit of selected){
   const doc=hit.doc;const label='File: '+doc.name+(hit.page?' · Page '+hit.page:'');
   const block='['+label+']\\n'+hit.text;
