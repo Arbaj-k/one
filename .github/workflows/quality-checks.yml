@@ -21,3 +21,7 @@ jobs:
         run: node --check app.js
       - name: Run smoke tests
         run: node tests/smoke.test.cjs
+      - name: Install Playwright and Chromium
+        run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Run browser regression tests
+        run: node tests/browser-regression.cjs
