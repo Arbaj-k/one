@@ -335,8 +335,13 @@ function aiQueryTerms(question){
 }
 function aiTextScore(text,terms){
  if(!terms.length)return 0;
- const lower=String(text||'').toLowerCase();let score=0;
- for(const term of terms)if(lower.includes(term))score+=lower.split(term).length>2?2:1;
+ const normalized=String(text||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\\u0900-\\u097f]+/g,' ');
+ const words=new Set(normalized.split(/\\s+/).filter(Boolean));let score=0;
+ for(const term of terms){
+  // Prefer whole-token matches; short terms should not match inside unrelated words.
+  if(words.has(term))score+=2;
+  else if(term.length>=4&&normalized.includes(term))score+=0.5;
+ }
  return score/Math.sqrt(terms.length);
 }
 async function buildStudentBrainAIRequest(question,targetDocId=null){
@@ -386,7 +391,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   if(!sources.includes(label))sources.push(label);
  }
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
- const notes=rankedNotes.filter(item=>!terms.length||item.score>0).slice(0,10).map(({note})=>{
+ // Avoid flooding general questions with unrelated personal notes.\n  const notes=rankedNotes.filter(item=>terms.length>0&&item.score>0).slice(0,10).map(({note})=>{
   const source='Note: '+(note.title||'Untitled note');sources.push(source);
   return {source,title:String(note.title||''),subject:String(note.subject||''),tags:String(note.tags||''),content:String(note.content||'').slice(0,2400)};
  });
