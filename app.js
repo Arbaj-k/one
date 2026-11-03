@@ -352,7 +352,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  }
  const documents=[],sources=[];let totalChars=0,inlineFile=null;
  for(const hit of selected){
-  const doc=hit.doc,label='File: '+doc.name+(hit.page?' · Page '+hit.page:'');
+  const doc=hit.doc;const label='File: '+doc.name+(hit.page?' · Page '+hit.page:'');
   const block='['+label+']\\n'+hit.text;
   if(totalChars+block.length>39000)continue;
   let target=documents.find(entry=>entry.id===doc.id);
