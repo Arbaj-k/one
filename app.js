@@ -365,16 +365,42 @@ function extractTimetableData(text){
  return records;
 }
 
-const AI_STOP_WORDS=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','hai','kya','bata','do','or','to','a','an','as','at','by','it','be','summarize','summary','explain']);
+const AI_STOP_WORDS=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','hai','kya','bata','do','or','to','a','an','as','at','by','it','be','summarize','summary','explain','ka','ki','ke','ko','se','mein','me','mera','meri','mere','btao','batao','dikhao','konsa','kaunsa','kab','kahan','kitna','kitne','hai','hoga','hogi','tha','thi','the','please']);
+const AI_QUERY_SYNONYMS={
+ 'timetable':['schedule','exam','date','time','paper'],
+ 'time':['samay','timing','waqt'],
+ 'date':['din','tareekh'],
+ 'subject':['course','paper','vishay'],
+ 'exam':['paper','test','pariksha'],
+ 'marks':['score','number'],
+ 'summary':['short','brief','saar'],
+ 'explain':['samjhao','samjha','meaning'],
+ 'due':['deadline','lastdate'],
+ 'task':['kaam','todo','assignment'],
+ 'spend':['kharch','kharcha','expense'],
+ 'borrowed':['udhaar','loan'],
+ 'lent':['udhaar','diya']
+};
+function aiNormalizeQuery(value){
+ return String(value||'').toLowerCase().normalize('NFKD')
+  .replace(/[़ँं]/g,'')
+  .replace(/[^a-z0-9\\u0900-\\u097f\\s]/g,' ')
+  .split(/\\s+/).filter(Boolean);
+}
 function aiQueryTerms(question){
- return [...new Set(String(question||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\u0900-\u097f\s]/g,' ').split(/\s+/).filter(w=>w.length>1&&!AI_STOP_WORDS.has(w)))].slice(0,18);
+ const tokens=aiNormalizeQuery(question),expanded=[...tokens];
+ for(const token of tokens)for(const synonym of (AI_QUERY_SYNONYMS[token]||[]))expanded.push(synonym);
+ // Handle common Hindi/Hinglish phrase variants without requiring exact phrasing.
+ const joined=tokens.join(' ');
+ if(/(kab hai|date kya|exam kab)/.test(joined))expanded.push('date','schedule','exam');
+ if(/(kitne baje|time kya|timing kya)/.test(joined))expanded.push('time','start','end');
+ if(/(samjha do|samjhao|matlab kya)/.test(joined))expanded.push('explain','meaning');
+ return [...new Set(expanded.filter(w=>w.length>1&&!AI_STOP_WORDS.has(w)))].slice(0,32);
 }
 function aiTextScore(text,terms){
  if(!terms.length)return 0;
- const normalized=String(text||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\u0900-\u097f]+/g,' ');
- const words=new Set(normalized.split(/\s+/).filter(Boolean));let score=0;
+ const normalized=aiNormalizeQuery(text).join(' '),words=new Set(normalized.split(/\\s+/).filter(Boolean));let score=0;
  for(const term of terms){
-  // Prefer whole-token matches; short terms should not match inside unrelated words.
   if(words.has(term))score+=2;
   else if(term.length>=4&&normalized.includes(term))score+=0.5;
  }
