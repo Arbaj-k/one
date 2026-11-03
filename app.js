@@ -312,8 +312,17 @@ function splitDocumentIntoChunks(text){
   const match=page.match(/^\[Page\s+(\d+)\]/i),pageNumber=match?Number(match[1]):null;
   const lines=page.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
   let block=[];
-  const flush=()=>{if(block.length){chunks.push({text:block.join(' '),page:pageNumber});block=[]}};
-  lines.forEach(line=>{if(block.length&&(/^[A-Z0-9][A-Z0-9\s:()/-]{2,}$/.test(line)||block.join(' ').length+line.length>850))flush();block.push(line);if(block.join(' ').length>=500)flush()});
+  const flush=()=>{if(block.length){chunks.push({text:block.join('\n'),page:pageNumber});block=[]}};
+  lines.forEach((line,index)=>{
+   const prior=lines[index-1]||'';
+   const tableRow=/(?:\||\t| {2,})/.test(line)&&/\d|\b(?:AEC|VAC|SEC|date|time|course|subject|paper|room|venue|amount|total|semester|exam)\b/i.test(line);
+   const heading=/^[A-Z0-9][A-Z0-9\s:()/-]{2,}$/.test(line);
+   if(block.length&&(heading||block.join('\n').length+line.length>700||tableRow&&block.join('\n').length>0))flush();
+   // Keep the immediately preceding table header with a data row.
+   if(tableRow&&prior&&/\b(?:date|time|course|subject|paper|room|venue|amount|total|semester|exam)\b/i.test(prior)&&!block.includes(prior))block.push(prior);
+   block.push(line);
+   if(block.join('\n').length>=420)flush();
+  });
   flush();
  });
  return chunks;
