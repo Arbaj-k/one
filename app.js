@@ -392,10 +392,16 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  }
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  // Avoid flooding general questions with unrelated personal notes.
-  const notes=rankedNotes.filter(item=>terms.length>0&&item.score>0).slice(0,10).map(({note})=>{
-  const source='Note: '+(note.title||'Untitled note');sources.push(source);
-  return {source,title:String(note.title||''),subject:String(note.subject||''),tags:String(note.tags||''),content:String(note.content||'').slice(0,2400)};
- });
+ const notes=rankedNotes
+  .filter(item=>terms.length>0&&item.score>0)
+  .slice(0,10)
+  .map(({note})=>({
+   source:'Note: '+(note.title||'Untitled note'),
+   title:String(note.title||''),
+   subject:String(note.subject||''),
+   tags:String(note.tags||''),
+   content:String(note.content||'').slice(0,2400)
+  }));
  const tasks=(data.tasks||[]).slice(0,60).map(task=>{const source='Task: '+String(task.title||'Untitled task');sources.push(source);return {source,title:task.title||'',category:task.category||'',due:task.due||null,priority:task.priority||'Medium',completed:!!task.done,notes:String(task.notes||'').slice(0,500)}});
  const projects=(data.projects||[]).slice(0,20).map(project=>{const source='Project: '+String(project.name||project.title||'Untitled project');sources.push(source);return {source,name:project.name||project.title||'',description:String(project.description||'').slice(0,700),status:project.status||'In progress',targetDate:project.targetDate||null}});
  const memories=(data.memories||[]).slice(0,20).map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
