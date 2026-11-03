@@ -216,16 +216,27 @@ async function retryDocumentOCR(id){
 
 async function runImageOCR(file){
  const recognize=async source=>{let out;try{out=await window.Tesseract.recognize(source,'eng+hin')}catch(_){out=await window.Tesseract.recognize(source,'eng')}return out.data.text||''};
- let best=await recognize(file);
- // Try a grayscale/high-contrast enlarged pass when the first OCR is sparse.
- if(best.trim().length<40&&window.createImageBitmap){
-  const bitmap=await createImageBitmap(file),scale=Math.min(2,2200/Math.max(bitmap.width,bitmap.height));
-  const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);
-  const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-  const pixels=ctx.getImageData(0,0,canvas.width,canvas.height),d=pixels.data;
-  for(let i=0;i<d.length;i+=4){const gray=.299*d[i]+.587*d[i+1]+.114*d[i+2],v=gray>160?255:0;d[i]=d[i+1]=d[i+2]=v}
-  ctx.putImageData(pixels,0,0);const improved=await recognize(canvas);if(improved.trim().length>best.trim().length)best=improved;
-  bitmap.close?.();
+ const cleanText=value=>String(value||'').replace(/[\\t\\f\\v]+/g,' ').split(/\\r?\\n/).map(line=>line.replace(/\\s+/g,' ').trim()).filter(line=>line&&!/^[|_~•·.\\-]{2,}$/.test(line)&&!/^([A-Z])\\1{3,}$/.test(line)).join('\\n').trim();
+ let best=cleanText(await recognize(file));
+ // If OCR is sparse, try enlarged grayscale and thresholded versions. These passes
+ // improve legibility without sending visual artwork to the AI as an input.
+ if(window.createImageBitmap){
+  const bitmap=await createImageBitmap(file);
+  try{
+   const scale=Math.min(2.5,2400/Math.max(bitmap.width,bitmap.height));
+   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+   const pixels=ctx.getImageData(0,0,canvas.width,canvas.height),d=pixels.data;
+   for(let i=0;i<d.length;i+=4){const gray=.299*d[i]+.587*d[i+1]+.114*d[i+2];d[i]=d[i+1]=d[i+2]=gray; }
+   ctx.putImageData(pixels,0,0);
+   const grayText=cleanText(await recognize(canvas));if(grayText.length>best.length)best=grayText;
+   if(best.length<80){
+    const threshold=ctx.getImageData(0,0,canvas.width,canvas.height),td=threshold.data;
+    for(let i=0;i<td.length;i+=4){const v=td[i]>160?255:0;td[i]=td[i+1]=td[i+2]=v}
+    ctx.putImageData(threshold,0,0);
+    const highContrast=cleanText(await recognize(canvas));if(highContrast.length>best.length)best=highContrast;
+   }
+  }finally{bitmap.close?.()}
  }
  return best;
 }
