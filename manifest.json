@@ -1,7 +1,7 @@
 {
-  "name": "Student Brain",
-  "short_name": "Student Brain",
-  "description": "Your personal student workspace",
+  "name": "One",
+  "short_name": "One",
+  "description": "Your personal assistant",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
