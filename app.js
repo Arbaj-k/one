@@ -308,18 +308,23 @@ function documentTextToJSON(name,text){
 
 function splitDocumentIntoChunks(text){
  const pages=String(text||'').split(/(?=\[Page\s+\d+\])/i),chunks=[];
- pages.forEach(page=>{
-  const match=page.match(/^\[Page\s+(\d+)\]/i),pageNumber=match?Number(match[1]):null;
-  const lines=page.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
-  let block=[];
-  const flush=()=>{if(block.length){chunks.push({text:block.join('\n'),page:pageNumber});block=[]}};
+ pages.forEach(pageBlock=>{
+  const match=pageBlock.match(/^\[Page\s+(\d+)\]/i),page=match?Number(match[1]):null;
+  const lines=pageBlock.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(value=>value.replace(/\s+/g,' ').trim()).filter(Boolean);
+  let block=[],lastHeader='';
+  const flush=()=>{if(block.length){chunks.push({text:block.join('\n'),page});block=[]}};
   lines.forEach((line,index)=>{
-   const prior=lines[index-1]||'';
-   const tableRow=/(?:\||\t| {2,})/.test(line)&&/\d|\b(?:AEC|VAC|SEC|date|time|course|subject|paper|room|venue|amount|total|semester|exam)\b/i.test(line);
-   const heading=/^[A-Z0-9][A-Z0-9\s:()/-]{2,}$/.test(line);
-   if(block.length&&(heading||block.join('\n').length+line.length>700||tableRow&&block.join('\n').length>0))flush();
-   // Keep the immediately preceding table header with a data row.
-   if(tableRow&&prior&&/\b(?:date|time|course|subject|paper|room|venue|amount|total|semester|exam)\b/i.test(prior)&&!block.includes(prior))block.push(prior);
+   const header=/^(?:subject|course|paper|date|day|time|start|end|room|venue|semester)\b/i.test(line)||(/(?:\||\t)/.test(line)&&/\b(?:subject|course|paper|date|day|time|start|end|room|venue|semester)\b/i.test(line));
+   const row=/[|\t]/.test(line)&&(/\d|[A-Z]{2,}/i.test(line));
+   if(header){flush();lastHeader=line;return}
+   if(row){
+    flush();
+    block=lastHeader?[lastHeader,line]:[line];
+    flush();
+    lastHeader='';
+    return;
+   }
+   if(block.length&&block.join('\n').length+line.length>700)flush();
    block.push(line);
    if(block.join('\n').length>=420)flush();
   });
@@ -329,100 +334,89 @@ function splitDocumentIntoChunks(text){
 }
 function extractStructuredTables(text){
  const tables=[];
- const pages=String(text||'').split(/(?=\\[Page\\s+\\d+\\])/i);
+ const pages=String(text||'').split(/(?=\[Page\s+\d+\])/i);
  for(const pageBlock of pages){
-  const pm=pageBlock.match(/^\\[Page\\s+(\\d+)\\]/i),page=pm?Number(pm[1]):null;
-  const lines=pageBlock.replace(/^\\[Page\\s+\\d+\\]\\s*/i,'').split(/\\n+/).map(x=>x.trim()).filter(Boolean);
-  const splitRow=line=>{
-   if(line.includes('|'))return line.split('|').map(x=>x.trim()).filter(Boolean);
-   if(line.includes('\\t'))return line.split('\\t').map(x=>x.trim()).filter(Boolean);
-   return line.split(/\\s{2,}/).map(x=>x.trim()).filter(Boolean);
-  };
-  for(let i=0;i<lines.length-1;i++){
-   const header=splitRow(lines[i]),cells=splitRow(lines[i+1]);
-   const likelyHeader=header.length>=3&&header.length<=8&&header.some(x=>/subject|course|paper|date|day|time|start|end|amount|total|room|venue|semester/i.test(x));
-   if(!likelyHeader||cells.length<2)continue;
+  const pageMatch=pageBlock.match(/^\[Page\s+(\d+)\]/i),page=pageMatch?Number(pageMatch[1]):null;
+  const lines=pageBlock.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(value=>value.trim()).filter(Boolean);
+  const splitRow=line=>line.includes('|')?line.split('|').map(value=>value.trim()).filter(Boolean):line.includes('\t')?line.split('\t').map(value=>value.trim()).filter(Boolean):line.split(/\s{2,}/).map(value=>value.trim()).filter(Boolean);
+  for(let index=0;index<lines.length-1;index++){
+   const header=splitRow(lines[index]);
+   const likelyHeader=header.length>=3&&header.length<=8&&header.some(value=>/subject|course|paper|date|day|time|start|end|amount|total|room|venue|semester|exam/i.test(value));
+   if(!likelyHeader)continue;
    const rows=[];
-   for(let j=i+1;j<lines.length;j++){
-    const row=splitRow(lines[j]);
+   for(let rowIndex=index+1;rowIndex<lines.length;rowIndex++){
+    const row=splitRow(lines[rowIndex]);
     if(row.length<2||row.length>header.length+1)break;
     rows.push(row.slice(0,header.length));
    }
    if(rows.length)tables.push({page,columns:header,rows});
-   i+=Math.max(0,rows.length-1);
+   index+=rows.length;
   }
  }
  return tables.slice(0,30);
 }
 function extractTimetableData(text){
  const records=[];
- const lines=String(text||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
- const parseTime=s=>{const m=String(s||'').match(/(\d{1,2}:\d{2}\s*[AP]M)/i);return m?m[1].toUpperCase().replace(/\s+/g,' '):''};
+ const lines=String(text||'').split(/\n+/).map(value=>value.trim()).filter(Boolean);
+ const parseTime=value=>{const match=String(value||'').match(/(\d{1,2}:\d{2}\s*[AP]M)/i);return match?match[1].toUpperCase().replace(/\s+/g,' '):''};
  for(const line of lines){
-  const m=line.match(/\b(All\s+)?(AEC|VAC|SEC|Open\s+Elective(?:\s+Courses)?)\s*[-:–—]\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})\s*(?:\(([^)]+)\))?\s*[-:–—]\s*(\d{1,2}:\d{2}\s*[AP]M)\s*[-:–—]\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
-  if(m)records.push({course:m[2].replace(/\s+/g,' ').trim().toUpperCase().replace('OPEN ELECTIVE COURSES','OPEN ELECTIVE'),date:m[3].replace(/[/-]/g,'.'),day:m[4]||'',start:parseTime(m[5]),end:parseTime(m[6]),raw:line});
+  const match=line.match(/\b(All\s+)?(AEC|VAC|SEC|Open\s+Elective(?:\s+Courses)?)\s*[-:–—|]\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})\s*(?:\(([^)]+)\))?\s*[-:–—|]\s*(\d{1,2}:\d{2}\s*[AP]M)\s*[-:–—|]\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+  if(match)records.push({course:match[2].replace(/\s+/g,' ').trim().toUpperCase().replace('OPEN ELECTIVE COURSES','OPEN ELECTIVE'),date:match[3].replace(/[/-]/g,'.'),day:match[4]||'',start:parseTime(match[5]),end:parseTime(match[6]),raw:line});
  }
  return records;
 }
-
-const AI_STOP_WORDS=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','date','exam','paper','test','hai','kya','bata','do','or','to','a','an','as','at','by','it','be','summarize','summary','explain','ka','ki','ke','ko','se','mein','me','mera','meri','mere','btao','batao','dikhao','konsa','kaunsa','kab','kahan','kitna','kitne','hai','hoga','hogi','tha','thi','the','please']);
+const AI_STOP_WORDS=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','exam','paper','test','hai','kya','bata','do','or','to','a','an','as','at','by','it','be','summarize','summary','explain','ka','ki','ke','ko','se','mein','mera','meri','mere','btao','batao','dikhao','konsa','kaunsa','kab','kahan','kitna','kitne','hoga','hogi','tha','thi','the','please']);
 const AI_QUERY_SYNONYMS={
- 'timetable':['schedule','exam','date','time','paper'],
- 'time':['samay','timing','waqt'],
- 'date':['din','tareekh'],
- 'subject':['course','paper','vishay'],
- 'exam':['paper','test','pariksha'],
- 'marks':['score','number'],
- 'summary':['short','brief','saar'],
- 'explain':['samjhao','samjha','meaning'],
- 'due':['deadline','lastdate'],
- 'task':['kaam','todo','assignment'],
- 'spend':['kharch','kharcha','expense'],
- 'borrowed':['udhaar','loan'],
- 'lent':['udhaar','diya']
+ timetable:['schedule','exam','date','time','paper'],
+ time:['samay','timing','waqt','baje'],
+ date:['din','tareekh'],
+ subject:['course','paper','vishay'],
+ exam:['paper','test','pariksha'],
+ marks:['score','number'],
+ summary:['short','brief','saar'],
+ explain:['samjhao','samjha','meaning'],
+ due:['deadline','lastdate'],
+ task:['kaam','todo','assignment'],
+ spend:['kharch','kharcha','expense'],
+ borrowed:['udhaar','loan'],
+ lent:['udhaar','diya']
 };
 function aiNormalizeQuery(value){
  return String(value||'').toLowerCase().normalize('NFKD')
   .replace(/[़ँं]/g,'')
-  .replace(/[^a-z0-9\\u0900-\\u097f\\s]/g,' ')
-  .split(/\\s+/).filter(Boolean);
+  .replace(/[^a-z0-9\u0900-\u097f\s]/g,' ')
+  .split(/\s+/).filter(Boolean);
 }
 function aiQueryTerms(question){
  const tokens=aiNormalizeQuery(question),expanded=[...tokens];
  for(const token of tokens)for(const synonym of (AI_QUERY_SYNONYMS[token]||[]))expanded.push(synonym);
- // Handle common Hindi/Hinglish phrase variants without requiring exact phrasing.
  const joined=tokens.join(' ');
  if(/(kab hai|date kya|exam kab)/.test(joined))expanded.push('date','schedule','exam');
  if(/(kitne baje|time kya|timing kya)/.test(joined))expanded.push('time','start','end');
  if(/(samjha do|samjhao|matlab kya)/.test(joined))expanded.push('explain','meaning');
- return [...new Set(expanded.filter(w=>w.length>1&&!AI_STOP_WORDS.has(w)))].slice(0,32);
+ return [...new Set(expanded.filter(token=>token.length>1&&!AI_STOP_WORDS.has(token)))].slice(0,36);
 }
 function aiTextScore(text,terms){
  if(!terms.length)return 0;
- const normalized=aiNormalizeQuery(text).join(' '),words=new Set(normalized.split(/\\s+/).filter(Boolean));let score=0;
+ const normalized=aiNormalizeQuery(text),words=new Set(normalized);let score=0;
  for(const term of terms){
   if(words.has(term))score+=2;
-  else if(term.length>=4&&normalized.includes(term))score+=0.5;
+  else if(term.length>=4&&normalized.some(word=>word.includes(term)))score+=0.5;
  }
  return score/Math.sqrt(terms.length);
 }
 function aiQueryIntent(question){
- const raw=String(question||'').toLowerCase();
- const tokens=aiNormalizeQuery(raw);
- const intent={terms:aiQueryTerms(question),subject:[],date:/\\b(date|when|kab|tareekh|din|schedule|timetable)\\b/.test(raw),
-  time:/\\b(time|timing|start|end|baje|samay|waqt|kitne)\\b/.test(raw),
-  table:/\\b(table|row|column|list|all|every|subjects|papers|courses|saare|sabhi)\\b/.test(raw),
-  page:/\\b(page|panna)\\s*\\d+/i.test(raw)};
- const subjectAliases={
-  aec:['aec','ability enhancement course'],vac:['vac','value added course'],
-  sec:['sec','skill enhancement course'],
-  'open elective':['open elective','open elective courses','oe']
- };
- for(const [key,aliases] of Object.entries(subjectAliases)){
-  if(aliases.some(alias=>raw.includes(alias)))intent.subject.push(key);
- }
- // Preserve numeric/date-like query tokens; they are highly discriminative for schedules.
- intent.terms=[...new Set([...intent.terms,...tokens.filter(token=>/^[0-9]{1,4}$/.test(token))])].slice(0,36);
+ const raw=String(question||'').toLowerCase(),tokens=aiNormalizeQuery(raw);
+ const intent={terms:aiQueryTerms(question),subject:[],
+  date:/\b(date|when|kab|tareekh|din|schedule|timetable)\b/.test(raw),
+  time:/\b(time|timing|start|end|baje|samay|waqt|kitne)\b/.test(raw),
+  table:/\b(table|row|column|list|all|every|subjects|papers|courses|saare|sabhi)\b/.test(raw),
+  page:false,question:String(question||'')};
+ const aliases={aec:['aec','ability enhancement course'],vac:['vac','value added course'],sec:['sec','skill enhancement course'],'open elective':['open elective','open elective courses','oe']};
+ for(const [subject,variants] of Object.entries(aliases))if(variants.some(alias=>raw.includes(alias)))intent.subject.push(subject);
+ const requestedPage=raw.match(/\b(?:page|panna)\s*(\d+)/i);
+ if(requestedPage){intent.page=true;intent.pageNumber=Number(requestedPage[1]);}
+ intent.terms=[...new Set([...intent.terms,...tokens.filter(token=>/^\d{1,4}$/.test(token))])].slice(0,40);
  return intent;
 }
 function aiChunkIntentScore(chunk,intent){
@@ -430,54 +424,45 @@ function aiChunkIntentScore(chunk,intent){
  let score=aiTextScore(text,intent.terms);
  if(intent.subject.length){
   for(const subject of intent.subject)if(lower.includes(subject))score+=8;
-  // Subject rows are preferred over a generic timetable introduction.
-  if(intent.subject.some(subject=>lower.includes(subject))&&/\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}/.test(text))score+=4;
+  if(intent.subject.some(subject=>lower.includes(subject))&&/\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/.test(text))score+=4;
  }
- if(intent.date&&/\\b\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}\\b/.test(text))score+=3;
- if(intent.time&&/\\b\\d{1,2}:\\d{2}\\s*[ap]m\\b/i.test(text))score+=3;
- if(intent.table&&/(?:\\||\\t| {2,})/.test(text))score+=2;
- const requestedPage=String(intent.question||'').match(/\\bpage\\s*(\\d+)/i);
- if(requestedPage&&Number(chunk.page)===Number(requestedPage[1]))score+=12;
+ if(intent.date&&/\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/.test(text))score+=3;
+ if(intent.time&&/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i.test(text))score+=3;
+ if(intent.table&&/(?:\||\t|\s{2,})/.test(text))score+=2;
+ if(intent.page&&Number(chunk.page)===intent.pageNumber)score+=12;
  return score;
 }
 function aiRankDocumentChunks(chunks,question){
- const intent=aiQueryIntent(question);intent.question=String(question||'');
- return chunks.map((chunk,index)=>({...chunk,index,score:aiChunkIntentScore(chunk,intent)}))
-  .filter(chunk=>chunk.text.trim())
+ const intent=aiQueryIntent(question);
+ return (chunks||[]).map((chunk,index)=>({...chunk,index,score:aiChunkIntentScore(chunk,intent)}))
+  .filter(chunk=>String(chunk.text||'').trim())
   .sort((a,b)=>b.score-a.score||a.index-b.index);
 }
 function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const intent=aiQueryIntent(question),maxDocs=limits.maxDocs??6,maxChunks=limits.maxChunks??24,maxChars=limits.maxChars??30000;
  const candidates=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId)).map(doc=>{
   const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
-  const ranked=aiRankDocumentChunks(sourceChunks,question);
-  const matching=ranked.filter(chunk=>chunk.score>0);
-  return {doc,ranked,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
- }).filter(item=>item.matching.length>0)
-  .sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
+  const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
+  return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
+ }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
  const picked=[],seen=new Set();
  for(const item of candidates.slice(0,maxDocs)){
-  const first=item.matching[0];
-  picked.push({...first,doc:item.doc});seen.add(item.doc.id);
+  const first=item.matching[0];picked.push({...first,doc:item.doc});seen.add(item.doc.id+':'+first.index);
  }
- const global=candidates.flatMap(item=>item.matching.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore})))
-  .sort((a,b)=>b.score-a.score||b.docScore-a.docScore||a.index-b.index);
+ const global=candidates.flatMap(item=>item.matching.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore}))).sort((a,b)=>b.score-a.score||b.docScore-a.docScore||a.index-b.index);
  for(const hit of global){
   if(picked.length>=maxChunks)break;
-  const key=hit.doc.id+':'+hit.index;
-  if(seen.has(key))continue;
+  const key=hit.doc.id+':'+hit.index;if(seen.has(key))continue;
   picked.push(hit);seen.add(key);
  }
- const selected=[],charsByDoc=new Map();let total=0;
+ const evidence=[];let total=0;
  for(const hit of picked){
-  if(selected.length>=maxChunks)break;
-  const label='File: '+hit.doc.name+(hit.page?' · Page '+hit.page:'');
-  const block='['+label+']\\n'+hit.text;
+  if(evidence.length>=maxChunks)break;
+  const label='File: '+hit.doc.name+(hit.page?' · Page '+hit.page:''),block='['+label+']\n'+hit.text;
   if(total+block.length>maxChars)continue;
-  total+=block.length;charsByDoc.set(hit.doc.id,(charsByDoc.get(hit.doc.id)||0)+1);
-  selected.push({...hit,label});
+  total+=block.length;evidence.push({...hit,label});
  }
- return {intent,evidence:selected,documents:[...new Set(selected.map(hit=>hit.doc.id))],chars:total};
+ return {intent,evidence,documents:[...new Set(evidence.map(hit=>hit.doc.id))],chars:total};
 }
 async function buildStudentBrainAIRequest(question,targetDocId=null){
  const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
