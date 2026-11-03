@@ -420,9 +420,10 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  for(const item of docCandidates){
   const relevant=item.chunks.filter(chunk=>!terms.length||chunk.score>0)
    .sort((a,b)=>b.score-a.score||a.index-b.index);
-  // When a query has matches, only include matching passages. If no match exists,
-  // preserve a small sample so the model can explain that evidence was not found.
-  const picked=relevant.length?relevant.slice(0,targetDocId?24:4):item.chunks.slice(0,1);
+  // If lexical retrieval finds nothing, do not send an arbitrary first chunk as if it were relevant.
+  // Use a small page-spread sample only as fallback evidence, explicitly marked as unranked.
+  const fallback=!relevant.length&&item.chunks.length>0;
+  const picked=relevant.length?relevant.slice(0,targetDocId?24:4):fallback?item.chunks.slice(0,Math.min(2,item.chunks.length)):[];
   if(picked.length)perDoc.push({...item,picked});
  }
  const globalRanked=perDoc.flatMap(item=>item.picked.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore})))
