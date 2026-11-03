@@ -80,3 +80,23 @@
 
 /* Ask My Brain typing status */
 .typing-indicator{display:flex;align-items:center;gap:5px;width:max-content;max-width:90%;margin:8px 0 12px;color:var(--muted);font-size:13px}.typing-dots{display:inline-block;overflow:hidden;vertical-align:bottom;animation:brain-typing 1.1s steps(4,end) infinite;white-space:nowrap;max-width:0}@keyframes brain-typing{0%{max-width:0}100%{max-width:1.8em}}@media(prefers-reduced-motion:reduce){.typing-dots{animation:none;max-width:1.8em}}
+
+/* Backup/restore and mobile safety polish */
+.restore-preview{margin-top:12px;padding:11px 12px;border:1px solid var(--line);background:#f7f9fc;border-radius:10px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.backup-grid{align-items:stretch}
+.backup-card{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.backup-card .btn{margin-top:auto}
+.backup-safety p{line-height:1.65;max-width:760px}
+@media(max-width:700px){
+ .backup-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+ .backup-card,.backup-safety{padding:16px}
+ .backup-card .btn{width:100%;margin-top:8px;min-height:44px}
+ #restore-file{font-size:12px;padding:10px;max-width:100%}
+ .restore-preview{font-size:11px}
+ .backup-safety{grid-column:1!important}
+}
+@media(max-width:380px){
+ .content{padding-left:12px;padding-right:12px}
+ .backup-card,.backup-safety{padding:13px}
+ .backup-card h2,.backup-safety h2{font-size:15px}
+}
