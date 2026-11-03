@@ -372,7 +372,6 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   totalChars+=block.length;
   if(!sources.includes(label))sources.push(label);
  }
- const inlineFile=null;
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  const notes=rankedNotes.filter(item=>!terms.length||item.score>0).slice(0,10).map(({note})=>{
   const source='Note: '+(note.title||'Untitled note');sources.push(source);
