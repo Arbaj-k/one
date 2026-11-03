@@ -22,7 +22,11 @@ for (const token of [
   'function exportData()', 'function studyPlanner()', 'function projects()',
   'function expenses()', 'function saveForm(', 'function splitDocumentIntoChunks(text)',
   "'delete-document'", 'Unsupported file type. Upload a PDF or image.',
-  'localStorage.setItem(KEY,JSON.stringify(data))',
+  // Persistence serializes once and writes the primary + recovery copies.
+  'const snapshot=JSON.stringify(data)',
+  "localStorage.setItem(KEY,snapshot)",
+  "localStorage.setItem(KEY+'-last-good',snapshot)",
+  'saveWorkspaceSnapshot(data)',
   'localStorage.getItem(KEY)'
 ]) {
   assert.ok(source.includes(token), 'Missing expected app feature: ' + token);
