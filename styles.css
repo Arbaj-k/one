@@ -76,3 +76,7 @@
 .quick-add-upload-status{font-size:11px;color:var(--muted);line-height:1.5;margin-top:12px;padding:10px 12px;background:#f7f8fc;border:1px solid var(--line);border-radius:10px;min-height:18px}
 .chat-form #chat-input{flex:1;min-width:0}
 @media(max-width:520px){.chat-form{gap:6px;padding:6px}.chat-form .btn{padding:9px 11px;font-size:12px}}
+
+
+/* Ask My Brain typing status */
+.typing-indicator{display:flex;align-items:center;gap:5px;width:max-content;max-width:90%;margin:8px 0 12px;color:var(--muted);font-size:13px}.typing-dots{display:inline-block;overflow:hidden;vertical-align:bottom;animation:brain-typing 1.1s steps(4,end) infinite;white-space:nowrap;max-width:0}@keyframes brain-typing{0%{max-width:0}100%{max-width:1.8em}}@media(prefers-reduced-motion:reduce){.typing-dots{animation:none;max-width:1.8em}}
