@@ -41,8 +41,8 @@ async function getStudentBrainAIToken(){
 function openAIFileDB(){
  return new Promise((resolve,reject)=>{
   if(!('indexedDB' in window)){reject(new Error('This browser does not support local file storage.'));return}
-  const req=indexedDB.open(AI_FILES_DB,1);
-  req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('files'))db.createObjectStore('files',{keyPath:'id'})};
+  const req=indexedDB.open(AI_FILES_DB,2);
+  req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('files'))db.createObjectStore('files',{keyPath:'id'});if(!db.objectStoreNames.contains('workspace'))db.createObjectStore('workspace',{keyPath:'key'})};
   req.onsuccess=()=>resolve(req.result);
   req.onerror=()=>reject(req.error||new Error('Could not open local file storage.'));
  });
@@ -74,6 +74,53 @@ async function fileToBase64(blob){
  });
 }
 
+const WORKSPACE_STORE_KEY='latest';
+let workspaceWriteQueue=Promise.resolve();
+function saveWorkspaceSnapshot(snapshot){
+ const safeCopy=JSON.parse(JSON.stringify(migrateData(snapshot)));
+ workspaceWriteQueue=workspaceWriteQueue.catch(()=>{}).then(async()=>{
+  const db=await openAIFileDB();
+  return new Promise((resolve,reject)=>{
+   const tx=db.transaction('workspace','readwrite');
+   tx.objectStore('workspace').put({key:WORKSPACE_STORE_KEY,data:safeCopy,savedAt:Date.now(),schemaVersion:DATA_SCHEMA_VERSION});
+   tx.oncomplete=()=>{db.close();resolve(true)};
+   tx.onerror=()=>{const err=tx.error||new Error('IndexedDB write failed');db.close();reject(err)};
+   tx.onabort=()=>{const err=tx.error||new Error('IndexedDB write was aborted');db.close();reject(err)};
+  });
+ });
+ return workspaceWriteQueue;
+}
+async function readWorkspaceSnapshot(){
+ const db=await openAIFileDB();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction('workspace','readonly'),req=tx.objectStore('workspace').get(WORKSPACE_STORE_KEY);
+  req.onsuccess=()=>{db.close();resolve(req.result||null)};
+  req.onerror=()=>{const err=req.error||new Error('IndexedDB read failed');db.close();reject(err)};
+ });
+}
+async function migrateWorkspaceToIndexedDB(){
+ try{
+  const saved=await readWorkspaceSnapshot();
+  const current=JSON.parse(localStorage.getItem(KEY)||'{}');
+  const currentData=migrateData(current);
+  // Only seed/migrate if the IndexedDB copy is absent or older. Never overwrite
+  // a newer durable copy with stale localStorage content.
+  if(!saved||Number(saved.savedAt||0)<Number(localStorage.getItem(KEY+'-idb-migrated-at')||0)){
+   await saveWorkspaceSnapshot(currentData);
+  }
+  localStorage.setItem(KEY+'-idb-migrated-at',String(Date.now()));
+  window.studentBrainStorageHealth={state:'ready',message:'IndexedDB safety copy active'};
+ }catch(err){
+  console.warn('IndexedDB migration unavailable; localStorage remains active',err);
+  window.studentBrainStorageHealth={state:'warning',message:err.message||'IndexedDB unavailable'};
+ }
+}
+async function requestWorkspaceStoragePersistence(){
+ try{
+  if(navigator.storage?.persist)window.studentBrainStoragePersistent=await navigator.storage.persist();
+  if(navigator.storage?.estimate)window.studentBrainStorageEstimate=await navigator.storage.estimate();
+ }catch(err){console.info('Storage persistence/estimate not available',err)}
+}
 function loadData(){
  try{return migrateData(JSON.parse(localStorage.getItem(KEY)||'{}'))}
  catch(primaryError){
@@ -99,15 +146,22 @@ function setCloudMode(mode,error=''){
  cloudStatus();
 }
 function persist(){
+ const snapshot=JSON.stringify(data);
  try{
-  localStorage.setItem(KEY,JSON.stringify(data));
-  localStorage.setItem(KEY+'-last-good',JSON.stringify(data));
+  localStorage.setItem(KEY,snapshot);
+  localStorage.setItem(KEY+'-last-good',snapshot);
   setCloudMode('offline','Saved locally on this device.');
  }catch(err){
   console.error('Local save failed',err);
   setCloudMode('error',err.message);
   toast('Local save failed. Export a backup and free storage.');
  }
+ // IndexedDB keeps a second local copy; localStorage remains the synchronous
+ // source during this compatibility phase so existing screens/actions are safe.
+ saveWorkspaceSnapshot(data).catch(err=>{
+  console.warn('IndexedDB workspace safety copy failed',err);
+  window.studentBrainStorageHealth={state:'warning',message:err.message||'IndexedDB copy failed'};
+ });
 }
 function queueCloudSave(){
  const snapshot=JSON.parse(JSON.stringify(data));
@@ -757,5 +811,7 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 if(!history.state||!history.state.sbPage)history.replaceState({sbPage:'overview'},'',location.href);
 window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render();});
 render();
+migrateWorkspaceToIndexedDB();
+requestWorkspaceStoragePersistence();
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.modal-backdrop'))action('close-modal')});
