@@ -25,6 +25,11 @@ assert.ok(voice.includes('let submitted = false;'), 'Voice result must be proces
 assert.ok(!app.includes('id="chat-file-upload"'), 'Ask My Brain should not show a file picker.');
 assert.ok(!app.includes('id="chat-upload-status"'), 'Ask My Brain should not show an upload status row.');
 assert.ok(app.includes('id="quick-add-file-upload"'), 'Quick Add file picker is missing.');
+assert.ok(app.includes('data-action="new-knowledge-entry"'), 'Quick Add Knowledge Entry option is missing.');
+assert.ok(app.includes("'new-knowledge-entry':()=>openKnowledgeEntry()"), 'Quick Add Knowledge Entry action is not wired.');
+assert.ok(app.includes('function openKnowledgeEntry(){'), 'Knowledge Entry title/content form is missing.');
+assert.ok(app.includes("formType==='quickKnowledge')?'notes'"), 'Knowledge Entry must save into searchable notes.');
+assert.ok(app.includes("v.subject='Knowledge';v.tags='knowledge'"), 'Knowledge Entry must be marked as searchable knowledge.');
 assert.ok(app.includes('data-action="quick-add-upload"'), 'Quick Add Upload file option is missing.');
 assert.ok(app.includes("'quick-add-upload':()=>document.querySelector('#quick-add-file-upload')?.click()"), 'Quick Add upload action is not wired to the file picker.');
 assert.ok(app.includes("if(e.target.id==='quick-add-file-upload')"), 'Quick Add file selection is not wired to document processing.');
