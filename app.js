@@ -359,50 +359,12 @@ function askDocument(id){
 }
 
 function documentTextToJSON(name,text){
- const raw=String(text||'');
- const pages=raw.split(/(?=\[Page\s+\d+\])/i).map((part,index)=>{
-  const match=part.match(/^\[Page\s+(\d+)\]/i),page=match?Number(match[1]):index+1;
-  const content=part.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(line=>line&&!/^\[(?:OCR|No selectable text detected|No readable text found)[^\]]*\]$/i.test(line));
-  return {page,text:content};
- }).filter(item=>item.text.length);
- // Normalize recognized text into a consistent JSON shape without discarding the verbatim OCR.
- const normalizeKey=value=>String(value||'').toLowerCase().trim()
-  .replace(/[^a-z0-9\u0900-\u097f]+/g,'_').replace(/^_+|_+$/g,'')||'field';
- const keyValue=[];
- for(const page of pages){
-  for(const line of page.text){
-   const match=line.match(/^\s*([^:：|\t]{2,50})\s*[:：]\s*(.+?)\s*$/);
-   if(match)keyValue.push({page:page.page,key:normalizeKey(match[1]),label:match[1].trim(),value:match[2].trim(),raw:line});
-  }
+ const extractor=window.StudentBrainDocumentExtractor;
+ if(!extractor||typeof extractor.extract!=='function'){
+  console.error('Document JSON extractor module is unavailable.');
+  return {document_name:String(name||'Untitled document'),schema_version:3,extraction_status:'extractor_unavailable',pages:[],structured_data:{key_value:[],tables:[],timetable:[],line_records:[]},extraction_notes:['The JSON extractor module did not load. Original extracted text is retained separately.']};
  }
- const tables=typeof extractStructuredTables==='function'?extractStructuredTables(raw):[];
- const structuredTables=tables.map(table=>({
-  page:table.page,
-  columns:table.columns.map((label,index)=>({key:normalizeKey(label)||'column_'+(index+1),label})),
-  rows:table.rows.map(row=>Object.fromEntries(table.columns.map((label,index)=>[normalizeKey(label)||'column_'+(index+1),String(row[index]??'').trim()])))
- }));
- const timetable=typeof extractTimetableData==='function'?extractTimetableData(raw).map(item=>({...item})): [];
- // Table fallback: retain line-based records as objects when OCR yields aligned columns but no separators.
- const lineRecords=[];
- for(const page of pages){
-  for(const line of page.text){
-   const cells=line.split(/\s{2,}|\t+/).map(value=>value.trim()).filter(Boolean);
-   if(cells.length>=3&&cells.length<=8)lineRecords.push({page:page.page,fields:cells.map((value,index)=>({key:'field_'+(index+1),value}))});
-  }
- }
- return {
-  document_name:String(name||'Untitled document'),
-  schema_version:2,
-  extraction_status:pages.length?'success':'no_text',
-  pages,
-  structured_data:{
-   key_value,
-   tables:structuredTables,
-   timetable,
-   line_records:lineRecords
-  },
-  extraction_notes:pages.length?[]:['No readable text was detected; structured fields are empty until OCR/text extraction succeeds.']
- };
+ return extractor.extract(name,text);
 }
 
 function splitDocumentIntoChunks(text){
