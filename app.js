@@ -233,12 +233,13 @@ async function runImageOCR(file){
 async function processUploadedDocuments(files,sourceNoteId=null){
  const list=Array.from(files||[]);if(!list.length)return;
  const setStatus=message=>{const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
+ const setProgress=(percent,label)=>setStatus(label+' · '+Math.max(0,Math.min(100,Math.round(percent)))+'%');
  for(const file of list){
   if(!file||file.size===0){setStatus((file?.name||'Selected file')+' is empty.');toast('Empty file cannot be processed');continue}
   if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB.');toast('File is over 12 MB');continue}
   const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
   if(!isPdf&&!file.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|tiff?)$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
-  setStatus('Reading '+file.name+'…');
+  setProgress(0,'Starting '+file.name);
   try{
    let extracted='';
    if(isPdf){
@@ -247,12 +248,12 @@ async function processUploadedDocuments(files,sourceNoteId=null){
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     if(pdf.numPages>100){extracted='[This PDF has '+pdf.numPages+' pages. The original file is saved; split it into smaller files for text extraction.]';}
     for(let p=1;p<=pdf.numPages;p++){
-     setStatus('Reading page '+p+' of '+pdf.numPages+' · '+file.name);
+     setProgress((p-1)/pdf.numPages*85,'Reading page '+p+' of '+pdf.numPages+' · '+file.name);
      const pdfPage=await pdf.getPage(p),content=await pdfPage.getTextContent();
      let pageText=content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
      if(pageText.trim().length<24&&window.Tesseract){
       try{
-       setStatus('OCR scanning page '+p+' · '+file.name);
+       setProgress((p-1)/pdf.numPages*85,'OCR scanning page '+p+' of '+pdf.numPages+' · '+file.name);
        const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(1.8,1800/base.width)});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
@@ -263,15 +264,15 @@ async function processUploadedDocuments(files,sourceNoteId=null){
     }
     }
    }else{
-    setStatus(window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
+    setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
     if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('Image OCR failed. The original image will still be saved for AI visual analysis.',ocrError)}}
    }
-   const id=uid();let fileStored=false;
+   setProgress(88,'Saving '+file.name);const id=uid();let fileStored=false;
    try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file could not be saved; keeping extracted text only.',storageError)}
    const extractedText=extracted.trim()||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored});
-   persist();render();setStatus('Saved '+file.name+'. Ask Brain can use extracted text'+(fileStored?' and original file.':'.'));toast('File saved to My Knowledge');
+   persist();render();setProgress(100,'Saved '+file.name+'. Ask Brain can use extracted text'+(fileStored?' and original file.':'.'));toast('File saved to My Knowledge');
   }catch(err){console.error('Document extraction failed',err);setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
