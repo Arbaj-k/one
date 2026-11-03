@@ -130,3 +130,34 @@ assert.match(app, /Unsupported file type\. Upload a PDF or image\./);
 
 console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, spoken task-save behavior, chat file uploads, data safety and CRUD routes.');
 console.log('Note: UI behavior, OCR extraction, backup round-trip, and mobile layout still require browser/device testing.');
+
+\n// Query-aware AI retrieval tests: execute the production chunk/ranker helpers without network calls.
+const retrievalStart = app.indexOf('function splitDocumentIntoChunks(text){');
+const retrievalEnd = app.indexOf('async function requestStudentBrainAI(', retrievalStart);
+assert.ok(retrievalStart >= 0 && retrievalEnd > retrievalStart, 'Could not locate retrieval helpers.');
+const retrievalSource = app.slice(retrievalStart, retrievalEnd);
+const retrievalSandbox = { console, Set, Map, Math, String, Number, Object, Array, RegExp };
+vm.createContext(retrievalSandbox);
+vm.runInContext(retrievalSource, retrievalSandbox, { filename: 'retrieval-helpers.js' });
+const run = (expression) => vm.runInContext(expression, retrievalSandbox);
+const timetableDocs = [
+ {id:'timetable',name:'Exam timetable.pdf',type:'pdf',extractedText:'[Page 2]\\nSubject | Date | Start | End\\nAEC | 31.10.2026 | 08:30 AM | 10:00 AM\\nVAC | 31.10.2026 | 10:30 AM | 12:00 PM\\nSEC | 31.10.2026 | 12:30 PM | 02:00 PM\\nOpen Elective | 31.10.2026 | 02:30 PM | 04:00 PM'},
+ {id:'unrelated',name:'Marketing notes.pdf',type:'pdf',extractedText:'[Page 1]\\nMarketing strategy, segmentation, branding and consumer behaviour.'}
+];
+retrievalSandbox.testDocs = timetableDocs;
+const aec = run("aiBuildDocumentEvidence(testDocs, 'AEC ka exam kab hai aur kitne baje?', null, {maxDocs:4,maxChunks:8,maxChars:8000})");
+assert.ok(aec.evidence.length > 0, 'AEC question should retrieve timetable evidence.');
+assert.equal(aec.evidence[0].doc.id, 'timetable', 'AEC question must rank the timetable above unrelated files.');
+assert.match(aec.evidence[0].text, /AEC\\s*\\|\\s*31\\.10\\.2026\\s*\\|\\s*08:30 AM\\s*\\|\\s*10:00 AM/i, 'AEC result must preserve the exact timetable row.');
+assert.equal(aec.evidence[0].page, 2, 'Retrieved timetable row must retain its exact page.');
+const vac = run("aiBuildDocumentEvidence(testDocs, 'When is VAC and what is the timing?', null, {maxDocs:4,maxChunks:8,maxChars:8000})");
+assert.match(vac.evidence[0].text, /VAC\\s*\\|\\s*31\\.10\\.2026\\s*\\|\\s*10:30 AM\\s*\\|\\s*12:00 PM/i, 'VAC query must retrieve the matching row.');
+const startEnd = run("aiBuildDocumentEvidence(testDocs, 'AEC start time and end time', null, {maxDocs:4,maxChunks:8,maxChars:8000})");
+assert.ok(startEnd.evidence.some(hit => /08:30 AM/.test(hit.text) && /10:00 AM/.test(hit.text)), 'Time-specific query must retain start and end times.');
+const noLeak = run("aiBuildDocumentEvidence(testDocs, 'What is the registration fee?', null, {maxDocs:4,maxChunks:8,maxChars:8000})");
+assert.equal(noLeak.evidence.length, 0, 'Unmatched query must not inject arbitrary unrelated document chunks.');
+const targeted = run("aiBuildDocumentEvidence(testDocs, 'What is the VAC exam time?', 'timetable', {maxDocs:1,maxChunks:8,maxChars:8000})");
+assert.ok(targeted.evidence.length > 0 && targeted.evidence.every(hit => hit.doc.id === 'timetable'), 'Ask-document retrieval must respect the selected document ID.');
+const hi = run("aiQueryIntent('AEC ka exam kab hai?')");
+assert.ok(hi.subject.includes('aec') && hi.date, 'Hindi/Hinglish subject/date intent should be detected.');
+assert.ok(app.includes('timetable:extractTimetableData(doc.extractedText||\'\')'), 'Structured timetable rows must be included in AI context.');
