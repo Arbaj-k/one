@@ -327,6 +327,33 @@ function splitDocumentIntoChunks(text){
  });
  return chunks;
 }
+function extractStructuredTables(text){
+ const tables=[];
+ const pages=String(text||'').split(/(?=\\[Page\\s+\\d+\\])/i);
+ for(const pageBlock of pages){
+  const pm=pageBlock.match(/^\\[Page\\s+(\\d+)\\]/i),page=pm?Number(pm[1]):null;
+  const lines=pageBlock.replace(/^\\[Page\\s+\\d+\\]\\s*/i,'').split(/\\n+/).map(x=>x.trim()).filter(Boolean);
+  const splitRow=line=>{
+   if(line.includes('|'))return line.split('|').map(x=>x.trim()).filter(Boolean);
+   if(line.includes('\\t'))return line.split('\\t').map(x=>x.trim()).filter(Boolean);
+   return line.split(/\\s{2,}/).map(x=>x.trim()).filter(Boolean);
+  };
+  for(let i=0;i<lines.length-1;i++){
+   const header=splitRow(lines[i]),cells=splitRow(lines[i+1]);
+   const likelyHeader=header.length>=3&&header.length<=8&&header.some(x=>/subject|course|paper|date|day|time|start|end|amount|total|room|venue|semester/i.test(x));
+   if(!likelyHeader||cells.length<2)continue;
+   const rows=[];
+   for(let j=i+1;j<lines.length;j++){
+    const row=splitRow(lines[j]);
+    if(row.length<2||row.length>header.length+1)break;
+    rows.push(row.slice(0,header.length));
+   }
+   if(rows.length)tables.push({page,columns:header,rows});
+   i+=Math.max(0,rows.length-1);
+  }
+ }
+ return tables.slice(0,30);
+}
 function extractTimetableData(text){
  const records=[];
  const lines=String(text||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
@@ -394,7 +421,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   const block='['+label+']\\n'+hit.text;
   if(totalChars+block.length>39000)continue;
   let target=documents.find(entry=>entry.id===doc.id);
-  if(!target){target={id:doc.id,name:doc.name,type:doc.type||'file',content:''};documents.push(target)}
+  if(!target){target={id:doc.id,name:doc.name,type:doc.type||'file',content:'',tables:extractStructuredTables(doc.extractedText||'').filter(table=>!hit.page||table.page===hit.page).slice(0,12)};documents.push(target)}
   target.content+=(target.content?'\\n\\n':'')+block;
   totalChars+=block.length;
   if(!sources.includes(label))sources.push(label);
