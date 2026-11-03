@@ -287,9 +287,9 @@ function askDocument(id){
 }
 
 function documentTextToJSON(name,text){
- const pages=String(text||'').split(/(?=\\[Page\\s+\\d+\\])/i).map((part,index)=>{
-  const match=part.match(/^\\[Page\\s+(\\d+)\\]/i),page=match?Number(match[1]):index+1;
-  const content=part.replace(/^\\[Page\\s+\\d+\\]\\s*/i,'').split(/\\n+/).map(line=>line.replace(/\\s+/g,' ').trim()).filter(line=>line&&!/^\\[(?:OCR|No selectable text detected|No readable text found)[^\\]]*\\]$/i.test(line));
+ const pages=String(text||'').split(/(?=\[Page\s+\d+\])/i).map((part,index)=>{
+  const match=part.match(/^\[Page\s+(\d+)\]/i),page=match?Number(match[1]):index+1;
+  const content=part.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(line=>line&&!/^\[(?:OCR|No selectable text detected|No readable text found)[^\]]*\]$/i.test(line));
   return {page,text:content};
  }).filter(item=>item.text.length);
  return {document_name:String(name||'Untitled document'),pages,extraction_status:pages.length?'success':'no_text'};
