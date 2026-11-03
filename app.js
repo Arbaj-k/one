@@ -391,7 +391,8 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
   if(!sources.includes(label))sources.push(label);
  }
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
- // Avoid flooding general questions with unrelated personal notes.\n  const notes=rankedNotes.filter(item=>terms.length>0&&item.score>0).slice(0,10).map(({note})=>{
+ // Avoid flooding general questions with unrelated personal notes.
+  const notes=rankedNotes.filter(item=>terms.length>0&&item.score>0).slice(0,10).map(({note})=>{
   const source='Note: '+(note.title||'Untitled note');sources.push(source);
   return {source,title:String(note.title||''),subject:String(note.subject||''),tags:String(note.tags||''),content:String(note.content||'').slice(0,2400)};
  });
