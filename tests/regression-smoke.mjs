@@ -186,3 +186,10 @@ assert.ok(hi.subject.includes('aec') && hi.date, 'Hindi/Hinglish subject/date in
 assert.ok(vm.runInContext("extractTimetableData(testDocs[0].extractedText).some(row => row.course === 'AEC' && row.start === '08:30 AM' && row.end === '10:00 AM')", retrievalSandbox), 'Structured timetable extraction must preserve exact start/end times.');
 assert.doesNotThrow(() => new Function(app.slice(retrievalStart, retrievalEnd)), 'Retrieval helpers must remain valid JavaScript.');
 assert.ok(app.includes("timetable:extractTimetableData(doc.extractedText||'')"), 'Structured timetable rows must be included in AI context.');
+assert.match(app, /const taskSummary='Save this task\\?/,'Voice task creation must confirm its summary before saving.');
+assert.match(app, /if\(!confirm\(taskSummary\)\)\{toast\('Task not saved'\)/,'Cancelling voice task confirmation must not save.');
+assert.match(app, /const moneySummary='Save this money record\\?/,'Voice money actions must confirm record details before saving.');
+assert.match(app, /if\(!confirm\(moneySummary\)\)\{toast\('Money record not saved'\)/,'Cancelling money confirmation must not save.');
+assert.match(app, /Saved task: '\+title/,'Voice task success confirmation must identify the saved task.');
+assert.match(app, /Saved '\+category\+' '\+amountLabel/,'Voice money success confirmation must echo the saved amount and category.');
+
