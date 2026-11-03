@@ -338,16 +338,27 @@ function extractStructuredTables(text){
  for(const pageBlock of pages){
   const pageMatch=pageBlock.match(/^\[Page\s+(\d+)\]/i),page=pageMatch?Number(pageMatch[1]):null;
   const lines=pageBlock.replace(/^\[Page\s+\d+\]\s*/i,'').split(/\n+/).map(value=>value.trim()).filter(Boolean);
-  const splitRow=line=>line.includes('|')?line.split('|').map(value=>value.trim()).filter(Boolean):line.includes('\t')?line.split('\t').map(value=>value.trim()).filter(Boolean):line.split(/\s{2,}/).map(value=>value.trim()).filter(Boolean);
+  // Keep interior empty cells: filtering them out silently shifts values into the wrong columns.
+  const splitRow=line=>{
+   let cells=line.includes('|')?line.split('|'):line.includes('\t')?line.split('\t'):line.split(/\s{2,}/);
+   cells=cells.map(value=>value.trim());
+   if(line.includes('|')){
+    if(cells[0]==='')cells.shift();
+    if(cells[cells.length-1]==='')cells.pop();
+   }
+   return cells;
+  };
+  const isSeparator=row=>row.length>0&&row.every(value=>/^:?-{3,}:?$/.test(value));
   for(let index=0;index<lines.length-1;index++){
    const header=splitRow(lines[index]);
    const likelyHeader=header.length>=3&&header.length<=8&&header.some(value=>/subject|course|paper|date|day|time|start|end|amount|total|room|venue|semester|exam/i.test(value));
-   if(!likelyHeader)continue;
+   if(!likelyHeader||isSeparator(header))continue;
    const rows=[];
    for(let rowIndex=index+1;rowIndex<lines.length;rowIndex++){
     const row=splitRow(lines[rowIndex]);
-    if(row.length<2||row.length>header.length+1)break;
-    rows.push(row.slice(0,header.length));
+    if(isSeparator(row))continue;
+    if(row.length<2||row.length>header.length)break;
+    rows.push(Array.from({length:header.length},(_,column)=>row[column]??''));
    }
    if(rows.length)tables.push({page,columns:header,rows});
    index+=rows.length;
