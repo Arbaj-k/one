@@ -769,16 +769,25 @@ window.submitStudentBrainVoiceText = function(raw) {
  const phrase=String(raw||'').trim();
  if(!phrase)return false;
  try {
-  if(typeof window.handleStudentBrainVoiceCommand==='function'&&window.handleStudentBrainVoiceCommand(phrase))return true;
-  if(chatBusy){toast('Brain is still replying. Try speaking again in a moment.');return false;}
-  page='ask';
-  if(!history.state||history.state.sbPage!=='ask')history.pushState({sbPage:'ask'},'',location.href);
+  // Money/udhaar commands are handled exclusively by the money-record flow.
+  const hasAmount=/(?:₹|\\brs\\.?\\s*)?\\d+(?:,\\d{3})*(?:\\.\\d+)?(?:\\s*(?:rupees?|rs\\.?|रुपये|रुपए))?/i.test(phrase);
+  const isMoneyCommand=hasAmount&&/rupee|rs\\.?|₹|udhaar|lend|lent|borrow|paid|spent|kharch|diye|diya|wapas|return|expense|lunch|food|रुपये|रुपए/i.test(phrase);
+  if(isMoneyCommand&&typeof window.handleStudentBrainVoiceCommand==='function')return window.handleStudentBrainVoiceCommand(phrase);
+  // Every other spoken command is saved verbatim as a Knowledge Entry.
+  const now=Date.now();
+  const title='Voice Entry · '+new Date(now).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+  data.notes.push({id:uid(),title,subject:'Knowledge',content:phrase,tags:'knowledge,voice',created:now,updated:now});
+  persist();
+  page='knowledge';
   render();
-  sendChat(phrase);
+  toast('Voice command saved to Knowledge');
+  const voiceStatus=document.querySelector('#voice-status');
+  if(voiceStatus)voiceStatus.textContent='Saved to Knowledge: '+phrase;
+  speakVoiceConfirmation('Saved to Knowledge.');
   return true;
  } catch(err) {
   console.error('Voice command failed',err);
-  toast('Could not process that voice command. Please try again.');
+  toast('Could not save that voice command. Please try again.');
   return false;
  }
 };
