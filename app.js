@@ -632,10 +632,12 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   else if(/wapas|return|repay|repaid/i.test(lower)){category='Udhaar returned';kind='repayment'}
   else if(/food|lunch|dinner|breakfast|khana/i.test(lower))category='Food';
   else if(/travel|bus|cab|auto/i.test(lower))category='Travel';
-  const desc=text.replace(/\b(i\s+)?(spent|paid|gave|lent|borrowed|returned|repaid)\b/ig,'').trim()||text;
-  if(!confirm('Save money record?\\n\\n'+category+': ₹'+amount.toLocaleString('en-IN')+'\\n'+desc+'\\nDate: '+dateFmt(due||today()))){toast('Not saved');return true}
-  data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:due||today(),kind,updated:Date.now(),created:Date.now()});
-  persist();page='expenses';window.expenseMonth=(due||today()).slice(0,7);render();toast('Money record saved');speakVoiceConfirmation('Money record saved.');return true;
+  const desc=text.replace(/\\b(i\\s+)?(spent|paid|gave|lent|borrowed|returned|repaid|kharch(?:a)?|diya|diye|wapas)\\b/ig,'').replace(/₹|rs\\.?|rupees?|रुपये|रुपए/ig,'').replace(/[0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?/g,'').replace(/\\b(today|aaj|tomorrow|kal)\\b/ig,'').replace(/\\s+/g,' ').replace(/^[\\s,.:;-]+|[\\s,.:;-]+$/g,'').trim()||category;
+  const recordDate=due||today(),amountLabel='₹'+amount.toLocaleString('en-IN');
+  const moneySummary='Save this money record?\\n\\nType: '+category+' ('+kind+')\\nAmount: '+amountLabel+'\\nFor / person: '+desc+'\\nDate: '+dateFmt(recordDate);
+  if(!confirm(moneySummary)){toast('Money record not saved');const voiceStatus=document.querySelector('#voice-status');if(voiceStatus)voiceStatus.textContent='Cancelled. No money record was saved.';speakVoiceConfirmation('Cancelled. No money record was saved.');return true}
+  data.expenses.push({id:uid(),description:desc,amount:String(amount),category,date:recordDate,kind,updated:Date.now(),created:Date.now()});
+  persist();page='expenses';window.expenseMonth=recordDate.slice(0,7);render();toast('Money record saved: '+amountLabel);const moneyConfirmation='Saved '+category+' '+amountLabel+' on '+dateFmt(recordDate)+'.';const voiceStatus=document.querySelector('#voice-status');if(voiceStatus)voiceStatus.textContent=moneyConfirmation;speakVoiceConfirmation(moneyConfirmation);return true;
  }
  const taskCue=/\b(task|tasks|to[ -]?do|assignment|homework|deadline|last date|due date|due|submit|exam|remind(?:er)?|project|study|studying|revise|revision|prepare|preparation|read|reading|practice|practise|write|writing|call|buy|kaam|padhai|karna hai|yaad dilana)\b/i.test(lower);
  const taskQuestionIntent=taskCue&&/\b(what|which|show|list|tell me|how many|do i have|are there|kya|kaunse|kaunsa|batao|dikhao|mere tasks|meri tasks)\b/i.test(lower);
@@ -648,6 +650,8 @@ window.handleStudentBrainVoiceCommand = function(raw) {
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title)title=text.trim();
   const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam|paper/i.test(lower)?'Exam':/project/i.test(lower)?'Project':/study|revise|padhai/i.test(lower)?'Study':'Personal',due,priority:/urgent|important|high priority|jaldi/i.test(lower)?'High':'Medium',done:false,updated:Date.now(),created:Date.now()};
+  const taskSummary='Save this task?\\n\\n'+task.title+'\\nCategory: '+task.category+'\\nPriority: '+task.priority+'\\nDue: '+(due?dateFmt(due):'No due date');
+  if(!confirm(taskSummary)){toast('Task not saved');const voiceStatus=document.querySelector('#voice-status');if(voiceStatus)voiceStatus.textContent='Task cancelled. Nothing was saved.';speakVoiceConfirmation('Task cancelled. Nothing was saved.');return true}
   data.tasks.push(task);
   persist();
   page='planner';
@@ -660,7 +664,7 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   toast('Task saved: '+title);
   const voiceStatus=document.querySelector('#voice-status');
   if(voiceStatus)voiceStatus.textContent='Saved to Planner: '+title+(due?' · '+dateFmt(due):'');
-  speakVoiceConfirmation('Task saved to Planner.');
+  speakVoiceConfirmation('Saved task: '+title+(due?' due '+dateFmt(due):'. No due date set.'));
   return true;
  }
  return false;
