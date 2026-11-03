@@ -131,6 +131,14 @@ for (const action of [
 
 assert.match(app, /localStorage\.setItem\(KEY,JSON\.stringify\(data\)\)/);
 assert.match(app, /localStorage\.getItem\(KEY\)/);
+assert.match(app, /localStorage\.getItem\(KEY\+'-last-good'\)/, 'Corrupt primary local data must attempt recovery from the last-good snapshot.');
+assert.match(app, /function parseBackupPayload\(parsed\)/, 'Restore must validate the backup payload before replacing workspace data.');
+assert.match(app, /function updateRestorePreview\(\)/, 'Restore file selection must provide a validation preview.');
+assert.match(app, /id="restore-preview"/, 'Backup and restore page must expose accessible restore feedback.');
+assert.match(app, /localStorage\.setItem\(KEY\+'-pre-restore'/, 'Restore must preserve a pre-restore recovery snapshot.');
+assert.match(css, /\.restore-preview/, 'Restore preview needs a visible responsive style.');
+assert.match(css, /@media\(max-width:700px\)[\s\S]*\.backup-grid/, 'Backup/restore layout must be polished for mobile.');
+
 assert.match(app, /function migrateData\(raw\)/);
 assert.match(app, /function splitDocumentIntoChunks\(text\)/);
 assert.match(app, /if\(!file\s*\|\|\s*file\.size===0\)/);
