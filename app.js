@@ -406,49 +406,94 @@ function aiTextScore(text,terms){
  }
  return score/Math.sqrt(terms.length);
 }
+function aiQueryIntent(question){
+ const raw=String(question||'').toLowerCase();
+ const tokens=aiNormalizeQuery(raw);
+ const intent={terms:aiQueryTerms(question),subject:[],date:/\\b(date|when|kab|tareekh|din|schedule|timetable)\\b/.test(raw),
+  time:/\\b(time|timing|start|end|baje|samay|waqt|kitne)\\b/.test(raw),
+  table:/\\b(table|row|column|list|all|every|subjects|papers|courses|saare|sabhi)\\b/.test(raw),
+  page:/\\b(page|panna)\\s*\\d+/i.test(raw)};
+ const subjectAliases={
+  aec:['aec','ability enhancement course'],vac:['vac','value added course'],
+  sec:['sec','skill enhancement course'],
+  'open elective':['open elective','open elective courses','oe']
+ };
+ for(const [key,aliases] of Object.entries(subjectAliases)){
+  if(aliases.some(alias=>raw.includes(alias)))intent.subject.push(key);
+ }
+ // Preserve numeric/date-like query tokens; they are highly discriminative for schedules.
+ intent.terms=[...new Set([...intent.terms,...tokens.filter(token=>/^[0-9]{1,4}$/.test(token))])].slice(0,36);
+ return intent;
+}
+function aiChunkIntentScore(chunk,intent){
+ const text=String(chunk.text||''),lower=text.toLowerCase();
+ let score=aiTextScore(text,intent.terms);
+ if(intent.subject.length){
+  for(const subject of intent.subject)if(lower.includes(subject))score+=8;
+  // Subject rows are preferred over a generic timetable introduction.
+  if(intent.subject.some(subject=>lower.includes(subject))&&/\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}/.test(text))score+=4;
+ }
+ if(intent.date&&/\\b\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}\\b/.test(text))score+=3;
+ if(intent.time&&/\\b\\d{1,2}:\\d{2}\\s*[ap]m\\b/i.test(text))score+=3;
+ if(intent.table&&/(?:\\||\\t| {2,})/.test(text))score+=2;
+ const requestedPage=String(intent.question||'').match(/\\bpage\\s*(\\d+)/i);
+ if(requestedPage&&Number(chunk.page)===Number(requestedPage[1]))score+=12;
+ return score;
+}
+function aiRankDocumentChunks(chunks,question){
+ const intent=aiQueryIntent(question);intent.question=String(question||'');
+ return chunks.map((chunk,index)=>({...chunk,index,score:aiChunkIntentScore(chunk,intent)}))
+  .filter(chunk=>chunk.text.trim())
+  .sort((a,b)=>b.score-a.score||a.index-b.index);
+}
+function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
+ const intent=aiQueryIntent(question),maxDocs=limits.maxDocs??6,maxChunks=limits.maxChunks??24,maxChars=limits.maxChars??30000;
+ const candidates=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId)).map(doc=>{
+  const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
+  const ranked=aiRankDocumentChunks(sourceChunks,question);
+  const matching=ranked.filter(chunk=>chunk.score>0);
+  return {doc,ranked,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
+ }).filter(item=>item.matching.length>0)
+  .sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
+ const picked=[],seen=new Set();
+ for(const item of candidates.slice(0,maxDocs)){
+  const first=item.matching[0];
+  picked.push({...first,doc:item.doc});seen.add(item.doc.id);
+ }
+ const global=candidates.flatMap(item=>item.matching.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore})))
+  .sort((a,b)=>b.score-a.score||b.docScore-a.docScore||a.index-b.index);
+ for(const hit of global){
+  if(picked.length>=maxChunks)break;
+  const key=hit.doc.id+':'+hit.index;
+  if(seen.has(key))continue;
+  picked.push(hit);seen.add(key);
+ }
+ const selected=[],charsByDoc=new Map();let total=0;
+ for(const hit of picked){
+  if(selected.length>=maxChunks)break;
+  const label='File: '+hit.doc.name+(hit.page?' · Page '+hit.page:'');
+  const block='['+label+']\\n'+hit.text;
+  if(total+block.length>maxChars)continue;
+  total+=block.length;charsByDoc.set(hit.doc.id,(charsByDoc.get(hit.doc.id)||0)+1);
+  selected.push({...hit,label});
+ }
+ return {intent,evidence:selected,documents:[...new Set(selected.map(hit=>hit.doc.id))],chars:total};
+}
 async function buildStudentBrainAIRequest(question,targetDocId=null){
  const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
- // Search every uploaded document first; retrieval is not limited to the top few files.
- const docCandidates=allDocs.map(doc=>{
-  const chunks=(Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||''))
-   .map((chunk,index)=>({text:String(chunk.text||''),page:chunk.page??null,index,score:aiTextScore(chunk.text,terms)}))
-   .filter(chunk=>chunk.text.trim());
-  const docScore=aiTextScore((doc.name||'')+' '+(doc.extractedText||''),terms);
-  return {doc,docScore,chunks};
- }).filter(item=>!targetDocId||item.doc.id===targetDocId);
- const perDoc=[];
- for(const item of docCandidates){
-  const relevant=item.chunks.filter(chunk=>!terms.length||chunk.score>0)
-   .sort((a,b)=>b.score-a.score||a.index-b.index);
-  // If lexical retrieval finds nothing, do not send an arbitrary first chunk as if it were relevant.
-  // Use a small page-spread sample only as fallback evidence, explicitly marked as unranked.
-  const fallback=!relevant.length&&item.chunks.length>0;
-  const picked=relevant.length?relevant.slice(0,targetDocId?24:4):fallback?item.chunks.slice(0,Math.min(2,item.chunks.length)):[];
-  if(picked.length)perDoc.push({...item,picked});
- }
- const globalRanked=perDoc.flatMap(item=>item.picked.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore})))
-  .sort((a,b)=>b.score-a.score||b.docScore-a.docScore||a.index-b.index);
- const selected=[],seen=new Set();
- // First pass: retain at least one relevant passage from every file that matched.
- for(const item of perDoc){
-  const first=item.picked[0];
-  if(first){selected.push({...first,doc:item.doc});seen.add(item.doc.id)}
- }
- // Second pass: fill remaining context with the strongest passages across all files.
- for(const hit of globalRanked){
-  if(selected.length>=32)break;
-  if(selected.some(item=>item.doc.id===hit.doc.id&&item.index===hit.index))continue;
-  selected.push(hit);
- }
+ const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:6,maxChunks:targetDocId?24:24,maxChars:39000});
  const documents=[],sources=[];
-  let totalChars=0;
-  let inlineFile;
- for(const hit of selected){
-  const doc=hit.doc;const label='File: '+doc.name+(hit.page?' · Page '+hit.page:'');
-  const block='['+label+']\\n'+hit.text;
+ let totalChars=0,inlineFile;
+ for(const hit of retrieval.evidence){
+  const doc=hit.doc,label=hit.label,block='['+label+']\\n'+hit.text;
   if(totalChars+block.length>39000)continue;
   let target=documents.find(entry=>entry.id===doc.id);
-  if(!target){target={id:doc.id,name:doc.name,type:doc.type||'file',content:'',tables:extractStructuredTables(doc.extractedText||'').filter(table=>!hit.page||table.page===hit.page).slice(0,12)};documents.push(target)}
+  if(!target){
+   target={id:doc.id,name:doc.name,type:doc.type||'file',
+    content:'',tables:extractStructuredTables(doc.extractedText||'').slice(0,12),
+    timetable:extractTimetableData(doc.extractedText||'').slice(0,30)};
+   documents.push(target);
+  }
   target.content+=(target.content?'\\n\\n':'')+block;
   totalChars+=block.length;
   if(!sources.includes(label))sources.push(label);
@@ -501,11 +546,8 @@ function aiAnswer(question){
   const tasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
   return {answer:tasks.length?'Your pending tasks:\n'+tasks.slice(0,15).map((t,i)=>(i+1)+'. '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':'Due ')+dateFmt(t.due):'No due date')+' · '+(t.priority||'Medium')).join('\n'):'You have no pending tasks saved right now.',sources:['Tasks & Planner']};
  }
- const hits=[];
- (data.documents||[]).forEach(doc=>{
-  const chunks=(Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||''));
-  chunks.forEach(chunk=>{const text=String(chunk.text||'');const score=aiTextScore(text,terms);if(score>0)hits.push({text,score,source:'File: '+doc.name+(chunk.page?' · Page '+chunk.page:'')})});
- });
+ const retrieval=aiBuildDocumentEvidence(data.documents||[],raw,null,{maxDocs:6,maxChunks:12,maxChars:18000});
+ const hits=retrieval.evidence.map(hit=>({text:hit.text,score:hit.score,source:hit.label}));
  (data.notes||[]).forEach(note=>{const text=[note.title,note.subject,note.tags,note.content].filter(Boolean).join(' '),score=aiTextScore(text,terms);if(score>0)hits.push({text,score,source:'Note: '+(note.title||'Untitled note')})});
  (data.memories||[]).forEach(memory=>{const text=[memory.title,memory.category,memory.content].filter(Boolean).join(' '),score=aiTextScore(text,terms);if(score>0)hits.push({text,score,source:'Personal memory: '+(memory.title||'Memory')})});
  hits.sort((a,b)=>b.score-a.score);
