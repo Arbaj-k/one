@@ -216,7 +216,7 @@ async function retryDocumentOCR(id){
 
 async function runImageOCR(file){
  const recognize=async source=>{let out;try{out=await window.Tesseract.recognize(source,'eng+hin')}catch(_){out=await window.Tesseract.recognize(source,'eng')}return out.data.text||''};
- const cleanText=value=>String(value||'').replace(/[\\t\\f\\v]+/g,' ').split(/\\r?\\n/).map(line=>line.replace(/\\s+/g,' ').trim()).filter(line=>line&&!/^[|_~•·.\\-]{2,}$/.test(line)&&!/^([A-Z])\\1{3,}$/.test(line)).join('\\n').trim();
+ const cleanText=value=>String(value||'').replace(/[\\t\\f\\v]+/g,' ').split(/\\r?\\n/).map(line=>line.replace(/\s+/g,' ').trim()).filter(line=>line&&!/^[|_~•·.\\-]{2,}$/.test(line)&&!/^([A-Z])\\1{3,}$/.test(line)).join('\\n').trim();
  let best=cleanText(await recognize(file));
  // If OCR is sparse, try enlarged grayscale and thresholded versions. These passes
  // improve legibility without sending visual artwork to the AI as an input.
@@ -335,8 +335,8 @@ function aiQueryTerms(question){
 }
 function aiTextScore(text,terms){
  if(!terms.length)return 0;
- const normalized=String(text||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\\u0900-\\u097f]+/g,' ');
- const words=new Set(normalized.split(/\\s+/).filter(Boolean));let score=0;
+ const normalized=String(text||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\u0900-\u097f]+/g,' ');
+ const words=new Set(normalized.split(/\s+/).filter(Boolean));let score=0;
  for(const term of terms){
   // Prefer whole-token matches; short terms should not match inside unrelated words.
   if(words.has(term))score+=2;
