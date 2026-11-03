@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
@@ -9,8 +10,15 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
 // Syntax validation catches startup-breaking parse errors.
-execFileSync(process.execPath, ['--check', new URL('../app.js', import.meta.url).pathname]);
-execFileSync(process.execPath, ['--check', new URL('../voice-assistant.js', import.meta.url).pathname]);
+execFileSync(process.execPath, [
+  '--check',
+  fileURLToPath(new URL('../app.js', import.meta.url))
+]);
+
+execFileSync(process.execPath, [
+  '--check',
+  fileURLToPath(new URL('../voice-assistant.js', import.meta.url))
+]);
 assert.ok(app.includes('window.submitStudentBrainVoiceText = function(raw)'), 'Global voice command handler is missing.');
 assert.ok(voice.includes('window.submitStudentBrainVoiceText(phrase)'), 'Speech recognition is not routed to the global command handler.');
 assert.ok(voice.includes('let submitted = false;'), 'Voice result must be processed only once per listening session.');
