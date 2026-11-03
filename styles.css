@@ -100,3 +100,17 @@
  .backup-card,.backup-safety{padding:13px}
  .backup-card h2,.backup-safety h2{font-size:15px}
 }
+
+/* Accessible keyboard focus and touch sizing */
+:where(button,a,input,textarea,select,[tabindex]):focus-visible{outline:3px solid #315eea!important;outline-offset:3px}
+button,.btn,.nav-item,.planner-tab,.mobile-nav button{min-height:40px}
+.task-check{min-width:44px;min-height:44px}
+@media(max-width:700px){
+ .content{padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+ .mobile-nav button{min-height:48px}
+ .planner-tabs{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+ .planner-tab{flex:0 0 auto;min-height:44px}
+ .task-row-actions{display:flex;gap:8px;flex-wrap:wrap}
+ .task-row-actions .btn{min-height:44px;flex:1}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
