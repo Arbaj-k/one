@@ -39,10 +39,10 @@ Deno.serve(async (req: Request) => {
 
     const workspace = body?.workspace && typeof body.workspace === "object" && !Array.isArray(body.workspace) ? body.workspace : {};
     const workspaceText = JSON.stringify(workspace);
-    if (workspaceText.length > 55000) return json({ error: "Your selected context is too large. Ask about one file at a time." }, 413);
+    if (workspaceText.length > 55000) return json({ error: "Your combined workspace context is too large. Try a more specific question or reduce the number of very large uploads." }, 413);
 
     const allowedSources = Array.isArray(body?.allowedSources)
-      ? [...new Set(body.allowedSources.filter((s: unknown): s is string => typeof s === "string").map((s: string) => s.slice(0, 220)))].slice(0, 30)
+      ? [...new Set(body.allowedSources.filter((s: unknown): s is string => typeof s === "string").map((s: string) => s.slice(0, 220)))].slice(0, 60)
       : [];
 
     const inlineFile = body?.inlineFile;
