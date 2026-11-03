@@ -364,7 +364,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  // Keep original visual-file analysis as an optional enhancement, while all uploaded
  // files participate in text retrieval and cross-file synthesis.
  const visualCandidates=docCandidates.filter(item=>item.doc.fileStored&&Number(item.doc.size||0)<=3*1024*1024&&
-  (targetDocId||item.docScore>0)&&/^(application\\/pdf|image\\/(png|jpeg|webp))$/i.test(item.doc.mimeType||''));
+  (targetDocId||item.docScore>0)&&/^(application\/pdf|image\/(png|jpeg|webp))$/i.test(item.doc.mimeType||''));
  for(const item of visualCandidates.slice(0,1)){
   try{
    const saved=await getOriginalDocument(item.doc.id);
