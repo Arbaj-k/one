@@ -500,3 +500,18 @@ footer a{color:#B9C9FF}
  .floating-create-button.is-open{bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(-3px) scale(1.04);}
 }
 @media(prefers-reduced-motion:reduce){.create-radial-option{animation:none;opacity:1;transform:translate3d(calc(-50% + var(--arc-x)),calc(-50% - var(--arc-y)),0)}.create-radial-backdrop{animation:none}}
+
+
+/* Show the One/install header only on the Home (Overview) page */
+body:not(.home-page) .topbar{display:none!important}
+body.home-page .topbar{display:flex}
+body:not(.home-page) .content{
+ padding-top:28px;
+ min-height:calc(100vh - 40px);
+}
+@media(max-width:760px){
+ body:not(.home-page) .content{
+  padding-top:20px;
+  min-height:calc(100dvh - 76px);
+ }
+}
