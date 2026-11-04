@@ -497,6 +497,6 @@ footer a{color:#B9C9FF}
  .create-radial-option{width:68px;height:72px;border-radius:20px;gap:4px}
  .create-radial-icon{width:31px;height:31px;font-size:19px;border-radius:11px}
  .create-radial-label{font-size:9px}
- .floating-create-button.is-open{bottom:calc(28px + env(safe-area-inset-bottom));}
+ .floating-create-button.is-open{bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(-3px) scale(1.04);}
 }
 @media(prefers-reduced-motion:reduce){.create-radial-option{animation:none;opacity:1;transform:translate3d(calc(-50% + var(--arc-x)),calc(-50% - var(--arc-y)),0)}.create-radial-backdrop{animation:none}}
