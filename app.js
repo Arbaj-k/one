@@ -559,6 +559,16 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
 }
 async function buildStudentBrainAIRequest(question,targetDocId=null){
  const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
+const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson);
+ const normalizedQuery=String(question||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097f]+/g,' ').trim();
+ const qTokens=normalizedQuery.split(/\s+/).filter(token=>token.length>2);
+ const rankedJson=docList.map(doc=>{
+  const searchable=JSON.stringify(doc.extractedJson).toLowerCase();
+  const score=qTokens.reduce((sum,token)=>sum+(searchable.includes(token)?1:0),0);
+  return {doc,score};
+ }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
+ const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
+
  const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:6,maxChunks:targetDocId?24:24,maxChars:39000});
  const documents=[],sources=[];
  let totalChars=0,inlineFile;
@@ -593,7 +603,7 @@ async function buildStudentBrainAIRequest(question,targetDocId=null){
  const memories=(data.memories||[]).slice(0,20).map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
  const studySessions=(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined)));if(studySessions.length)sources.push('Study sessions');
  const expenses=(data.expenses||[]).slice(-40).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||''}));if(expenses.length)sources.push('Money & Udhaar');
- return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents},sources:[...new Set(sources)].slice(0,40),inlineFile};
+ return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
 }
 async function requestStudentBrainAI(question,targetDocId=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
