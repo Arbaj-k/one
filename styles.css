@@ -295,3 +295,12 @@ table{max-width:100%}
 .home-stats>.stat-card .stat-icon{background:#414958!important;color:#e9edff!important;border:1px solid #596275!important}
 @media(min-width:761px){.home-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}.home-stats>.stat-card{min-height:165px}}
 @media(max-width:390px){.home-stats{gap:9px!important}.home-stats>.stat-card{padding:13px!important;min-height:138px}.home-stats>.stat-card .stat-number{font-size:27px}.home-stats>.stat-card .stat-label{font-size:12px}}
+
+
+/* Compact mobile bottom bar: Create remains the primary floating action; file upload is directly available */
+.mobile-nav{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 14px calc(8px + env(safe-area-inset-bottom));}
+.mobile-nav .mobile-quick-add,.mobile-nav .mobile-upload{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;min-width:132px;min-height:48px;padding:10px 18px;border:0;border-radius:28px;background:#4263eb;color:#fff;font-weight:800;box-shadow:0 5px 16px rgba(66,99,235,.24)}
+.mobile-nav .mobile-quick-add strong,.mobile-nav .mobile-upload strong{font-size:21px;line-height:1}
+.mobile-nav .mobile-quick-add span,.mobile-nav .mobile-upload span{font-size:13px}
+.mobile-nav .mobile-upload{background:#303f70;color:#fff;box-shadow:none;border:1px solid #596a9c}
+@media(min-width:761px){.mobile-nav{display:none!important}}
