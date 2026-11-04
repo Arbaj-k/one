@@ -58,9 +58,9 @@ assert.ok(css.includes('.floating-create-button.is-hidden{display:none!important
 assert.ok(app.includes("formType==='quickKnowledge')?'notes'"), 'Knowledge Entry must save into searchable notes.');
 assert.ok(app.includes("v.subject='Knowledge';v.tags='knowledge'"), 'Knowledge Entry must be marked as searchable knowledge.');
 assert.ok(app.includes('id="quick-add-file-upload"'), 'Quick Add file picker is missing.');
-assert.ok(app.includes("'quick-add-upload':()=>{const input=document.querySelector('#quick-add-file-upload');closeQuickAddMenu();input?.click()}"), 'Quick Add upload action is not wired to the file picker.');
-assert.ok(app.includes("if(e.target.id==='quick-add-file-upload')"), 'Quick Add file selection is not wired to document processing.');
-assert.ok(app.includes("document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status')"), 'Quick Add upload progress is not reported.');
+assert.ok(app.includes("'quick-add-upload':()=>openUploadForm()"), 'Quick Add upload action must open the dedicated full-screen upload form.');
+assert.ok(app.includes("if(formType==='quickUpload')"), 'Full-screen upload form must process the selected files.');
+assert.ok(app.includes("name=uploads"), 'Upload form must provide a multi-file picker.');
 assert.ok(css.includes('.create-radial-menu'), '3D radial Quick Add menu styles are missing.');
 assert.ok(css.includes('@keyframes create-orb-pop'), 'Radial Quick Add pop-out animation is missing.');
 
