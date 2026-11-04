@@ -8,7 +8,7 @@ for (const table of ['user_workspaces','ai_chat_messages','user_documents']) {
 for (const policy of ['workspace owner select','workspace owner insert','workspace owner update','workspace owner delete','chat owner select','chat owner insert','chat owner update','chat owner delete','documents owner select','documents owner insert','documents owner update','documents owner delete']) {
   assert.ok(sql.includes('create policy "' + policy + '"'), 'Missing owner policy: ' + policy);
 }
-assert.match(sql, /values \('one-user-documents', 'one-user-documents', false/);
-assert.match(sql, /storage\\.foldername\\(name\\).*auth\\.uid\\(\\)/s);
-assert.match(sql, /on delete cascade/);
+assert.ok(sql.includes("values ('one-user-documents', 'one-user-documents', false"), 'Private document bucket definition missing');
+assert.ok(sql.includes('storage.foldername(name)') && sql.includes('(select auth.uid())::text'), 'Storage object owner path restriction missing');
+assert.ok(sql.includes('on delete cascade'), 'Auth-user cascade cleanup missing');
 console.log('Cloud schema guardrails passed: owner-bound tables, RLS, private document bucket and auth-user cleanup.');
