@@ -180,3 +180,16 @@ button,.btn,.nav-item,.planner-tab,.mobile-nav button{min-height:40px}
 .planner-selected-date .selected-date-actions{display:flex;justify-content:flex-start;margin-top:14px}
 .planner-selected-date .list-item{gap:12px}
 @media(max-width:520px){.planner-selected-date{padding:13px!important}.planner-selected-date .task-row-actions{gap:8px;margin:8px 0 14px}.planner-selected-date .task-row-actions .btn{flex:1;min-width:100px;min-height:44px}.planner-selected-date .selected-date-actions{display:flex;position:static}.planner-selected-date .selected-date-actions .btn{width:100%;min-height:46px}.planner-task-open{min-height:38px}.planner-task-open .list-copy b{overflow-wrap:anywhere}}
+
+
+/* Selected-date planner controls: strong contrast and clear tap targets */
+.planner-selected-date .task-row-actions .btn:not(.danger){background:#315eea!important;border:1px solid #315eea!important;color:#fff!important;box-shadow:0 3px 9px rgba(49,94,234,.22)}
+.planner-selected-date .task-row-actions .btn:not(.danger):hover{background:#244bd0!important;border-color:#244bd0!important}
+.planner-selected-date .task-row-actions .btn.danger{background:#c62828!important;border:1px solid #c62828!important;color:#fff!important;box-shadow:0 3px 9px rgba(198,40,40,.18)}
+.planner-selected-date .task-row-actions .btn.danger:hover{background:#a91f1f!important;border-color:#a91f1f!important}
+.planner-selected-date .selected-date-actions .btn.primary{background:#4263eb!important;border:1px solid #4263eb!important;color:#fff!important;min-height:48px;font-weight:800;box-shadow:0 5px 14px rgba(66,99,235,.28)}
+.planner-selected-date .task-row-actions .btn:focus-visible,.planner-selected-date .selected-date-actions .btn:focus-visible{outline:3px solid #a8bbff!important;outline-offset:3px}
+.planner-selected-date .task-check{width:30px;height:30px;flex-basis:30px;border:2px solid #9aa8bb!important;background:#fff!important;color:#fff!important;border-radius:9px;font-size:16px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.planner-selected-date .task-check.checked{background:#16865b!important;border-color:#16865b!important;color:#fff!important}
+.planner-selected-date .task-check:focus-visible{outline:3px solid #9fc0ff;outline-offset:3px}
+@media(max-width:520px){.planner-selected-date .task-row-actions .btn{min-height:46px;font-size:14px;font-weight:800}.planner-selected-date .selected-date-actions .btn.primary{font-size:15px}}
