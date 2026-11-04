@@ -38,6 +38,13 @@ for (const action of [
 }
 assert.ok(app.includes("'new-knowledge-entry':()=>openKnowledgeEntry()"), 'Quick Add Knowledge Entry action is not wired.');
 assert.ok(app.includes('function openKnowledgeEntry(){'), 'Knowledge Entry title/content form is missing.');
+assert.ok(app.includes("fab?.classList.add('is-hidden')"), 'Create button must hide while a create form is open.');
+assert.ok(app.includes('class="modal-back-button"'), 'Create forms must provide one side back control.');
+assert.ok(!app.includes('class="xbtn" data-action="close-modal"'), 'Duplicate modal close X must not return.');
+assert.ok(!app.includes('class="btn" data-action="close-modal">Cancel</button>'), 'Duplicate bottom Cancel action must not return.');
+assert.ok(css.includes('.modal-back-button'), 'Single back control needs a clear visual style.');
+assert.ok(css.includes('.floating-create-button.is-hidden{display:none!important}'), 'Create launcher must stay hidden behind active forms.');
+
 assert.ok(app.includes("formType==='quickKnowledge')?'notes'"), 'Knowledge Entry must save into searchable notes.');
 assert.ok(app.includes("v.subject='Knowledge';v.tags='knowledge'"), 'Knowledge Entry must be marked as searchable knowledge.');
 assert.ok(app.includes('id="quick-add-file-upload"'), 'Quick Add file picker is missing.');
