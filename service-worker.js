@@ -1,5 +1,5 @@
 const CACHE_NAME = "student-brain-shell-v5";
-const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./voice-assistant.js", "./manifest.json", "./icons/student-brain.svg"];
+const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./auth.js", "./voice-assistant.js", "./manifest.json", "./icons/student-brain.svg"];
 const OFFLINE_FALLBACK = "./index.html";
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
