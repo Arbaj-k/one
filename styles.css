@@ -114,3 +114,5 @@ button,.btn,.nav-item,.planner-tab,.mobile-nav button{min-height:40px}
  .task-row-actions .btn{min-height:44px;flex:1}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+.json-preview{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f9fc;border:1px solid var(--line);border-radius:9px;padding:12px;font:11px/1.6 ui-monospace,monospace;color:var(--ink)}.document-card .actions{margin-top:10px}.document-card .actions .btn{flex:1}
