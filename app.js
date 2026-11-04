@@ -227,6 +227,7 @@ function openQuickAdd(){
  const rect=fab.getBoundingClientRect();
  const radiusX=Math.min(138,Math.max(104,(window.innerWidth-88)/2));
  const radiusY=112;
+ const centerX=window.innerWidth>760?Math.min(rect.left+rect.width/2,window.innerWidth-radiusX-40):rect.left+rect.width/2;
  const options=[
   {action:'new-knowledge-entry',icon:'✧',label:'Note',hint:'Knowledge Entry'},
   {action:'new-task',icon:'☑',label:'Task',hint:'Add a task'},
@@ -240,7 +241,7 @@ function openQuickAdd(){
  menu.className='create-radial-menu';
  menu.setAttribute('role','menu');
  menu.setAttribute('aria-label','Create something');
- menu.style.left=(rect.left+rect.width/2)+'px';
+ menu.style.left=centerX+'px';
  menu.style.top=rect.top+'px';
  menu.innerHTML=options.map((o,i)=>{
   const radians=angles[i]*Math.PI/180;
