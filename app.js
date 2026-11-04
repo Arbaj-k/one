@@ -186,8 +186,11 @@ async function saveCloudSnapshot(snapshot){
 // Local-first storage: all workspace records stay in this browser/device.
 const LOCAL_ONLY=true;
 function initCloud(){
- setCloudMode('offline','Local-only mode: data is saved on this device.');
+ // This deployment intentionally keeps workspace data local until account-bound
+ // cloud sync is enabled and validated. Always settle the startup indicator.
+ setCloudMode('offline','Cloud sync is disabled (LOCAL_ONLY=true). Your data remains saved locally.');
 }
+
 
 function formatChatText(value=''){
  let text=String(value??'').replace(/\\n/g,'\n').replace(/\/n/g,'\n').replace(/\r\n?/g,'\n');
@@ -984,6 +987,8 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 if(!history.state||!history.state.sbPage)history.replaceState({sbPage:'overview'},'',location.href);
 window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render();});
 render();
+// Initialize the cloud status immediately; do not leave the HTML placeholder stuck.
+initCloud();
 migrateWorkspaceToIndexedDB();
 requestWorkspaceStoragePersistence();
 
