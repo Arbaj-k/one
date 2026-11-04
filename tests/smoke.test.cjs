@@ -22,7 +22,6 @@ for (const token of [
   'function exportData()', 'function studyPlanner()', 'function projects()',
   'function expenses()', 'function saveForm(', 'function splitDocumentIntoChunks(text)',
   "'delete-document'", 'Unsupported file type. Upload a PDF or image.',
-  // Persistence serializes once and writes the primary + recovery copies.
   'const snapshot=JSON.stringify(data)',
   "localStorage.setItem(KEY,snapshot)",
   "localStorage.setItem(KEY+'-last-good',snapshot)",
@@ -32,26 +31,20 @@ for (const token of [
   assert.ok(source.includes(token), 'Missing expected app feature: ' + token);
 }
 
-// Money & Udhaar: four summary cards, clickable action routing and form defaults.
+// Money & Udhaar quick-action wiring.
 for (const token of [
-  "expenseStat('Spending this month'",
-  "expenseStat('You are owed'",
-  "expenseStat('You owe others'",
-  "expenseStat('Records'",
-  'data-action="expense-quick-action"',
-  "'expense-quick-action':()=>",
-  "openForm('expense')",
-  'typeField.value=id',
-  "if(id==='all')",
-  "field('Transaction type','kind'",
-  "field('Person','person'",
-  'expense-quick-action'
+  "expenseStat('Spending this month'", "expenseStat('You are owed'",
+  "expenseStat('You owe others'", "expenseStat('Records'",
+  'data-action="expense-quick-action"', "'expense-quick-action':()=>",
+  "openForm('expense')", 'typeField.value=id', "if(id==='all')",
+  "field('Transaction type','kind'", "field('Person','person'", 'expense-quick-action'
 ]) {
   assert.ok(source.includes(token) || css.includes(token), 'Money & Udhaar quick-action wiring missing: ' + token);
 }
 assert.ok(css.includes('.expense-quick-action'), 'Money & Udhaar quick-action styles are missing');
 
-// Keep the extended regression suite in sync with this single CI entry point.
+// Run database security guardrails and the extended regression suite.
+execFileSync(process.execPath, ['tests/cloud-schema-guardrails.cjs'], { stdio: 'inherit' });
 execFileSync(process.execPath, ['tests/regression-smoke.mjs'], { stdio: 'inherit' });
 
-console.log('Student Brain smoke checks passed: syntax, app shell, core features, data safety, CRUD and Money & Udhaar quick actions.');
+console.log('Student Brain smoke checks passed: syntax, app shell, core features, data safety, CRUD and quick actions.');
