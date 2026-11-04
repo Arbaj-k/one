@@ -520,3 +520,25 @@ body:not(.home-page) .content{
 body:not(.home-page) .sidebar .brand{display:none!important}
 body:not(.home-page) .sidebar .workspace-label{padding-top:8px}
 body:not(.home-page) .site-footer>span:last-child{display:none}
+
+
+/* Cleaner Create forms: one back control, one primary save action. */
+.floating-create-button.is-hidden{display:none!important}
+.modal-backdrop{z-index:40;background:rgba(8,16,32,.68);backdrop-filter:blur(8px);padding:18px}
+.modal{width:min(620px,100%);max-height:min(88dvh,820px);overflow:auto;background:#fbfcff;color:#17243b;border:1px solid rgba(215,224,241,.9);border-radius:22px;padding:clamp(18px,3vw,28px);box-shadow:0 28px 90px rgba(3,10,25,.42)}
+.modal-head{display:flex;align-items:center;justify-content:flex-start;gap:14px;margin:0 0 22px;padding:0 0 17px;border-bottom:1px solid #e7ebf3}
+.modal-head h2{margin:0;color:#152443;font-size:clamp(19px,2.5vw,23px);font-weight:800;line-height:1.25;letter-spacing:-.025em}
+.modal-back-button{flex:0 0 42px;width:42px;height:42px;display:grid;place-items:center;border:1px solid #dce4f2;border-radius:14px;background:linear-gradient(145deg,#fff,#edf2ff);color:#3156c8;box-shadow:0 4px 12px rgba(28,54,116,.10);cursor:pointer;transition:transform .16s,box-shadow .16s}
+.modal-back-button span{font-size:25px;line-height:1;margin-top:-2px}
+.modal-back-button:hover{transform:translateX(-2px);box-shadow:0 7px 17px rgba(28,54,116,.16)}
+.modal form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:15px;row-gap:2px}
+.modal .field{min-width:0;margin-bottom:15px;gap:8px}
+.modal .field label{font-size:12px;font-weight:750;color:#40516e;letter-spacing:.01em}
+.modal .field input,.modal .field textarea,.modal .field select{min-height:45px;border:1px solid #d9e1ed;border-radius:12px;background:#fff;color:#17243b;padding:11px 13px;font-size:14px;box-shadow:0 1px 2px rgba(16,32,63,.035);transition:border-color .16s,box-shadow .16s}
+.modal .field textarea{min-height:130px;line-height:1.55;resize:vertical}
+.modal .field input:focus,.modal .field textarea:focus,.modal .field select:focus{outline:none;border-color:#6685ee;box-shadow:0 0 0 3px rgba(74,105,220,.13)}
+.modal .field input::placeholder,.modal .field textarea::placeholder{color:#8a96a9;opacity:1}
+.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:0;margin-top:7px;padding-top:16px;border-top:1px solid #e7ebf3}
+.modal-save-button{min-width:150px;min-height:46px;border:0;border-radius:13px;background:linear-gradient(135deg,#4569e8,#294bc3);color:#fff;font-weight:750;box-shadow:0 8px 18px rgba(48,79,190,.22)}
+.modal-save-button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+@media(max-width:560px){.modal-backdrop{padding:10px;align-items:center}.modal{max-height:90dvh;border-radius:19px;padding:17px}.modal form{grid-template-columns:minmax(0,1fr);column-gap:0}.modal .field:not(.full){grid-column:1}.modal-head{gap:11px;margin-bottom:17px}.modal-back-button{width:40px;height:40px;flex-basis:40px}.modal-save-button{width:100%}}
