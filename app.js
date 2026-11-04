@@ -362,7 +362,7 @@ async function convertDocumentToJSON(id){
  const doc=(data.documents||[]).find(item=>item.id===id);if(!doc)return;
  try{
   const token=await getStudentBrainAIToken();
-  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':'image/png'),extractedText:doc.extractedText})});
+  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText})});
   let payload={};try{payload=await response.json()}catch{}
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
