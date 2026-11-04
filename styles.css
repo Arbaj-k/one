@@ -576,3 +576,54 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
  #modal-root .create-form-screen .choice-options{gap:9px}
  #modal-root .create-form-screen .choice-option{padding:11px 18px}
 }
+
+
+/* One consistent reference-style back button across all screens. */
+#page-content .back-home-icon,
+#modal-root .create-form-screen .modal-back-button{
+ display:inline-grid!important;
+ place-items:center!important;
+ flex:0 0 clamp(54px,11vw,88px)!important;
+ width:clamp(54px,11vw,88px)!important;
+ min-width:clamp(54px,11vw,88px)!important;
+ height:clamp(54px,11vw,88px)!important;
+ padding:0!important;
+ border:1px solid #2d3a5e!important;
+ border-radius:25px!important;
+ background:#171e30!important;
+ color:#eff3ff!important;
+ font-size:clamp(28px,5vw,42px)!important;
+ font-weight:500!important;
+ line-height:1!important;
+ box-shadow:none!important;
+ text-decoration:none!important;
+ cursor:pointer;
+ transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+#page-content .back-home-icon:hover,
+#modal-root .create-form-screen .modal-back-button:hover{
+ background:#202a40!important;
+ border-color:#40517b!important;
+ color:#fff!important;
+ box-shadow:0 7px 18px rgba(0,0,0,.22)!important;
+ transform:translateX(-2px);
+}
+#page-content .back-home-icon:focus-visible,
+#modal-root .create-form-screen .modal-back-button:focus-visible{
+ outline:3px solid #7d98ff!important;
+ outline-offset:3px;
+}
+#modal-root .create-form-screen .modal-back-button span{
+ font-size:clamp(28px,5vw,42px)!important;
+ line-height:1!important;
+}
+@media(max-width:600px){
+ #page-content .back-home-icon,
+ #modal-root .create-form-screen .modal-back-button{
+  flex-basis:clamp(54px,14vw,64px)!important;
+  width:clamp(54px,14vw,64px)!important;
+  min-width:clamp(54px,14vw,64px)!important;
+  height:clamp(54px,14vw,64px)!important;
+  border-radius:22px!important;
+ }
+}
