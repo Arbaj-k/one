@@ -1,6 +1,6 @@
-# Student Brain
+# One — Personal Assistant
 
-Student Brain is a lightweight, browser-based student workspace and installable web app (PWA). It includes notes, tasks/planner, projects, expenses, study history, file text extraction, and source-based Ask My Brain search.
+One is a lightweight, browser-based personal workspace and installable web app (PWA) for anyone. It helps people organize notes, tasks, projects, expenses, personal knowledge, documents, and AI-assisted answers—whether for everyday life, work, learning, or personal goals.
 
 ## Run locally
 
