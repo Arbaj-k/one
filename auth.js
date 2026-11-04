@@ -60,7 +60,7 @@
         const {data,error}=await auth.auth.signUp({email,password,options:{emailRedirectTo:REDIRECT,data:{full_name:name}}});if(error)throw error;
         if(data.session){await upsertProfile(data.user,name);session=data.session;close();paintUser(data.user)}
         else{view='sent';render();status('Verification email sent. Verify your email before logging in.')}
-      }else if(view==='login){
+      }else if(view==='login'){
         const {data,error}=await auth.auth.signInWithPassword({email,password});if(error)throw error;
         if(!data.user?.email_confirmed_at){await auth.auth.signOut();throw Error('Please verify your email using the link we sent you.')}
         session=data.session;await upsertProfile(data.user);close();paintUser(data.user);
