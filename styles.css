@@ -304,3 +304,9 @@ table{max-width:100%}
 .mobile-nav .mobile-quick-add span,.mobile-nav .mobile-upload span{font-size:13px}
 .mobile-nav .mobile-upload{background:#303f70;color:#fff;box-shadow:none;border:1px solid #596a9c}
 @media(min-width:761px){.mobile-nav{display:none!important}}
+
+
+/* Shared left-arrow navigation for dashboard detail pages */
+.back-home-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin:0 0 12px;padding:0;border:1px solid var(--border,#dbe3ee);border-radius:50%;background:var(--surface,#fff);color:var(--text,#172033);font:inherit;font-size:24px;line-height:1;cursor:pointer;transition:background .18s ease,transform .18s ease,border-color .18s ease}
+.back-home-icon:hover{background:var(--surface-muted,#f3f6fb);transform:translateX(-2px)}
+.back-home-icon:focus-visible{outline:3px solid var(--accent,#6b8cff);outline-offset:3px}
