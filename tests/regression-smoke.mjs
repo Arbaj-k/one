@@ -53,6 +53,9 @@ assert.ok(css.includes('.choice-options'), 'Category and priority chips must be 
 assert.ok(!app.includes('class="xbtn" data-action="close-modal"'), 'Duplicate modal close X must not return.');
 assert.ok(!app.includes('class="btn" data-action="close-modal">Cancel</button>'), 'Duplicate bottom Cancel action must not return.');
 assert.ok(css.includes('.modal-back-button'), 'Single back control needs a clear visual style.');
+assert.ok(css.includes('#page-content .back-home-icon,')&&css.includes('#modal-root .create-form-screen .modal-back-button{'), 'All page and form back buttons must share the same reference style.');
+assert.ok(css.includes('background:#171e30!important')&&css.includes('border:1px solid #2d3a5e!important'), 'Back buttons must use the rounded dark reference surface.');
+
 assert.ok(css.includes('.floating-create-button.is-hidden{display:none!important}'), 'Create launcher must stay hidden behind active forms.');
 
 assert.ok(app.includes("formType==='quickKnowledge')?'notes'"), 'Knowledge Entry must save into searchable notes.');
