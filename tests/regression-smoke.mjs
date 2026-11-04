@@ -40,6 +40,16 @@ assert.ok(app.includes("'new-knowledge-entry':()=>openKnowledgeEntry()"), 'Quick
 assert.ok(app.includes('function openKnowledgeEntry(){'), 'Knowledge Entry title/content form is missing.');
 assert.ok(app.includes("fab?.classList.add('is-hidden')"), 'Create button must hide while a create form is open.');
 assert.ok(app.includes('class="modal-back-button"'), 'Create forms must provide one side back control.');
+assert.ok(app.includes('function choiceField('), 'Create forms must render reusable option chips.');
+assert.ok(app.includes("choiceField('Category (optional)','category'"), 'Task category must be optional and selectable.');
+assert.ok(app.includes("choiceField('Priority','priority'"), 'Task priority must use a segmented choice control.');
+assert.ok(app.includes('function openUploadForm(){'), 'Upload must use the same full-screen create form.');
+assert.ok(app.includes("'quick-add-upload':()=>openUploadForm()"), 'The Upload radial option must open the create upload screen.');
+assert.ok(app.includes("if(formType==='quickUpload')"), 'Upload form submission must process selected files.');
+assert.ok(app.includes('data-choice-name'), 'Choice controls must update their FormData values.');
+assert.ok(css.includes('.create-form-screen'), 'Create form screen must have full-screen styling.');
+assert.ok(css.includes('.choice-options'), 'Category and priority chips must be styled.');
+
 assert.ok(!app.includes('class="xbtn" data-action="close-modal"'), 'Duplicate modal close X must not return.');
 assert.ok(!app.includes('class="btn" data-action="close-modal">Cancel</button>'), 'Duplicate bottom Cancel action must not return.');
 assert.ok(css.includes('.modal-back-button'), 'Single back control needs a clear visual style.');
