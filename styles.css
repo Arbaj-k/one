@@ -193,3 +193,27 @@ button,.btn,.nav-item,.planner-tab,.mobile-nav button{min-height:40px}
 .planner-selected-date .task-check.checked{background:#16865b!important;border-color:#16865b!important;color:#fff!important}
 .planner-selected-date .task-check:focus-visible{outline:3px solid #9fc0ff;outline-offset:3px}
 @media(max-width:520px){.planner-selected-date .task-row-actions .btn{min-height:46px;font-size:14px;font-weight:800}.planner-selected-date .selected-date-actions .btn.primary{font-size:15px}}
+
+
+/* My Knowledge: readable upload panel and responsive document action layout */
+.document-upload-card{padding:22px!important;border:1px solid var(--line);border-radius:18px;background:var(--white);box-shadow:var(--shadow)}
+.document-upload-card h2{font-size:20px;line-height:1.35;color:var(--ink)}
+.document-upload-card p{font-size:14px;line-height:1.65;color:var(--muted);max-width:620px}
+.document-upload-card .row{width:100%;align-items:center}
+.document-upload-card .upload-label,.document-upload-card [data-action="go-ask"]{min-height:46px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-weight:800}
+.document-upload-card small{display:block;margin-top:8px;line-height:1.5;color:var(--muted)}
+.document-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px}
+.document-card{min-width:0;padding:18px!important;border-radius:17px;background:var(--white);border:1px solid var(--line);box-shadow:var(--shadow)}
+.document-card>.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-start}
+.document-card>.row .btn{min-height:38px;padding:8px 12px;font-size:12px;font-weight:750;border-radius:10px}
+.document-card>.row .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.document-card>.row .btn.danger{background:#fff1f0;color:#b42318;border:1px solid #f4b8b3}
+.document-card h3{font-size:15px;line-height:1.5;margin:15px 0 7px;color:var(--ink)}
+.document-card>p.muted{font-size:12px;line-height:1.6;margin:0 0 9px}
+.document-card>small.muted{display:block;background:#f3f6fb;color:#42516a;border-radius:9px;padding:9px 11px;line-height:1.5;overflow-wrap:anywhere}
+.document-card details summary{cursor:pointer;font-weight:750;padding:8px 0;color:var(--blue)}
+.document-card details[open] summary{margin-bottom:7px}
+.document-card .json-preview{max-height:260px;font-size:11px}
+.document-card .actions{display:flex;flex-wrap:wrap;gap:8px}
+.document-card .actions .btn{min-height:40px;min-width:110px}
+@media(max-width:520px){.document-upload-card{padding:16px!important;gap:14px}.document-upload-card .row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.document-upload-card .upload-label,.document-upload-card [data-action="go-ask"]{width:100%;min-width:0;text-align:center;padding:10px 8px;font-size:12px}.document-card{padding:14px!important}.document-card>.row{gap:7px}.document-card>.row .btn{flex:1 1 auto;min-width:calc(50% - 7px);font-size:12px}.document-card h3{font-size:14px}.document-card .actions .btn{flex:1 1 100%}}
