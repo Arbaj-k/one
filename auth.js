@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const URL = 'https://tcthrfpkydcmenxwajfg.supabase.co';
-  const KEY = 'sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2AJT';
+  const KEY = 'sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
   const REDIRECT = location.origin + location.pathname;
   let client = null, session = null, view = 'login';
   const $ = (s) => document.querySelector(s);
@@ -32,7 +32,7 @@
           ${view==='signup'?'<label>Full name<input name="name" autocomplete="name" maxlength="80" placeholder="Your name" required></label>':''}
           <label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label>
           ${view==='reset'?'':'<label>Password<div class="one-auth-password"><input name="password" type="password" autocomplete="'+(view==='signup'?'new-password':'current-password')+'" minlength="8" placeholder="At least 8 characters" required><button type="button" class="one-show-password" aria-label="Show password">Show</button></div></label>'}
-          ${view==='login'?'<button type="button" id="one-forgot" class="one-auth-link">Forgot password?</button>':''}
+          ${view==='login'?'<button type="button" id="one-forgot" class="one-auth-link">Forgot password?</button>':view==='reset'?'<label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required></label>':''}
           <button class="one-auth-submit" type="submit">${view==='signup'?'Create account':view==='reset'?'Send reset link':'Log in'} <span>→</span></button>
         </form>`}
         <div id="one-auth-message" class="one-auth-message" role="status" aria-live="polite" hidden></div>
@@ -43,7 +43,7 @@
     $('#one-auth-root').hidden=false;
     $('.one-auth-close').onclick=close;
     $('#one-guest').onclick=close;
-    $('#one-switch')?.addEventListener('click',()=>{view=view==='signup'?'login':'login';render()});
+    $('#one-switch')?.addEventListener('click',()=>{view=view==='login'?'signup':'login';render()});
     $('#one-forgot')?.addEventListener('click',()=>{view='reset';render()});
     $('.one-show-password')?.addEventListener('click',e=>{const input=$('[name=password]');input.type=input.type==='password'?'text':'password';e.currentTarget.textContent=input.type==='password'?'Show':'Hide'});
     $('#one-google')?.addEventListener('click',google);
@@ -64,6 +64,9 @@
         const {data,error}=await auth.auth.signInWithPassword({email,password});if(error)throw error;
         if(!data.user?.email_confirmed_at){await auth.auth.signOut();throw Error('Please verify your email using the link we sent you.')}
         session=data.session;await upsertProfile(data.user);close();paintUser(data.user);
+      }else if(view==='reset'&&location.hash.includes('type=recovery')){
+        const {error}=await auth.auth.updateUser({password});if(error)throw error;
+        history.replaceState(null,'',location.pathname+location.search);view='login';render();status('Password updated. You can now log in.');
       }else{
         const {error}=await auth.auth.resetPasswordForEmail(email,{redirectTo:REDIRECT});if(error)throw error;
         view='sent';render();status('Password reset email sent. Open the link to set a new password.');
