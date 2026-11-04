@@ -163,7 +163,19 @@ assert.ok(dashboardStart>=0&&dashboardEnd>dashboardStart,'Home dashboard overvie
 const dashboardSource=app.slice(dashboardStart,dashboardEnd);
 assert.ok(dashboardSource.includes("stat('Uploaded items',(data.documents||[]).length"),'Dashboard must show the uploaded item count.');
 assert.ok(dashboardSource.includes("stat('Notes',data.notes.length"),'Dashboard must show the written notes count instead of active projects.');
-assert.ok(dashboardSource.includes("'knowledge')}${stat('Notes'"),'Uploaded items and Notes cards must both open My Knowledge.');
+assert.ok(dashboardSource.includes("stat('Uploaded items',(data.documents||[]).length,'PDFs & images','↥','uploads')"),'Uploaded Items card must open the uploaded-files-only view.');
+assert.ok(dashboardSource.includes("stat('Notes',data.notes.length,'Written notes','▤','notes')"),'Notes card must open the notes-only view.');
+assert.ok(app.includes('uploads:uploadedItems,notes:notesOnly'),'Dashboard must have separate uploaded-items and notes views.');
+const notesOnlyStart=app.indexOf('function notesOnly(){');
+const notesOnlyEnd=app.indexOf('function notesCards(){',notesOnlyStart);
+assert.ok(notesOnlyStart>=0&&notesOnlyEnd>notesOnlyStart,'Dedicated Notes view must exist.');
+const notesOnlySource=app.slice(notesOnlyStart,notesOnlyEnd);
+assert.ok(notesOnlySource.includes('notesCards()')&&!notesOnlySource.includes('documentsCards()')&&!notesOnlySource.includes('data.documents'),'Notes view must render notes only and never uploaded files.');
+const uploadedOnlyStart=app.indexOf('function uploadedItems(){');
+const uploadedOnlyEnd=app.indexOf('function notesOnly(){',uploadedOnlyStart);
+assert.ok(uploadedOnlyStart>=0&&uploadedOnlyEnd>uploadedOnlyStart,'Dedicated Uploaded Items view must exist.');
+const uploadedOnlySource=app.slice(uploadedOnlyStart,uploadedOnlyEnd);
+assert.ok(uploadedOnlySource.includes('documentsCards()')&&!uploadedOnlySource.includes('notesCards()'),'Uploaded Items view must render uploaded files only.');
 assert.ok(!dashboardSource.includes("stat('Active projects'"),'The Active projects summary card must be replaced by Notes.');
 
 
