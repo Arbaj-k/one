@@ -25,7 +25,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await page.locator('[data-action="new-task"]').first().click();
   const taskForm=page.locator('#edit-form');
   await taskForm.locator('[name="title"]').fill('Browser regression task');
-  await taskForm.locator('[name="due"]').fill(new Date(Date.now()+86400000).toISOString().slice(0,10));
+  await taskForm.locator('[name="due"]').fill(new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(new Date().getDate()).padStart(2,'0'));
   await taskForm.locator('button[type="submit"]').click();
   await page.getByText('Browser regression task',{exact:true}).waitFor();
   let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1')));
