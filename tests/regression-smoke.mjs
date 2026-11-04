@@ -24,17 +24,28 @@ assert.ok(voice.includes('window.submitStudentBrainVoiceText(phrase)'), 'Speech 
 assert.ok(voice.includes('let submitted = false;'), 'Voice result must be processed only once per listening session.');
 assert.ok(!app.includes('id="chat-file-upload"'), 'Ask My Brain should not show a file picker.');
 assert.ok(!app.includes('id="chat-upload-status"'), 'Ask My Brain should not show an upload status row.');
-assert.ok(app.includes('id="quick-add-file-upload"'), 'Quick Add file picker is missing.');
-assert.ok(app.includes('data-action="new-knowledge-entry"'), 'Quick Add Knowledge Entry option is missing.');
+// Quick Add now opens a 3D radial menu instead of the previous modal grid.
+assert.ok(app.includes('function openQuickAdd(){'), 'Quick Add launcher is missing.');
+assert.ok(app.includes('function closeQuickAddMenu(){'), 'Quick Add menu close handler is missing.');
+assert.ok(app.includes('create-radial-menu'), '3D radial Quick Add menu is missing.');
+assert.ok(app.includes('create-radial-option'), 'Radial Quick Add option controls are missing.');
+assert.ok(app.includes("setAttribute('role','menu')"), 'Radial Quick Add menu must be accessible.');
+for (const action of [
+  'new-knowledge-entry', 'new-task', 'new-study',
+  'new-expense', 'new-project', 'quick-add-upload'
+]) {
+  assert.ok(app.includes("action:'" + action + "'"), 'Quick Add radial option is missing: ' + action);
+}
 assert.ok(app.includes("'new-knowledge-entry':()=>openKnowledgeEntry()"), 'Quick Add Knowledge Entry action is not wired.');
 assert.ok(app.includes('function openKnowledgeEntry(){'), 'Knowledge Entry title/content form is missing.');
 assert.ok(app.includes("formType==='quickKnowledge')?'notes'"), 'Knowledge Entry must save into searchable notes.');
 assert.ok(app.includes("v.subject='Knowledge';v.tags='knowledge'"), 'Knowledge Entry must be marked as searchable knowledge.');
-assert.ok(app.includes('data-action="quick-add-upload"'), 'Quick Add Upload file option is missing.');
-assert.ok(app.includes("'quick-add-upload':()=>document.querySelector('#quick-add-file-upload')?.click()"), 'Quick Add upload action is not wired to the file picker.');
+assert.ok(app.includes('id="quick-add-file-upload"'), 'Quick Add file picker is missing.');
+assert.ok(app.includes("'quick-add-upload':()=>{const input=document.querySelector('#quick-add-file-upload');closeQuickAddMenu();input?.click()}"), 'Quick Add upload action is not wired to the file picker.');
 assert.ok(app.includes("if(e.target.id==='quick-add-file-upload')"), 'Quick Add file selection is not wired to document processing.');
 assert.ok(app.includes("document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status')"), 'Quick Add upload progress is not reported.');
-assert.ok(css.includes('.quick-add-upload-status'), 'Quick Add upload status styling is missing.');
+assert.ok(css.includes('.create-radial-menu'), '3D radial Quick Add menu styles are missing.');
+assert.ok(css.includes('@keyframes create-orb-pop'), 'Radial Quick Add pop-out animation is missing.');
 
 assert.ok(app.includes('async function requestStudentBrainAI('), 'Ask My Brain must call the secure AI function.');
 assert.ok(app.includes('/functions/v1/student-brain-ai'), 'Ask My Brain AI endpoint is missing.');
