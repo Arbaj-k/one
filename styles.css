@@ -648,3 +648,17 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 @media(prefers-reduced-motion:reduce){.one-auth-card{animation:none}.one-auth-google,.one-auth-submit{transition:none}}
 
 .one-signin-button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:9px 12px;font-size:11px;font-weight:700;cursor:pointer}.one-signin-button:hover{background:#f2f5ff;color:var(--blue)}
+
+/* Signed-in profile menu */
+.one-signin-button[hidden]{display:none!important}
+.one-account-menu{position:relative;display:flex;align-items:center}
+.one-profile-trigger{padding:0!important;border:0!important;background:transparent!important;cursor:pointer;border-radius:50%}
+.one-profile-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#e7ecff;color:#3454c5;font-weight:800;font-size:14px;flex-shrink:0}
+.one-account-menu>div#one-account-pop{position:absolute;right:0;top:calc(100% + 10px);z-index:200;background:#fff;color:#1e2634;border:1px solid #e5e9f1;box-shadow:0 14px 36px #10182824;border-radius:14px;padding:10px;min-width:245px}
+.one-account-menu>div#one-account-pop[hidden]{display:none}
+.one-profile-heading{display:flex;align-items:center;gap:11px;padding:8px 7px 13px;margin-bottom:6px;border-bottom:1px solid #edf0f5}
+.one-profile-heading strong{display:block;font-size:13px;max-width:175px;overflow-wrap:anywhere}
+.one-profile-heading small{display:block;color:#778196;font-size:11px;margin-top:4px;max-width:175px;overflow-wrap:anywhere}
+.one-account-menu>div#one-account-pop button{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;padding:10px;color:#273247;font-size:12px;font-weight:650;cursor:pointer}
+.one-account-menu>div#one-account-pop button:hover{background:#f2f5fc}
+@media(max-width:520px){.one-profile-avatar{width:34px;height:34px}.one-account-menu>div#one-account-pop{min-width:225px}}

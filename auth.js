@@ -81,20 +81,26 @@
     const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn('Profile sync unavailable; auth remains active.',error.message);
   }
   function paintUser(user){
-    const avatar=$('.avatar');if(avatar){avatar.textContent=(user.user_metadata?.full_name||user.email||'O').trim().slice(0,1).toUpperCase();avatar.title=user.email||'Account';avatar.setAttribute('aria-label','Signed in as '+(user.email||''));}
-    const statusEl=$('#cloud-status');if(statusEl&&user)statusEl.textContent='Signed in';
-    const top=$('.topbar-right');if(top&&!$('#one-account-menu')){
-      const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';menu.innerHTML='<button type="button" id="one-account-trigger" aria-haspopup="true">Account ▾</button><div id="one-account-pop" hidden><strong></strong><button id="one-profile" type="button">Profile</button><button id="one-logout" type="button">Log out</button></div>';top.append(menu);
-      $('#one-account-trigger').onclick=()=>$('#one-account-pop').hidden=!$('#one-account-pop').hidden;
+    const signIn=$('#one-signin');if(signIn)signIn.hidden=true;
+    const top=$('.topbar-right');
+    if(top&&!$('#one-account-menu')){
+      const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';
+      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><button id="one-logout" type="button">Log out</button></div>';
+      top.append(menu);
+      $('#one-account-trigger').onclick=()=>{const pop=$('#one-account-pop'),trigger=$('#one-account-trigger');pop.hidden=!pop.hidden;trigger.setAttribute('aria-expanded',String(!pop.hidden));};
       $('#one-logout').onclick=logout;
-      $('#one-profile').onclick=()=>{const pop=$('#one-account-pop');pop.querySelector('strong').textContent=user.email||'Signed in';pop.hidden=false};
+      document.addEventListener('click',e=>{const root=$('#one-account-menu');if(root&&!root.contains(e.target)){const pop=$('#one-account-pop');if(pop)pop.hidden=true;$('#one-account-trigger')?.setAttribute('aria-expanded','false')}});
     }
-    const pop=$('#one-account-pop');if(pop)pop.querySelector('strong').textContent=user.email||'Signed in';
+    const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Account';
+    const initial=name.trim().slice(0,1).toUpperCase()||'O';
+    const menu=$('#one-account-menu');
+    if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
+    const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{await getClient().auth.signOut();session=null;const menu=$('#one-account-menu');menu?.remove();const a=$('.avatar');if(a){a.textContent='O';a.title='Guest mode'}const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';status('Logged out. Your local and cloud data were not deleted.');}catch(err){console.error(err);status(err.message||'Could not log out.',true)}}
+  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error(err);status(err.message||'Could not log out.',true)}}
   async function boot(){
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
-      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){$('#one-account-menu')?.remove()}});
+      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
       if(session?.user){paintUser(session.user);await upsertProfile(session.user)}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
