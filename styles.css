@@ -373,3 +373,16 @@ table{max-width:100%}
  .calendar-day-events{display:none}
  .planner-calendar-legend{gap:10px;margin-top:10px;padding-top:9px;font-size:9px}
 }
+
+
+/* Improved readability: stronger contrast for secondary and helper text */
+:root{--muted:#58677c;--line:#dfe5ee}
+.subtitle,.muted,.stat-label,.stat-note,.field-help,.form-help,
+.task-meta,.project-meta,.knowledge-meta,.empty-state p,
+small,.sidebar-bottom small,footer{color:#58677c}
+.workspace-label,.eyebrow{color:#4256a8}
+.nav-item{color:#526178}
+.nav-item span{color:inherit}
+input::placeholder,textarea::placeholder{color:#68778c;opacity:1}
+button:disabled{opacity:.72}
+.floating-create-button.is-hidden{display:none!important}
