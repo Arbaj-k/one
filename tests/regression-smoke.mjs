@@ -171,6 +171,10 @@ const notesOnlyEnd=app.indexOf('function notesCards(){',notesOnlyStart);
 assert.ok(notesOnlyStart>=0&&notesOnlyEnd>notesOnlyStart,'Dedicated Notes view must exist.');
 const notesOnlySource=app.slice(notesOnlyStart,notesOnlyEnd);
 assert.ok(notesOnlySource.includes('notesCards()')&&!notesOnlySource.includes('documentsCards()')&&!notesOnlySource.includes('data.documents'),'Notes view must render notes only and never uploaded files.');
+assert.ok(notesOnlySource.includes("titleBlock('YOUR NOTES','Note'"), 'The Notes card must open a page titled Note.');
+assert.ok(dashboardSource.includes("stat('Notes',data.notes.length,'Written notes','▤','notes')"), 'The Notes summary card must navigate to the dedicated Note page.');
+assert.ok(app.includes("notes:notesOnly"), 'The dedicated Note page must be registered in the normal page renderer.');
+
 const uploadedOnlyStart=app.indexOf('function uploadedItems(){');
 const uploadedOnlyEnd=app.indexOf('function notesOnly(){',uploadedOnlyStart);
 assert.ok(uploadedOnlyStart>=0&&uploadedOnlyEnd>uploadedOnlyStart,'Dedicated Uploaded Items view must exist.');
