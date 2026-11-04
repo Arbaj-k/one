@@ -515,3 +515,8 @@ body:not(.home-page) .content{
   min-height:calc(100dvh - 76px);
  }
 }
+
+/* Remove duplicate One branding from the sidebar on inner pages too */
+body:not(.home-page) .sidebar .brand{display:none!important}
+body:not(.home-page) .sidebar .workspace-label{padding-top:8px}
+body:not(.home-page) .site-footer>span:last-child{display:none}
