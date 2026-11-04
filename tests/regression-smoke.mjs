@@ -154,6 +154,17 @@ for (const feature of [
 
 assert.ok(html.includes('data-page="memory"'), 'Personal memory navigation entry is missing from the app shell.');
 
+const dashboardStart=app.indexOf('function overview(){');
+const dashboardEnd=app.indexOf('function knowledge(){',dashboardStart);
+assert.ok(dashboardStart>=0&&dashboardEnd>dashboardStart,'Home dashboard overview must remain available.');
+const dashboardSource=app.slice(dashboardStart,dashboardEnd);
+assert.ok(dashboardSource.includes("stat('Uploaded items',(data.documents||[]).length"),'Dashboard must show the uploaded item count.');
+assert.ok(dashboardSource.includes("stat('Notes',data.notes.length"),'Dashboard must show the written notes count instead of active projects.');
+assert.ok(dashboardSource.includes("'knowledge')}${stat('Notes'"),'Uploaded items and Notes cards must both open My Knowledge.');
+assert.ok(!dashboardSource.includes("stat('Active projects'"),'The Active projects summary card must be replaced by Notes.');
+
+
+
 // Ensure CRUD and local persistence hooks stay present.
 for (const action of [
   'new-note', 'edit-note', 'delete-note', 'new-task', 'edit-task',
