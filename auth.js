@@ -96,7 +96,7 @@
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
       auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){$('#one-account-menu')?.remove()}});
       if(session?.user){paintUser(session.user);await upsertProfile(session.user)}
-      const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
+      $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
     }catch(err){console.warn('One auth unavailable; local guest mode remains enabled.',err.message);const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
   }
