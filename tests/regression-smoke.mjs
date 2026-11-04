@@ -36,7 +36,7 @@ for (const action of [
 ]) {
   assert.ok(app.includes("action:'" + action + "'"), 'Quick Add radial option is missing: ' + action);
 }
-assert.ok(app.includes("'new-knowledge-entry':()=>openKnowledgeEntry()"), 'Quick Add Knowledge Entry action is not wired.');
+assert.ok(app.includes("'new-knowledge-entry':()=>openForm('note')"), 'Quick Add Note action must open the Note form.');
 assert.ok(app.includes('function openKnowledgeEntry(){'), 'Knowledge Entry title/content form is missing.');
 assert.ok(app.includes("fab?.classList.add('is-hidden')"), 'Create button must hide while a create form is open.');
 assert.ok(app.includes('class="modal-back-button"'), 'Create forms must provide one side back control.');
