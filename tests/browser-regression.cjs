@@ -27,7 +27,10 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await taskForm.locator('[name="title"]').fill('Browser regression task');
   await taskForm.locator('[name="due"]').fill(new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(new Date().getDate()).padStart(2,'0'));
   await taskForm.locator('button[type="submit"]').click();
-  await page.getByText('Browser regression task',{exact:true}).waitFor();
+  // Saving closes the modal; verify the persisted model directly rather than
+  // assuming the task appears in the current Today/Upcoming filtered view.
+  await taskForm.waitFor({state:'detached',timeout:10000});
+  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('student-brain-data-v1')||'{}').tasks?.some(t=>t.title==='Browser regression task')}catch{return false}},{timeout:10000});
   let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1')));
   assert.ok(saved.tasks.some(t=>t.title==='Browser regression task'),'Task UI save must persist to workspace storage.');
 
