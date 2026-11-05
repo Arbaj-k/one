@@ -89,7 +89,9 @@
       top.append(menu);
       $('#one-account-trigger').onclick=()=>{const pop=$('#one-account-pop'),trigger=$('#one-account-trigger');pop.hidden=!pop.hidden;trigger.setAttribute('aria-expanded',String(!pop.hidden));};
       $('#one-logout').onclick=logout;
-      window.addEventListener('one:pwa-update-ready',()=>{const msg=$('#one-update-message'),btn=$('#one-update-now');if(msg)msg.hidden=false;if(btn)btn.hidden=false;});
+      const revealUpdate=()=>{const msg=$('#one-update-message'),btn=$('#one-update-now');if(msg)msg.hidden=false;if(btn)btn.hidden=false;};
+      window.addEventListener('one:pwa-update-ready',revealUpdate);
+      if(window.OnePWAUpdate?.available)revealUpdate();
       $('#one-update-now').onclick=()=>{const btn=$('#one-update-now');if(btn){btn.disabled=true;btn.textContent='Updating…'}window.OnePWAUpdate?.apply();};
       document.addEventListener('click',e=>{const root=$('#one-account-menu');if(root&&!root.contains(e.target)){const pop=$('#one-account-pop');if(pop)pop.hidden=true;$('#one-account-trigger')?.setAttribute('aria-expanded','false')}});
     }
