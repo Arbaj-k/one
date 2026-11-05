@@ -726,7 +726,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
     const original=await getOriginalDocument(matchedDoc.id);
     const blob=original?.blob;
     const mimeType=String(original?.type||matchedDoc.mimeType||'').toLowerCase();
-    if(blob&&/^image\\/(jpeg|png|webp)$/.test(mimeType)&&blob.size<=3*1024*1024){
+    if(blob&&/^image\/(jpeg|png|webp)$/.test(mimeType)&&blob.size<=3*1024*1024){
      const label='File: '+matchedDoc.name+' · original file';
      inlineFile={name:matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
      if(!sources.includes(label))sources.push(label);
