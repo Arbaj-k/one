@@ -716,9 +716,9 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .home-hero{padding:clamp(24px,4vw,40px);border-radius:30px;background:#3658d5;color:#fff}
 .home-hero .eyebrow{color:#cbd7ff;letter-spacing:2.2px;font-weight:800}
 .home-hero h2{font-size:clamp(25px,4vw,40px);line-height:1.15;letter-spacing:-1.1px;margin:12px 0 26px;color:#fff}
-.home-brain-search{width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 24px;min-height:78px;border-radius:999px;background:#fff;box-sizing:border-box}
+.home-brain-search{width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 24px;min-height:78px;border-radius:999px;background:#0b0e1b;box-sizing:border-box}
 .home-brain-search input{flex:1;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;color:#17213b!important;font:500 clamp(15px,2vw,22px) 'DM Sans',sans-serif;padding:0!important;margin:0!important}
-.home-brain-search input::placeholder{color:#59627d;opacity:1}
+.home-brain-search input::placeholder{color:#aab3cc;opacity:1}
 .home-brain-search .home-mic-button{flex:0 0 58px;width:58px;height:58px;border:0;border-radius:50%;display:grid;place-items:center;background:#0b0e1b;color:#fff;cursor:pointer;padding:0;transition:transform .15s,background .15s}
 .home-brain-search .home-mic-button:hover{background:#243b8c;transform:scale(1.04)}
 .home-brain-search .home-mic-button svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
