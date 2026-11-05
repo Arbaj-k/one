@@ -723,3 +723,13 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .home-brain-search .home-mic-button:hover{background:#243b8c;transform:scale(1.04)}
 .home-brain-search .home-mic-button svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:600px){.home-hero{padding:25px 20px;border-radius:26px}.home-hero h2{margin:12px 0 24px}.home-brain-search{min-height:66px;padding:8px 9px 8px 19px}.home-brain-search .home-mic-button{flex-basis:50px;width:50px;height:50px}}
+
+/* Force the full Ask My Brain pill, field, and mic surface to pure white. */
+.home-hero .home-brain-search,
+#page-content .home-brain-search{background-color:#fff!important;background-image:none!important;border:0!important;box-shadow:none!important}
+.home-hero .home-brain-search input,
+#page-content .home-brain-search input{background-color:#fff!important;background-image:none!important;color:#111827!important}
+.home-hero .home-brain-search .home-mic-button,
+#page-content .home-brain-search .home-mic-button,
+.home-hero .home-brain-search .home-mic-button:hover,
+#page-content .home-brain-search .home-mic-button:hover{background-color:#fff!important;background-image:none!important;color:#111827!important}
