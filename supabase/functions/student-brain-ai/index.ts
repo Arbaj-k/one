@@ -94,21 +94,51 @@ ${message}`;
       parts.push({ text: "The original file attached next is: " + validatedInline.name + ". Read it visually and use it as primary evidence for file-specific questions. Cite \"" + validatedInline.label + "\" when used." });
       parts.push({ inline_data: { mime_type: validatedInline.mimeType, data: validatedInline.data } });
     }
-    const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1800 },
-      }),
-    });
-    const aiResult = await aiResponse.json();
+    let aiResponse: Response;
+    try {
+      aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts }],
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1800 },
+        }),
+        signal: AbortSignal.timeout(55000),
+      });
+    } catch (upstreamError) {
+      const reason = upstreamError instanceof Error ? upstreamError.name : "unknown";
+      console.error("Gemini transport failure:", reason);
+      if (reason === "TimeoutError" || reason === "AbortError") {
+        return json({ error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504);
+      }
+      return json({ error: "Supabase could not connect to Gemini. Check Gemini API availability and retry.", code: "GEMINI_NETWORK" }, 502);
+    }
+
+    let aiResult: any = {};
+    try { aiResult = await aiResponse.json(); }
+    catch { aiResult = {}; }
+
     if (!aiResponse.ok) {
       const status = aiResponse.status;
-      console.error("Gemini API request failed:", status, aiResult?.error?.message || "unknown error");
-      if (status === 429) return json({ error: "Gemini free-tier limit reached for now. Wait for the quota to reset and try again." }, 429);
-      if (status === 400 || status === 404) return json({ error: "Gemini rejected this file or request. Try a smaller PDF/image or check the Gemini API key and model access." }, 502);
-      return json({ error: "Gemini could not complete the request. Please retry in a moment." }, 502);
+      const providerMessage = typeof aiResult?.error?.message === "string" ? aiResult.error.message.slice(0, 500) : "No provider detail";
+      // Keep the provider diagnostic in Supabase logs only; never log or return the API key.
+      console.error("Gemini API rejected request:", { status, message: providerMessage });
+      if (status === 400) {
+        return json({ error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502);
+      }
+      if (status === 401 || status === 403) {
+        return json({ error: "Gemini authentication or access was rejected. In Supabase Edge Function secrets, verify GEMINI_API_KEY is valid and has Gemini API access; then redeploy/retry.", code: "GEMINI_KEY_OR_ACCESS" }, 502);
+      }
+      if (status === 404) {
+        return json({ error: "The configured Gemini model or endpoint was not found. Check model availability for this API key and update the Edge Function model name if needed.", code: "GEMINI_MODEL_NOT_FOUND" }, 502);
+      }
+      if (status === 429) {
+        return json({ error: "Gemini rate limit or quota was reached. Check the Gemini project quota/billing and retry after it resets.", code: "GEMINI_QUOTA" }, 429);
+      }
+      if (status >= 500) {
+        return json({ error: "Gemini is temporarily experiencing a server error. Retry shortly; your saved data remains local.", code: "GEMINI_UPSTREAM" }, 502);
+      }
+      return json({ error: "Gemini returned an unexpected HTTP " + status + " response. Check the Supabase function logs for the provider diagnostic.", code: "GEMINI_HTTP_ERROR" }, 502);
     }
 
     const output = aiResult?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim();
