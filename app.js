@@ -713,6 +713,24 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   totalChars+=block.length;
   if(!sources.includes(label))sources.push(label);
  }
+ // If a relevant uploaded image is matched, attach its locally saved original to Gemini.
+ // OCR can miss menu labels, mixed Hindi/English text, and table/column relationships.
+ // Only send the best-matching image, and only when it is already stored locally.
+ if(retrieval.documents.length){
+  const matchedDoc=allDocs.find(doc=>doc.id===retrieval.documents[0]);
+  if(matchedDoc&&matchedDoc.type==='image'&&matchedDoc.fileStored){
+   try{
+    const original=await getOriginalDocument(matchedDoc.id);
+    const blob=original?.blob;
+    const mimeType=String(original?.type||matchedDoc.mimeType||'').toLowerCase();
+    if(blob&&/^image\\/(jpeg|png|webp)$/.test(mimeType)&&blob.size<=3*1024*1024){
+     const label='File: '+matchedDoc.name+' · original file';
+     inlineFile={name:matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
+     if(!sources.includes(label))sources.push(label);
+    }
+   }catch(fileError){console.warn('Could not attach matched original image; using extracted text instead.',fileError)}
+  }
+ }
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  // Avoid flooding general questions with unrelated personal notes.
  const notes=rankedNotes
