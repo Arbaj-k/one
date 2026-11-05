@@ -666,3 +666,48 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .one-update-message{font-size:12px;line-height:1.45;color:#34415b;background:#f2f5ff;border-radius:9px;padding:10px;margin:5px 0}
 .one-account-menu>div#one-account-pop #one-update-now{background:#4169e1;color:#fff;text-align:center;margin:6px 0}
 .one-account-menu>div#one-account-pop #one-update-now[hidden],.one-update-message[hidden]{display:none!important}
+
+/* Auth screen refresh: screenshot-inspired, edge-to-edge mobile composition. */
+.one-auth-backdrop{padding:0;place-items:stretch;overflow:auto;background:radial-gradient(ellipse at 18% 8%,#263b73 0,transparent 43%),radial-gradient(ellipse at 88% 90%,#30224f 0,transparent 42%),#080d1b}
+.one-auth-card{width:min(520px,100%);min-height:min(720px,calc(100vh - 36px));margin:auto;padding:30px 32px 26px;border:0;border-radius:26px;background:linear-gradient(160deg,#121d34 0%,#0b1222 58%,#101329 100%);display:flex;flex-direction:column}
+.one-auth-brand{gap:14px;margin-bottom:34px;padding-right:55px}
+.one-auth-mark{width:52px;height:52px;border-radius:15px;font-size:27px;background:#4169e1;box-shadow:0 8px 22px #4169e133}
+.one-auth-brand strong{font-size:21px}.one-auth-brand small{font-size:13px;line-height:1.5;max-width:130px}
+.one-auth-close{width:42px;height:42px;right:24px;top:24px;border-radius:14px;font-size:26px;background:#141d31}
+.one-auth-kicker{font-size:11px;letter-spacing:2px;margin-bottom:14px}
+.one-auth-card h1{font-size:clamp(28px,5vw,36px);letter-spacing:-1px;line-height:1.15;margin-bottom:12px}
+.one-auth-sub{font-size:15px;line-height:1.55;margin-bottom:25px}
+.one-auth-google,.one-auth-submit{height:58px;border-radius:15px;font-size:15px}
+.one-auth-divider{font-size:13px;gap:16px;margin:22px 0}
+#one-auth-form label{font-size:13px;margin-bottom:17px}
+#one-auth-form input{height:60px;padding:0 16px;border-radius:15px;font-size:15px;margin-top:10px}
+.one-show-password{top:21px;right:12px;font-size:13px}
+.one-auth-link{font-size:13px;margin-top:-4px;margin-bottom:18px}
+.one-auth-submit{margin-top:7px;background:#365bd8;box-shadow:0 10px 26px #365bd833}
+.one-auth-switch{font-size:13px;margin:24px 0 20px}
+.one-auth-guest{min-height:58px;padding:15px;border-radius:15px;font-size:13px;margin-top:auto;background:#121c30}
+.one-auth-legal{font-size:10px}
+@media(max-width:600px){
+ .one-auth-backdrop{min-height:100vh;min-height:100svh}
+ .one-auth-card{width:100%;min-height:100vh;min-height:100svh;height:auto;margin:0;padding:28px 22px 24px;border-radius:0;box-shadow:none;overflow:visible}
+ .one-auth-brand{margin-bottom:34px;gap:14px}
+ .one-auth-mark{width:54px;height:54px}
+ .one-auth-close{right:22px;top:22px;width:44px;height:44px}
+ .one-auth-card h1{font-size:clamp(30px,7vw,38px)}
+ .one-auth-sub{font-size:15px;margin-bottom:27px}
+ .one-auth-google,.one-auth-submit{height:60px;font-size:15px}
+ #one-auth-form input{height:62px;font-size:15px}
+ .one-auth-switch{margin:24px 0 22px}
+ .one-auth-guest{margin-top:auto;flex-shrink:0}
+ .one-auth-legal{display:none}
+}
+@media(max-height:760px) and (max-width:600px){
+ .one-auth-card{padding-top:18px;padding-bottom:18px}
+ .one-auth-brand{margin-bottom:22px}
+ .one-auth-sub{margin-bottom:18px}
+ .one-auth-divider{margin:15px 0}
+ #one-auth-form label{margin-bottom:12px}
+ #one-auth-form input{height:54px}
+ .one-auth-switch{margin:16px 0}
+ .one-auth-guest{min-height:52px}
+}
