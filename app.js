@@ -716,8 +716,11 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  // If a relevant uploaded image is matched, attach its locally saved original to Gemini.
  // OCR can miss menu labels, mixed Hindi/English text, and table/column relationships.
  // Only send the best-matching image, and only when it is already stored locally.
- if(retrieval.documents.length){
-  const matchedDoc=allDocs.find(doc=>doc.id===retrieval.documents[0]);
+ const queryLooksLikeMealMenu=/(mess|menu|meal|dinner|lunch|breakfast|thursday|thrusday|khana|raat ka|रात|खाना|मेस)/i.test(String(question||''));
+ const originalCandidate=allDocs.find(doc=>doc.id===retrieval.documents[0])||
+  (queryLooksLikeMealMenu?allDocs.filter(doc=>doc.type==='image'&&doc.fileStored).sort((a,b)=>Number(b.created||0)-Number(a.created||0))[0]:null);
+ if(originalCandidate){
+  const matchedDoc=originalCandidate;
   if(matchedDoc&&matchedDoc.type==='image'&&matchedDoc.fileStored){
    try{
     const original=await getOriginalDocument(matchedDoc.id);
