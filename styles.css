@@ -662,3 +662,7 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .one-account-menu>div#one-account-pop button{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;padding:10px;color:#273247;font-size:12px;font-weight:650;cursor:pointer}
 .one-account-menu>div#one-account-pop button:hover{background:#f2f5fc}
 @media(max-width:520px){.one-profile-avatar{width:34px;height:34px}.one-account-menu>div#one-account-pop{min-width:225px}}
+
+.one-update-message{font-size:12px;line-height:1.45;color:#34415b;background:#f2f5ff;border-radius:9px;padding:10px;margin:5px 0}
+.one-account-menu>div#one-account-pop #one-update-now{background:#4169e1;color:#fff;text-align:center;margin:6px 0}
+.one-account-menu>div#one-account-pop #one-update-now[hidden],.one-update-message[hidden]{display:none!important}

@@ -85,10 +85,12 @@
     const top=$('.topbar-right');
     if(top&&!$('#one-account-menu')){
       const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';
-      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><button id="one-logout" type="button">Log out</button></div>';
+      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><p id="one-update-message" class="one-update-message" hidden>A new version of One is available.</p><button id="one-update-now" type="button" hidden>Update Now</button><button id="one-logout" type="button">Log out</button></div>';
       top.append(menu);
       $('#one-account-trigger').onclick=()=>{const pop=$('#one-account-pop'),trigger=$('#one-account-trigger');pop.hidden=!pop.hidden;trigger.setAttribute('aria-expanded',String(!pop.hidden));};
       $('#one-logout').onclick=logout;
+      window.addEventListener('one:pwa-update-ready',()=>{const msg=$('#one-update-message'),btn=$('#one-update-now');if(msg)msg.hidden=false;if(btn)btn.hidden=false;});
+      $('#one-update-now').onclick=()=>{const btn=$('#one-update-now');if(btn){btn.disabled=true;btn.textContent='Updating…'}window.OnePWAUpdate?.apply();};
       document.addEventListener('click',e=>{const root=$('#one-account-menu');if(root&&!root.contains(e.target)){const pop=$('#one-account-pop');if(pop)pop.hidden=true;$('#one-account-trigger')?.setAttribute('aria-expanded','false')}});
     }
     const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Account';

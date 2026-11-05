@@ -1,32 +1,11 @@
-const CACHE_NAME = "student-brain-shell-v5";
-const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./auth.js", "./voice-assistant.js", "./manifest.json", "./icons/student-brain.svg"];
-const OFFLINE_FALLBACK = "./index.html";
-self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
-});
-self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("student-brain-shell-") && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
-});
-self.addEventListener("message", event => {
-  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
-});
-self.addEventListener("fetch", event => {
-  const req = event.request;
-  if (req.method !== "GET") return;
-  const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
-  if (req.mode === "navigate") {
-    event.respondWith(fetch(req).then(response => {
-      if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(OFFLINE_FALLBACK, response.clone()));
-      return response;
-    }).catch(async () => (await caches.match(req)) || (await caches.match(OFFLINE_FALLBACK)) || Response.error()));
-    return;
-  }
-  event.respondWith(caches.match(req).then(cached => {
-    const network = fetch(req).then(response => {
-      if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(req, response.clone()));
-      return response;
-    }).catch(() => cached || Response.error());
-    return cached || network;
-  }));
+/* One PWA service worker. Bump version on each release. */
+const CACHE_VERSION="one-shell-v6",ASSET_CACHE="one-assets-v6";
+const PRECACHE=["./","./index.html","./styles.css","./app.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./icons/student-brain.svg"];
+const OFFLINE_PAGE="./index.html";
+self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_VERSION).then(c=>c.addAll(PRECACHE))));
+self.addEventListener("activate",e=>e.waitUntil((async()=>{const keep=new Set([CACHE_VERSION,ASSET_CACHE]);const keys=await caches.keys();await Promise.all(keys.filter(k=>/^(one-shell-|one-assets-|student-brain-shell-)/.test(k)&&!keep.has(k)).map(k=>caches.delete(k)));await self.clients.claim()})()));
+self.addEventListener("message",e=>{if(e.data?.type==="SKIP_WAITING")self.skipWaiting()});
+self.addEventListener("fetch",e=>{const r=e.request;if(r.method!=="GET")return;const u=new URL(r.url);if(u.origin!==self.location.origin)return;
+if(r.mode==="navigate"||r.destination==="document"){e.respondWith((async()=>{try{const response=await fetch(r,{cache:"no-store"});if(response.ok){const c=await caches.open(CACHE_VERSION);c.put(OFFLINE_PAGE,response.clone()).catch(()=>{})}return response}catch{return(await caches.match(r))||(await caches.match(OFFLINE_PAGE))||Response.error()}})());return}
+if(/\.(?:css|js|mjs|json|svg|png|webp|ico|woff2?)$/i.test(u.pathname)){e.respondWith((async()=>{const c=await caches.open(ASSET_CACHE);try{const response=await fetch(r,{cache:"no-cache"});if(response.ok)c.put(r,response.clone()).catch(()=>{});return response}catch{return(await c.match(r))||(await caches.match(r))||Response.error()}})())}
 });
