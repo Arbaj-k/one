@@ -735,13 +735,33 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
 async function requestStudentBrainAI(question,targetDocId=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
  const body={message:question,workspace:context.workspace,allowedSources:context.sources,inlineFile:context.inlineFile};
- const response=await fetch(CLOUD_URL+'/functions/v1/student-brain-ai',{
-  method:'POST',
-  headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},
-  body:JSON.stringify(body)
- });
- let result={};try{result=await response.json()}catch{}
- if(!response.ok)throw new Error(result.error||('AI request failed ('+response.status+').'));
+ let response;
+ try{
+  response=await fetch(CLOUD_URL+'/functions/v1/student-brain-ai',{
+   method:'POST',
+   headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},
+   body:JSON.stringify(body)
+  });
+ }catch(networkError){
+  // Browsers intentionally hide the underlying cause for CORS, DNS, TLS,
+  // offline, and blocked requests. Give the user safe, actionable checks.
+  const detail=String(networkError?.message||'').toLowerCase();
+  if(networkError?.name==='AbortError')throw new Error('The AI request timed out. Check your connection and retry.');
+  if(detail.includes('failed to fetch')||networkError instanceof TypeError){
+   throw new Error('Could not reach the Supabase AI endpoint. Check your internet connection, then verify that the student-brain-ai Edge Function is deployed to this Supabase project and that its CORS settings allow this website. Your saved data remains local.');
+  }
+  throw new Error('The AI connection could not be opened. Check your connection and retry.');
+ }
+ let result={};
+ try{result=await response.json()}catch{
+  if(!response.ok)throw new Error('AI service returned HTTP '+response.status+' without a readable response. Verify the Edge Function deployment and CORS configuration.');
+  throw new Error('AI service returned an unreadable response. Please retry.');
+ }
+ if(!response.ok){
+  if(response.status===404)throw new Error('The student-brain-ai Edge Function was not found. Deploy it to the configured Supabase project, then retry.');
+  if(response.status===401||response.status===403)throw new Error(result.error||'AI session was rejected. Refresh the page and retry; check the function authentication settings if this continues.');
+  throw new Error(result.error||('AI request failed (HTTP '+response.status+').'));
+ }
  if(typeof result.answer!=='string'||!result.answer.trim())throw new Error('AI returned an empty answer. Please try again.');
  return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
