@@ -735,22 +735,36 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
 async function requestStudentBrainAI(question,targetDocId=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
  const body={message:question,workspace:context.workspace,allowedSources:context.sources,inlineFile:context.inlineFile};
- let response;
- try{
-  response=await fetch(CLOUD_URL+'/functions/v1/student-brain-ai',{
-   method:'POST',
-   headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},
-   body:JSON.stringify(body)
-  });
- }catch(networkError){
-  // Browsers intentionally hide the underlying cause for CORS, DNS, TLS,
-  // offline, and blocked requests. Give the user safe, actionable checks.
+ let response,networkError;
+ const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
+ // AI requests are read-only: retry once on a transient transport/5xx failure.
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   response=await fetch(endpoint,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},
+    body:JSON.stringify(body)
+   });
+   networkError=null;
+  }catch(error){networkError=error;response=null}
+  if(response&&![502,503,504].includes(response.status))break;
+  if(attempt===0){
+   await new Promise(resolve=>setTimeout(resolve,700));
+   continue;
+  }
+ }
+ if(!response){
   const detail=String(networkError?.message||'').toLowerCase();
   if(networkError?.name==='AbortError')throw new Error('The AI request timed out. Check your connection and retry.');
   if(detail.includes('failed to fetch')||networkError instanceof TypeError){
-   throw new Error('Could not reach the Supabase AI endpoint. Check your internet connection, then verify that the student-brain-ai Edge Function is deployed to this Supabase project and that its CORS settings allow this website. Your saved data remains local.');
+   throw new Error('Could not reach the Supabase AI endpoint after a retry. Check your internet connection and confirm that the student-brain-ai Edge Function is deployed and its CORS settings allow this website. Your saved data remains local.');
   }
-  throw new Error('The AI connection could not be opened. Check your connection and retry.');
+  throw new Error('The AI connection could not be opened after a retry. Check your connection and try again.');
+ }
+ if([502,503,504].includes(response.status)){
+  let detail='';
+  try{const errorBody=await response.clone().json();detail=typeof errorBody?.error==='string'?errorBody.error:''}catch{}
+  throw new Error((detail||'The AI service returned HTTP '+response.status+' after a retry.')+' Your saved data remains local; please try again shortly.');
  }
  let result={};
  try{result=await response.json()}catch{
