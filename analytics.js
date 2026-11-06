@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const URL='https://tcthrfpkydcmenxwajfg.supabase.co';
-  const KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2AJT';
+  const KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
   const VISITOR_KEY='one-analytics-visitor-v1';
   const allowedPages=new Set(['overview','ask','memory','knowledge','planner','study','projects','expenses','backup']);
   const allowedEvents=new Set(['page_view','ask_one_message','task_created','note_created','project_created','expense_created','document_uploaded','memory_created']);
@@ -13,8 +13,7 @@
   async function trackEvent(eventName,pageKey){if(!allowedEvents.has(eventName))return;try{const {error}=await getClient().from('one_analytics_events').insert({visitor_id:getVisitor(),event_name:eventName,page_key:allowedPages.has(pageKey)?pageKey:'overview'});if(error)console.warn('Usage analytics event was not recorded:',error.message)}catch(error){console.info('Usage analytics unavailable; app remains usable.',error)}}
   function trackPage(page){if(!allowedPages.has(page)||lastPage===page)return;lastPage=page;trackEvent('page_view',page)}
   async function isAdmin(){try{const {data,error}=await getClient().auth.getSession();if(error)throw error;return data.session?.user?.app_metadata?.analytics_admin===true}catch(_){return false}}
-  async function dashboardHTML(){
-    if(!(await isAdmin()))return '<section class="card"><h2>Access restricted</h2><p class="muted">Usage analytics is available only to the One analytics administrator.</p></section>';
+  function dashboardHTML(){
     return '<section class="one-analytics"><div class="row"><div><div class="eyebrow">PRODUCT INSIGHTS</div><h1>Usage analytics</h1><p class="subtitle">Anonymous usage totals. Message contents, notes and financial records are never collected.</p></div><select id="one-analytics-days" class="search" aria-label="Date range"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></div><div id="one-analytics-results" class="card"><p class="muted">Loading analytics…</p></div></section>';
   }
   async function loadDashboard(days=30){
