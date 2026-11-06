@@ -796,3 +796,6 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
  .chat-shell .voice-language{max-width:132px;height:35px}
  .chat-shell .chat-note{font-size:9px}
 }
+
+/* One usage analytics dashboard */
+.one-analytics-stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:20px 0 26px}.one-analytics h2{margin-top:20px}@media(max-width:760px){.one-analytics-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
