@@ -733,3 +733,15 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 #page-content .home-brain-search .home-mic-button,
 .home-hero .home-brain-search .home-mic-button:hover,
 #page-content .home-brain-search .home-mic-button:hover{background-color:#fff!important;background-image:none!important;color:#111827!important}
+
+
+/* Keep the Ask One search field seamless while retaining the native text caret. */
+#page-content .home-brain-search input,
+#page-content .home-brain-search input:focus,
+#page-content .home-brain-search input:active{
+  border:0!important;
+  outline:none!important;
+  box-shadow:none!important;
+  caret-color:#111827;
+  cursor:text;
+}
