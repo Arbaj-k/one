@@ -44,7 +44,7 @@
     const mic = document.querySelector('#voice-mic');
     if (!mic) return;
     mic.classList.toggle('mic-on', listening);
-    mic.textContent = listening ? '⏹ Stop' : '🎙 Speak';
+    mic.querySelector('span').textContent = listening ? 'Stop' : 'Speak';
     mic.setAttribute('aria-pressed', String(listening));
   }
 
@@ -153,11 +153,11 @@
     const controls = document.createElement('div');
     controls.className = 'voice-controls';
     controls.innerHTML = `
-      <button type="button" class="voice-btn" id="voice-mic" aria-label="Speak to Student Brain" aria-pressed="false">🎙 Speak</button>
-      <select class="voice-language" id="voice-language" aria-label="Voice language">
-        ${languages.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
-      </select>
-      <button type="button" class="voice-toggle" id="voice-replies" aria-pressed="false">🔇 Read replies: Off</button>
+      <div class="voice-tools">
+        <button type="button" class="voice-btn" id="voice-mic" aria-label="Speak to One" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg><span>Speak</span></button>
+        <label class="voice-language-wrap"><span class="sr-only">Voice language</span><select class="voice-language" id="voice-language" aria-label="Voice language">${languages.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></label>
+        <button type="button" class="voice-toggle" id="voice-replies" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4Z"></path><path d="M16 9a5 5 0 0 1 0 6m2-9a9 9 0 0 1 0 12"></path></svg><span>Read replies: Off</span></button>
+      </div>
       <span class="voice-status" id="voice-status" role="status" aria-live="polite">Tap Speak to ask by voice</span>
       <div class="voice-transcript" id="voice-transcript" aria-live="polite"></div>
     `;
@@ -179,7 +179,7 @@
     });
     toggle.addEventListener('click', () => {
       voiceReplies = !voiceReplies;
-      toggle.textContent = voiceReplies ? '🔊 Read replies: On' : '🔇 Read replies: Off';
+      toggle.querySelector('span').textContent = voiceReplies ? 'Read replies: On' : 'Read replies: Off';
       toggle.setAttribute('aria-pressed', String(voiceReplies));
       if (!voiceReplies && window.speechSynthesis) window.speechSynthesis.cancel();
       status(voiceReplies ? 'Voice replies enabled.' : 'Voice replies disabled.');
