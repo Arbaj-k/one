@@ -105,7 +105,7 @@
   async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error(err);status(err.message||'Could not log out.',true)}}
   async function boot(){
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
-      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
+      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
       if(session?.user){paintUser(session.user);await upsertProfile(session.user)}else window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
