@@ -1053,16 +1053,13 @@ render();
 // Separate every signed-in account's workspace on this device. The old unscoped
 // workspace is claimed once by the first account that signs in; later accounts
 // start with their own empty workspace and never inherit another account's data.
-let workspaceSwitchInProgress=false;
-async function switchAccountWorkspace(user){
+let workspaceSwitchQueue=Promise.resolve();
+function switchAccountWorkspace(user){
  const nextUserId=user?.id||null;
- if(nextUserId===activeWorkspaceUserId)return;
- if(workspaceSwitchInProgress)return;
- workspaceSwitchInProgress=true;
- try{
+ workspaceSwitchQueue=workspaceSwitchQueue.catch(()=>{}).then(async()=>{
+  if(nextUserId===activeWorkspaceUserId)return;
   // Flush the previous workspace's queued durable snapshot before changing scope.
   try{await workspaceWriteQueue}catch(_){}
-  const previousKey=activeWorkspaceKey;
   activeWorkspaceUserId=nextUserId;
   activeWorkspaceKey=nextUserId?KEY+'-user-'+nextUserId:KEY+'-guest';
   let saved=localStorage.getItem(activeWorkspaceKey);
@@ -1087,8 +1084,8 @@ async function switchAccountWorkspace(user){
   await migrateWorkspaceToIndexedDB();
   render();
   setCloudMode('offline','Account-specific local workspace. Cloud sync is not enabled yet.');
- }catch(error){console.error('Could not switch account workspace safely',error);toast('Could not load this account workspace. Your previous data has been preserved.')}
- finally{workspaceSwitchInProgress=false}
+ });
+ return workspaceSwitchQueue;
 }
 window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null)});
 initCloud();
