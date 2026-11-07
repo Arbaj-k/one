@@ -26,7 +26,7 @@ for (const token of [
   "localStorage.setItem(workspaceStorageKey(),snapshot)",
   "localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot)",
   'saveWorkspaceSnapshot(data)',
-  'localStorage.getItem(KEY)'
+  'localStorage.getItem(workspaceStorageKey())'
 ]) {
   assert.ok(source.includes(token), 'Missing expected app feature: ' + token);
 }
