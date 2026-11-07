@@ -1,4 +1,9 @@
 const KEY='student-brain-data-v1';
+let activeWorkspaceUserId=null;
+let activeWorkspaceKey=KEY+'-guest';
+const LEGACY_OWNER_KEY=KEY+'-legacy-claimed-by';
+function workspaceStorageKey(){return activeWorkspaceKey;}
+function workspaceIndexedDBKey(){return 'workspace:'+activeWorkspaceKey;}
 const DATA_SCHEMA_VERSION=2;
 const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[]});
 function migrateData(raw){
@@ -82,7 +87,7 @@ function saveWorkspaceSnapshot(snapshot){
   const db=await openAIFileDB();
   return new Promise((resolve,reject)=>{
    const tx=db.transaction('workspace','readwrite');
-   tx.objectStore('workspace').put({key:WORKSPACE_STORE_KEY,data:safeCopy,savedAt:Date.now(),schemaVersion:DATA_SCHEMA_VERSION});
+   tx.objectStore('workspace').put({key:workspaceIndexedDBKey(),data:safeCopy,savedAt:Date.now(),schemaVersion:DATA_SCHEMA_VERSION});
    tx.oncomplete=()=>{db.close();resolve(true)};
    tx.onerror=()=>{const err=tx.error||new Error('IndexedDB write failed');db.close();reject(err)};
    tx.onabort=()=>{const err=tx.error||new Error('IndexedDB write was aborted');db.close();reject(err)};
@@ -93,7 +98,7 @@ function saveWorkspaceSnapshot(snapshot){
 async function readWorkspaceSnapshot(){
  const db=await openAIFileDB();
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction('workspace','readonly'),req=tx.objectStore('workspace').get(WORKSPACE_STORE_KEY);
+  const tx=db.transaction('workspace','readonly'),req=tx.objectStore('workspace').get(workspaceIndexedDBKey());
   req.onsuccess=()=>{db.close();resolve(req.result||null)};
   req.onerror=()=>{const err=req.error||new Error('IndexedDB read failed');db.close();reject(err)};
  });
@@ -101,14 +106,14 @@ async function readWorkspaceSnapshot(){
 async function migrateWorkspaceToIndexedDB(){
  try{
   const saved=await readWorkspaceSnapshot();
-  const current=JSON.parse(localStorage.getItem(KEY)||'{}');
+  const current=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');
   const currentData=migrateData(current);
   // Only seed/migrate if the IndexedDB copy is absent or older. Never overwrite
   // a newer durable copy with stale localStorage content.
-  if(!saved||Number(saved.savedAt||0)<Number(localStorage.getItem(KEY+'-idb-migrated-at')||0)){
+  if(!saved||Number(saved.savedAt||0)<Number(localStorage.getItem(workspaceStorageKey()+'-idb-migrated-at')||0)){
    await saveWorkspaceSnapshot(currentData);
   }
-  localStorage.setItem(KEY+'-idb-migrated-at',String(Date.now()));
+  localStorage.setItem(workspaceStorageKey()+'-idb-migrated-at',String(Date.now()));
   window.studentBrainStorageHealth={state:'ready',message:'IndexedDB safety copy active'};
  }catch(err){
   console.warn('IndexedDB migration unavailable; localStorage remains active',err);
@@ -122,9 +127,9 @@ async function requestWorkspaceStoragePersistence(){
  }catch(err){console.info('Storage persistence/estimate not available',err)}
 }
 function loadData(){
- try{return migrateData(JSON.parse(localStorage.getItem(KEY)||'{}'))}
+ try{return migrateData(JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}'))}
  catch(primaryError){
-  try{const lastGood=localStorage.getItem(KEY+'-last-good');if(lastGood){console.warn('Primary workspace data was unreadable; recovered the last-good local snapshot.');return migrateData(JSON.parse(lastGood))}}
+  try{const lastGood=localStorage.getItem(workspaceStorageKey()+'-last-good');if(lastGood){console.warn('Primary workspace data was unreadable; recovered the last-good local snapshot.');return migrateData(JSON.parse(lastGood))}}
   catch(recoveryError){console.error('Last-good workspace recovery failed',recoveryError)}
   console.error('Workspace data could not be loaded',primaryError);return starter();
  }
@@ -148,8 +153,8 @@ function setCloudMode(mode,error=''){
 function persist(){
  const snapshot=JSON.stringify(data);
  try{
-  localStorage.setItem(KEY,snapshot);
-  localStorage.setItem(KEY+'-last-good',snapshot);
+  localStorage.setItem(workspaceStorageKey(),snapshot);
+  localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot);
   setCloudMode('offline','Saved locally on this device.');
  }catch(err){
   console.error('Local save failed',err);
@@ -897,7 +902,7 @@ function restoreData(){
   const parsed=JSON.parse(reader.result),next=parseBackupPayload(parsed);
   const exportedAt=parsed?.exportedAt&&Number.isFinite(Date.parse(parsed.exportedAt))?new Date(parsed.exportedAt).toLocaleString():null;
   if(!confirm('Restore '+(exportedAt?'backup from '+exportedAt:'this backup')+' and replace current workspace data? A recovery snapshot of the current workspace will be saved first.'))return;
-  localStorage.setItem(KEY+'-pre-restore',JSON.stringify(migrateData(data)));data=next;persist();page='overview';render();toast('Backup restored. Previous data is saved as a recovery snapshot.');
+  localStorage.setItem(workspaceStorageKey()+'-pre-restore',JSON.stringify(migrateData(data)));data=next;persist();page='overview';render();toast('Backup restored. Previous data is saved as a recovery snapshot.');
  }catch(err){console.error('Restore failed',err);toast(err.message||'Invalid backup file')}};
  reader.onerror=()=>toast('Could not read backup file. Try selecting it again.');reader.readAsText(f);
 }
@@ -1006,6 +1011,7 @@ window.submitStudentBrainVoiceText = function(raw) {
 };
 
 const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
+function taskReminderStorageKey(){return TASK_REMINDER_KEY+'-'+(activeWorkspaceUserId||'guest');}
 function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return new Date(y,m-1,d,hh||0,mm||0,0,0).getTime()}
 async function enableTaskReminders(){
  if(!('Notification' in window)){toast('This browser does not support notifications');return}
@@ -1014,7 +1020,7 @@ async function enableTaskReminders(){
 }
 async function checkTaskReminders(){
  if(!('Notification' in window)||Notification.permission!=='granted')return;
- let shown={};try{shown=JSON.parse(localStorage.getItem(TASK_REMINDER_KEY)||'{}')}catch{}
+ let shown={};try{shown=JSON.parse(localStorage.getItem(taskReminderStorageKey())||'{}')}catch{}
  const now=Date.now();
  for(const task of (data.tasks||[])){
   if(task.done||!task.due||shown[task.id])continue;
@@ -1026,7 +1032,7 @@ async function checkTaskReminders(){
     const reg=await navigator.serviceWorker?.ready;
     if(reg?.showNotification)await reg.showNotification(title,{body,icon:'./icons/student-brain.svg',tag:'task-'+task.id,data:{url:'./'}});
     else new Notification(title,{body,tag:'task-'+task.id});
-    shown[task.id]=true;localStorage.setItem(TASK_REMINDER_KEY,JSON.stringify(shown));
+    shown[task.id]=true;localStorage.setItem(taskReminderStorageKey(),JSON.stringify(shown));
    }catch(err){console.warn('Task notification failed',err)}
   }
  }
@@ -1042,7 +1048,47 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 if(!history.state||!history.state.sbPage)history.replaceState({sbPage:'overview'},'',location.href);
 window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render();});
 render();
-// Initialize the cloud status immediately; do not leave the HTML placeholder stuck.
+// Separate every signed-in account's workspace on this device. The old unscoped
+// workspace is claimed once by the first account that signs in; later accounts
+// start with their own empty workspace and never inherit another account's data.
+let workspaceSwitchInProgress=false;
+async function switchAccountWorkspace(user){
+ const nextUserId=user?.id||null;
+ if(nextUserId===activeWorkspaceUserId)return;
+ if(workspaceSwitchInProgress)return;
+ workspaceSwitchInProgress=true;
+ try{
+  // Flush the previous workspace's queued durable snapshot before changing scope.
+  try{await workspaceWriteQueue}catch(_){}
+  const previousKey=activeWorkspaceKey;
+  activeWorkspaceUserId=nextUserId;
+  activeWorkspaceKey=nextUserId?KEY+'-user-'+nextUserId:KEY+'-guest';
+  let saved=localStorage.getItem(activeWorkspaceKey);
+  if(nextUserId&&!saved){
+   let claimedBy=null;try{claimedBy=localStorage.getItem(LEGACY_OWNER_KEY)}catch(_){}
+   const legacy=localStorage.getItem(KEY);
+   if(!claimedBy&&legacy){
+    // Preserve the original legacy bytes as a recovery copy before assigning ownership.
+    localStorage.setItem(KEY+'-legacy-recovery',legacy);
+    localStorage.setItem(activeWorkspaceKey,legacy);
+    localStorage.setItem(LEGACY_OWNER_KEY,nextUserId);
+    saved=legacy;
+   }
+  }
+  if(saved){
+   try{data=migrateData(JSON.parse(saved))}catch(error){console.error('Account workspace could not be read; preserving its raw backup.',error);data=starter()}
+  }else{
+   // Account has no data yet: never fall back to another account or the legacy key.
+   data=starter();
+   localStorage.setItem(activeWorkspaceKey,JSON.stringify(data));
+  }
+  await migrateWorkspaceToIndexedDB();
+  render();
+  setCloudMode('offline','Account-specific local workspace. Cloud sync is not enabled yet.');
+ }catch(error){console.error('Could not switch account workspace safely',error);toast('Could not load this account workspace. Your previous data has been preserved.')}
+ finally{workspaceSwitchInProgress=false}
+}
+window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null)});
 initCloud();
 migrateWorkspaceToIndexedDB();
 requestWorkspaceStoragePersistence();
