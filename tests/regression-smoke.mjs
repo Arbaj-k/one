@@ -202,11 +202,11 @@ for (const action of [
 
 // Persistence serializes the workspace once, then stores the primary and recovery snapshots.
 assert.match(app, /const snapshot=JSON\.stringify\(data\)/, 'Workspace data must be serialized before persistence.');
-assert.match(app, /localStorage\.setItem\(KEY,snapshot\)/, 'Primary localStorage persistence must remain active.');
-assert.match(app, /localStorage\.setItem\(KEY\+'-last-good',snapshot\)/, 'A last-good recovery snapshot must be written.');
+assert.match(app, /localStorage\.setItem\(workspaceStorageKey\(\),snapshot\)/, 'Account-scoped localStorage persistence must remain active.');
+assert.match(app, /localStorage\.setItem\(workspaceStorageKey\(\)\+'-last-good',snapshot\)/, 'An account-scoped last-good recovery snapshot must be written.');
 assert.match(app, /saveWorkspaceSnapshot\(data\)/, 'IndexedDB workspace safety copy must be written.');
-assert.match(app, /localStorage\.getItem\(KEY\)/);
-assert.match(app, /localStorage\.getItem\(KEY\+'-last-good'\)/, 'Corrupt primary local data must attempt recovery from the last-good snapshot.');
+assert.match(app, /localStorage\.getItem\(workspaceStorageKey\(\)\)/);
+assert.match(app, /localStorage\.getItem\(workspaceStorageKey\(\)\+'-last-good'\)/, 'Corrupt account data must attempt recovery from the account-scoped last-good snapshot.');
 assert.match(app, /function parseBackupPayload\(parsed\)/, 'Restore must validate the backup payload before replacing workspace data.');
 assert.match(app, /function updateRestorePreview\(\)/, 'Restore file selection must provide a validation preview.');
 assert.match(app, /id="restore-preview"/, 'Backup and restore page must expose accessible restore feedback.');
