@@ -81,7 +81,7 @@
     const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn('Profile sync unavailable; auth remains active.',error.message);
   }
   function paintUser(user){
-    window.dispatchEvent(new Event('one:auth-changed'));
+    window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user}}));
     const signIn=$('#one-signin');if(signIn)signIn.hidden=true;
     const top=$('.topbar-right');
     if(top&&!$('#one-account-menu')){
@@ -102,15 +102,15 @@
     if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new Event('one:auth-changed'));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error(err);status(err.message||'Could not log out.',true)}}
+  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error(err);status(err.message||'Could not log out.',true)}}
   async function boot(){
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
       auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
-      if(session?.user){paintUser(session.user);await upsertProfile(session.user)}else window.dispatchEvent(new Event('one:auth-changed'));
+      if(session?.user){paintUser(session.user);await upsertProfile(session.user)}else window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
     }catch(err){console.warn('One auth unavailable; local guest mode remains enabled.',err.message);const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
   }
-  window.OneAuth={open,logout,getSession:()=>session};
+  window.OneAuth={open,logout,getSession:()=>session,getUser:()=>session?.user||null};
   document.addEventListener('DOMContentLoaded',boot);
 })();
