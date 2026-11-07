@@ -178,6 +178,24 @@ function stopWorkspaceRealtime(){
  if(workspaceChannel&&cloudClient)cloudClient.removeChannel(workspaceChannel).catch(()=>{});
  workspaceChannel=null;
 }
+function persist(){
+ const snapshot=JSON.stringify(data);
+ try{
+  localStorage.setItem(workspaceStorageKey(),snapshot);
+  localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot);
+  if(cloudReady&&cloudUser)setCloudMode(navigator.onLine?'syncing':'offline');
+  else setCloudMode('offline','Guest data is saved on this device. Sign in to sync across devices.');
+ }catch(err){
+  console.error('Local save failed',err);
+  setCloudMode('error',err.message);
+  toast('Local save failed. Export a backup and free storage.');
+ }
+ saveWorkspaceSnapshot(data).catch(err=>{
+  console.warn('IndexedDB workspace safety copy failed',err);
+  window.studentBrainStorageHealth={state:'warning',message:err.message||'IndexedDB copy failed'};
+ });
+ if(cloudReady&&cloudUser)queueCloudSave();
+}
 function queueCloudSave(){
  if(!cloudReady||!cloudUser||!cloudClient)return Promise.resolve();
  const ownerId=cloudUser.id,snapshot=JSON.parse(JSON.stringify(data));
