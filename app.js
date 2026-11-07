@@ -13,6 +13,7 @@ function migrateData(raw){
  next.schemaVersion=DATA_SCHEMA_VERSION;
  return next;
 }
+try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn('Could not prepare guest workspace migration',error)}
 let data=loadData(),page='overview',chatBusy=false;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
@@ -83,11 +84,12 @@ const WORKSPACE_STORE_KEY='latest';
 let workspaceWriteQueue=Promise.resolve();
 function saveWorkspaceSnapshot(snapshot){
  const safeCopy=JSON.parse(JSON.stringify(migrateData(snapshot)));
+ const snapshotKey=workspaceIndexedDBKey();
  workspaceWriteQueue=workspaceWriteQueue.catch(()=>{}).then(async()=>{
   const db=await openAIFileDB();
   return new Promise((resolve,reject)=>{
    const tx=db.transaction('workspace','readwrite');
-   tx.objectStore('workspace').put({key:workspaceIndexedDBKey(),data:safeCopy,savedAt:Date.now(),schemaVersion:DATA_SCHEMA_VERSION});
+   tx.objectStore('workspace').put({key:snapshotKey,data:safeCopy,savedAt:Date.now(),schemaVersion:DATA_SCHEMA_VERSION});
    tx.oncomplete=()=>{db.close();resolve(true)};
    tx.onerror=()=>{const err=tx.error||new Error('IndexedDB write failed');db.close();reject(err)};
    tx.onabort=()=>{const err=tx.error||new Error('IndexedDB write was aborted');db.close();reject(err)};
@@ -1066,7 +1068,7 @@ async function switchAccountWorkspace(user){
   let saved=localStorage.getItem(activeWorkspaceKey);
   if(nextUserId&&!saved){
    let claimedBy=null;try{claimedBy=localStorage.getItem(LEGACY_OWNER_KEY)}catch(_){}
-   const legacy=localStorage.getItem(KEY);
+   const legacy=localStorage.getItem(KEY+'-guest')||localStorage.getItem(KEY);
    if(!claimedBy&&legacy){
     // Preserve the original legacy bytes as a recovery copy before assigning ownership.
     localStorage.setItem(KEY+'-legacy-recovery',legacy);
