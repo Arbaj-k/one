@@ -1066,7 +1066,7 @@ function switchAccountWorkspace(user){
   if(nextUserId&&!saved){
    let claimedBy=null;try{claimedBy=localStorage.getItem(LEGACY_OWNER_KEY)}catch(_){}
    const legacy=localStorage.getItem(KEY+'-guest')||localStorage.getItem(KEY);
-   if(!claimedBy&&legacy){
+   if(!claimedBy&&legacy&&confirm('This phone has older One data that was saved before account separation. Is this the account that originally owned that data? Choose OK to move a protected copy into this account, or Cancel if this is a different account.')){
     // Preserve the original legacy bytes as a recovery copy before assigning ownership.
     localStorage.setItem(KEY+'-legacy-recovery',legacy);
     localStorage.setItem(activeWorkspaceKey,legacy);
