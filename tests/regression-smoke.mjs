@@ -210,7 +210,7 @@ assert.match(app, /localStorage\.getItem\(workspaceStorageKey\(\)\+'-last-good'\
 assert.match(app, /function parseBackupPayload\(parsed\)/, 'Restore must validate the backup payload before replacing workspace data.');
 assert.match(app, /function updateRestorePreview\(\)/, 'Restore file selection must provide a validation preview.');
 assert.match(app, /id="restore-preview"/, 'Backup and restore page must expose accessible restore feedback.');
-assert.match(app, /localStorage\.setItem\(KEY\+'-pre-restore'/, 'Restore must preserve a pre-restore recovery snapshot.');
+assert.match(app, /localStorage\.setItem\(workspaceStorageKey\(\)\+'-pre-restore'/, 'Restore must preserve an account-scoped pre-restore recovery snapshot.');
 assert.match(css, /\.restore-preview/, 'Restore preview needs a visible responsive style.');
 assert.match(css, /@media\(max-width:700px\)[\s\S]*\.backup-grid/, 'Backup/restore layout must be polished for mobile.');
 
