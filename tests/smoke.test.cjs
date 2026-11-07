@@ -23,8 +23,8 @@ for (const token of [
   'function expenses()', 'function saveForm(', 'function splitDocumentIntoChunks(text)',
   "'delete-document'", 'Unsupported file type. Upload a PDF or image.',
   'const snapshot=JSON.stringify(data)',
-  "localStorage.setItem(KEY,snapshot)",
-  "localStorage.setItem(KEY+'-last-good',snapshot)",
+  "localStorage.setItem(workspaceStorageKey(),snapshot)",
+  "localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot)",
   'saveWorkspaceSnapshot(data)',
   'localStorage.getItem(KEY)'
 ]) {
