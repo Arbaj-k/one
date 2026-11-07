@@ -141,62 +141,126 @@ let cloudRetryTimer=null,cloudRetryDelay=1500,lastSyncedAt=null,cloudMode='offli
 function cloudStatus(message){
  const el=document.querySelector('#cloud-status');
  if(el){
-  const label=LOCAL_ONLY?'Saved on this device':cloudMode==='synced'?'Synced':cloudMode==='offline'?'Offline':cloudMode==='error'?'Error':cloudMode==='syncing'?'Syncing…':'Connecting…';
-  const time=LOCAL_ONLY?' · Not available on other devices':lastSyncedAt?' · Last synced '+new Date(lastSyncedAt).toLocaleString():' · Not synced yet';
+  const label=cloudMode==='synced'?'Synced':cloudMode==='offline'?'Offline':cloudMode==='error'?'Sync issue':cloudMode==='syncing'?'Syncing…':cloudMode==='loading'?'Restoring…':'Saved locally';
+  const time=lastSyncedAt?' · '+new Date(lastSyncedAt).toLocaleString():'';
   el.textContent=label+time;
-  el.title=LOCAL_ONLY?'Your workspace is stored in this browser on this device. Sign-in does not currently sync these records.':cloudLastError||message||'';
+  el.title=cloudLastError||message||'Signed-in workspaces sync securely across devices. Guest data stays on this device.';
   el.dataset.state=cloudMode;
  }
 }
-function setCloudMode(mode,error=''){
- cloudMode=mode;cloudLastError=error;
- cloudStatus();
+function setCloudMode(mode,error=''){cloudMode=mode;cloudLastError=error;cloudStatus()}
+function writeLocalWorkspace(snapshot){
+ const serialized=JSON.stringify(migrateData(snapshot));
+ localStorage.setItem(workspaceStorageKey(),serialized);
+ localStorage.setItem(workspaceStorageKey()+'-last-good',serialized);
+ return saveWorkspaceSnapshot(JSON.parse(serialized));
 }
-function persist(){
- const snapshot=JSON.stringify(data);
- try{
-  localStorage.setItem(workspaceStorageKey(),snapshot);
-  localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot);
-  setCloudMode('offline','Saved locally on this device.');
- }catch(err){
-  console.error('Local save failed',err);
-  setCloudMode('error',err.message);
-  toast('Local save failed. Export a backup and free storage.');
+function mergeWorkspaceSnapshots(localSnapshot,remoteSnapshot){
+ const local=migrateData(localSnapshot),remote=migrateData(remoteSnapshot),merged={...remote};
+ const keys=new Set([...Object.keys(local),...Object.keys(remote)]);
+ for(const key of keys){
+  if(Array.isArray(local[key])&&Array.isArray(remote[key])){
+   const records=new Map();
+   const stamp=item=>Math.max(...['updated_at','updatedAt','modified_at','modifiedAt','created_at','createdAt'].map(k=>Date.parse(item?.[k]||'')||0));
+   for(const item of remote[key])records.set(item?.id??JSON.stringify(item),item);
+   for(const item of local[key]){
+    const id=item?.id??JSON.stringify(item),existing=records.get(id);
+    if(!existing||stamp(item)>stamp(existing))records.set(id,item);
+   }
+   merged[key]=Array.from(records.values());
+  }else if(!(key in merged))merged[key]=local[key];
  }
- // IndexedDB keeps a second local copy; localStorage remains the synchronous
- // source during this compatibility phase so existing screens/actions are safe.
- saveWorkspaceSnapshot(data).catch(err=>{
-  console.warn('IndexedDB workspace safety copy failed',err);
-  window.studentBrainStorageHealth={state:'warning',message:err.message||'IndexedDB copy failed'};
- });
+ merged.schemaVersion=Math.max(Number(local.schemaVersion)||1,Number(remote.schemaVersion)||1);
+ return migrateData(merged);
+}
+let workspaceChannel=null,cloudRefreshInFlight=null;
+function stopWorkspaceRealtime(){
+ if(workspaceChannel&&cloudClient)cloudClient.removeChannel(workspaceChannel).catch(()=>{});
+ workspaceChannel=null;
 }
 function queueCloudSave(){
- const snapshot=JSON.parse(JSON.stringify(data));
+ if(!cloudReady||!cloudUser||!cloudClient)return Promise.resolve();
+ const ownerId=cloudUser.id,snapshot=JSON.parse(JSON.stringify(data));
  setCloudMode(navigator.onLine?'syncing':'offline');
- syncQueue=syncQueue.catch(()=>{}).then(()=>saveCloudSnapshot(snapshot));
+ syncQueue=syncQueue.catch(()=>{}).then(()=>saveCloudSnapshot(snapshot,ownerId));
+ return syncQueue;
 }
-async function saveCloudSnapshot(snapshot){
+async function saveCloudSnapshot(snapshot,ownerId=cloudUser?.id){
  try{
-  if(!navigator.onLine)throw Error('Device is offline');
-  const {error}=await cloudClient.from('profiles').upsert({id:cloudUser.id,workspace_data:snapshot,updated_at:new Date().toISOString()},{onConflict:'id'});
+  if(!navigator.onLine)throw Error('Device is offline; changes are saved locally and will sync when online.');
+  if(!ownerId||ownerId!==cloudUser?.id||!cloudClient)return;
+  const {error}=await cloudClient.from('user_workspaces').upsert({
+   user_id:ownerId,workspace_data:migrateData(snapshot),schema_version:DATA_SCHEMA_VERSION,updated_at:new Date().toISOString()
+  },{onConflict:'user_id'});
   if(error)throw error;
+  if(ownerId!==cloudUser?.id)return;
   cloudRetryDelay=1500;lastSyncedAt=new Date().toISOString();
   setCloudMode('synced');
  }catch(err){
   console.error('Cloud sync failed',err);
+  if(ownerId!==cloudUser?.id)return;
   setCloudMode(navigator.onLine?'error':'offline',err.message);
   if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
-  cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudClient&&cloudUser&&navigator.onLine)queueCloudSave()},cloudRetryDelay);
+  cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudUser?.id===ownerId&&navigator.onLine)queueCloudSave()},cloudRetryDelay);
   cloudRetryDelay=Math.min(cloudRetryDelay*2,60000);
  }
 }
-// Local-first storage: all workspace records stay in this browser/device.
-const LOCAL_ONLY=true;
-function initCloud(){
- // This deployment intentionally keeps workspace data local until account-bound
- // cloud sync is enabled and validated. Always settle the startup indicator.
- setCloudMode('offline','Cloud sync is disabled (LOCAL_ONLY=true). Your data remains saved locally.');
+async function refreshCloudWorkspace(ownerId=cloudUser?.id){
+ if(!cloudReady||!cloudClient||!ownerId||ownerId!==cloudUser?.id||!navigator.onLine)return;
+ if(cloudRefreshInFlight)return cloudRefreshInFlight;
+ cloudRefreshInFlight=(async()=>{
+  const {data:row,error}=await cloudClient.from('user_workspaces').select('workspace_data,updated_at,revision').eq('user_id',ownerId).maybeSingle();
+  if(error)throw error;
+  if(ownerId!==cloudUser?.id)return;
+  if(!row){await saveCloudSnapshot(data,ownerId);return}
+  const merged=mergeWorkspaceSnapshots(data,row.workspace_data||{});
+  const mergedText=JSON.stringify(merged),remoteText=JSON.stringify(migrateData(row.workspace_data||{}));
+  data=merged;
+  await writeLocalWorkspace(data);
+  render();
+  if(mergedText!==remoteText)await saveCloudSnapshot(merged,ownerId);
+  else{lastSyncedAt=row.updated_at||new Date().toISOString();setCloudMode('synced')}
+ })().catch(error=>{
+  console.error('Could not refresh cloud workspace',error);
+  if(ownerId===cloudUser?.id)setCloudMode('error',error.message||'Could not restore cloud data.');
+ }).finally(()=>{cloudRefreshInFlight=null});
+ return cloudRefreshInFlight;
 }
+function subscribeWorkspaceRealtime(ownerId){
+ stopWorkspaceRealtime();
+ if(!cloudClient||!ownerId)return;
+ workspaceChannel=cloudClient.channel('one-workspace-'+ownerId)
+  .on('postgres_changes',{event:'*',schema:'public',table:'user_workspaces',filter:'user_id=eq.'+ownerId},payload=>{
+   if(ownerId!==cloudUser?.id||!cloudReady||!payload.new?.workspace_data)return;
+   const remote=payload.new.workspace_data,merged=mergeWorkspaceSnapshots(data,remote);
+   const remoteText=JSON.stringify(migrateData(remote));
+   data=merged;
+   writeLocalWorkspace(data).then(()=>render()).catch(error=>console.warn('Could not store remote workspace locally',error));
+   if(JSON.stringify(merged)!==remoteText)queueCloudSave();
+   else{lastSyncedAt=payload.new.updated_at||new Date().toISOString();setCloudMode('synced')}
+  }).subscribe(status=>{
+   if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Live workspace updates unavailable; refresh-on-focus remains enabled.');
+  });
+}
+async function activateCloudWorkspace(userId){
+ if(!cloudClient)throw new Error('Cloud sync client is unavailable.');
+ const {data:sessionData,error:sessionError}=await cloudClient.auth.getSession();
+ if(sessionError)throw sessionError;
+ if(sessionData.session?.user?.id!==userId)throw new Error('Your sign-in session is not ready for cloud sync. Please sign in again.');
+ cloudUser=sessionData.session.user;cloudReady=true;setCloudMode('loading');
+ await refreshCloudWorkspace(userId);
+ subscribeWorkspaceRealtime(userId);
+}
+function initCloud(){
+ try{
+  if(!window.supabase?.createClient)throw new Error('Supabase client did not load.');
+  cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'one-auth-session-v1'}});
+  setCloudMode('offline','Guest workspaces are device-only. Sign in to enable secure cloud sync.');
+ }catch(error){console.error('Cloud sync initialization failed',error);setCloudMode('error',error.message)}
+}
+window.addEventListener('online',()=>{if(cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
+window.addEventListener('focus',()=>{if(cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
 
 
 function formatChatText(value=''){
@@ -1057,9 +1121,10 @@ let workspaceSwitchQueue=Promise.resolve();
 function switchAccountWorkspace(user){
  const nextUserId=user?.id||null;
  workspaceSwitchQueue=workspaceSwitchQueue.catch(()=>{}).then(async()=>{
-  if(nextUserId===activeWorkspaceUserId)return;
-  // Flush the previous workspace's queued durable snapshot before changing scope.
-  try{await workspaceWriteQueue}catch(_){}
+  if(nextUserId===activeWorkspaceUserId&&(!nextUserId||cloudReady))return;
+  try{await workspaceWriteQueue;await syncQueue}catch(_){}
+  stopWorkspaceRealtime();cloudReady=false;cloudUser=null;
+  if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
   activeWorkspaceUserId=nextUserId;
   activeWorkspaceKey=nextUserId?KEY+'-user-'+nextUserId:KEY+'-guest';
   let saved=localStorage.getItem(activeWorkspaceKey);
@@ -1067,7 +1132,6 @@ function switchAccountWorkspace(user){
    let claimedBy=null;try{claimedBy=localStorage.getItem(LEGACY_OWNER_KEY)}catch(_){}
    const legacy=localStorage.getItem(KEY+'-guest')||localStorage.getItem(KEY);
    if(!claimedBy&&legacy&&confirm('This phone has older One data that was saved before account separation. Is this the account that originally owned that data? Choose OK to move a protected copy into this account, or Cancel if this is a different account.')){
-    // Preserve the original legacy bytes as a recovery copy before assigning ownership.
     localStorage.setItem(KEY+'-legacy-recovery',legacy);
     localStorage.setItem(activeWorkspaceKey,legacy);
     localStorage.setItem(LEGACY_OWNER_KEY,nextUserId);
@@ -1076,14 +1140,14 @@ function switchAccountWorkspace(user){
   }
   if(saved){
    try{data=migrateData(JSON.parse(saved))}catch(error){console.error('Account workspace could not be read; preserving its raw backup.',error);data=starter()}
-  }else{
-   // Account has no data yet: never fall back to another account or the legacy key.
-   data=starter();
-   localStorage.setItem(activeWorkspaceKey,JSON.stringify(data));
-  }
+  }else{data=starter();localStorage.setItem(activeWorkspaceKey,JSON.stringify(data))}
   await migrateWorkspaceToIndexedDB();
   render();
-  setCloudMode('offline','Account-specific local workspace. Cloud sync is not enabled yet.');
+  if(nextUserId){
+   try{await activateCloudWorkspace(nextUserId)}
+   catch(error){console.error('Cloud workspace activation failed',error);cloudReady=false;cloudUser=null;setCloudMode('error','Saved locally. Cloud sync could not start: '+(error.message||'Unknown error'))}
+  }else setCloudMode('offline','Guest data is saved only on this device. Sign in to sync across devices.');
+  render();
  });
  return workspaceSwitchQueue;
 }
