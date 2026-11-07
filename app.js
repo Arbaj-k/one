@@ -161,7 +161,7 @@ function mergeWorkspaceSnapshots(localSnapshot,remoteSnapshot){
  for(const key of keys){
   if(Array.isArray(local[key])&&Array.isArray(remote[key])){
    const records=new Map();
-   const stamp=item=>Math.max(...['updated_at','updatedAt','modified_at','modifiedAt','created_at','createdAt'].map(k=>Date.parse(item?.[k]||'')||0));
+   const stamp=item=>Math.max(Number(item?.updated)||0,Number(item?.created)||0,...['updated_at','updatedAt','modified_at','modifiedAt','created_at','createdAt'].map(k=>Date.parse(item?.[k]||'')||0));
    for(const item of remote[key])records.set(item?.id??JSON.stringify(item),item);
    for(const item of local[key]){
     const id=item?.id??JSON.stringify(item),existing=records.get(id);
