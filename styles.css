@@ -1316,3 +1316,21 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .planner-calendar-day{background:var(--surface,#182232);color:var(--text,#f4f6fb);border-color:var(--line,#3b4656)}
 .planner-calendar-day.is-today{background:color-mix(in srgb,var(--blue) 15%,var(--surface));}
 @media(max-width:700px){.planner-summary{gap:8px}.planner-summary>button{padding:12px 9px;min-height:108px}.planner-summary>button b{font-size:23px}.planner-summary>button span{font-size:11px}.planner-summary>button small{font-size:10px}.planner-tabs{scrollbar-width:none}.planner-tab{padding:10px 14px}.task-row-actions{justify-content:stretch}.task-row-actions .btn{flex:1;min-height:42px}.planner-view-heading h2{font-size:20px}}
+
+/* Unified Money Spending workspace */
+.money-tabs{display:flex;gap:8px;overflow-x:auto;padding:5px 0 14px;margin:0 0 18px;scrollbar-width:thin}
+.money-tab{flex:0 0 auto;border:1px solid var(--border,#29344b);background:var(--surface,#141d30);color:var(--muted,#aab5ca);border-radius:999px;padding:10px 16px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+.money-tab.active{background:#eaf0ff;color:#14213d;border-color:#eaf0ff;font-weight:700}
+.money-budget-card{margin:16px 0}
+.money-budget-number{font-size:32px;font-weight:750;margin:10px 0 16px}
+.money-budget-number small{font-size:13px;color:var(--muted,#aab5ca);font-weight:500}
+.money-budget-track{height:10px;background:var(--surface-2,#27334a);border-radius:99px;overflow:hidden;margin-bottom:12px}
+.money-budget-track span{display:block;height:100%;background:linear-gradient(90deg,#4f7cff,#6bd5b4);border-radius:99px}
+.money-budget-card .row{font-size:13px;color:var(--muted,#aab5ca)}
+.money-budget-card .is-over-budget{color:#ff7b83}
+.money-budget-form{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:20px}
+.money-budget-form label{width:100%;font-size:13px;color:var(--muted,#aab5ca)}
+.money-budget-form input{max-width:240px}
+.money-budget-card>.muted{font-size:12px;margin-top:14px}
+.task-row-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:600px){.money-tabs{margin-right:-4px}.money-tab{padding:9px 13px;font-size:12px}.money-budget-form input{max-width:100%;width:100%}.task-row-actions .btn{font-size:11px;padding:7px 9px}}
