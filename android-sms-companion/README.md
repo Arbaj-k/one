@@ -20,3 +20,13 @@ Install the debug APK on your own Android phone. Open One SMS Sync, sign in usin
 
 ## Limitations
 Bank SMS formats vary. Alerts without currency markers, UPI keyword, or clear debit/credit language are skipped rather than guessed. Validate entries in One Money after first use.
+
+
+## Floating One assistant bubble
+
+1. Install the Android companion app and sign in with the same One account.
+2. Tap **Enable floating One bubble**.
+3. Allow **Display over other apps** in Android settings.
+4. Return to One SMS Sync and tap Enable again if needed. A small draggable One bubble appears above other apps.
+5. Tap the bubble to open the compact Quick Note editor. Saving calls the authenticated `add_workspace_note` RPC and writes directly to the signed-in One workspace.
+6. Stop the foreground notification/service to dismiss the bubble; Android may show a persistent notification while it is active.
