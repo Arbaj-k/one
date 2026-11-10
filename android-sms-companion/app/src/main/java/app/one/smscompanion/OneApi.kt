@@ -45,10 +45,25 @@ object OneApi {
         if (access.isBlank()) throw IllegalStateException("One did not return a sign-in session.")
         saveSession(context, access, refresh)
     }
+    private suspend fun refresh(context: Context): String {
+        val refresh = prefs(context).getString("refresh_token", null) ?: throw IllegalStateException("Sign in again to One SMS Sync.")
+        val result = request("/auth/v1/token?grant_type=refresh_token", "POST", body = JSONObject().put("refresh_token", refresh))
+        val access = result.optString("access_token")
+        val nextRefresh = result.optString("refresh_token")
+        if (access.isBlank()) throw IllegalStateException("Your One session expired. Sign in again.")
+        saveSession(context, access, nextRefresh.ifBlank { refresh })
+        return access
+    }
     suspend fun sync(context: Context, transactions: List<ParsedTransaction>): JSONObject {
-        val access = token(context) ?: throw IllegalStateException("Sign in to One in the companion app first.")
+        var access = token(context) ?: throw IllegalStateException("Sign in to One in the companion app first.")
         val array = JSONArray()
         transactions.forEach { tx -> array.put(JSONObject().put("amount", tx.amount).put("direction", tx.direction).put("merchant", tx.merchant).put("upiReference", tx.upiReference).put("sender", tx.sender).put("transactionAt", tx.transactionAt).put("fingerprint", tx.fingerprint)) }
-        return request("/functions/v1/bank-sms-sync", "POST", access, JSONObject().put("transactions", array))
+        val payload = JSONObject().put("transactions", array)
+        return try { request("/functions/v1/bank-sms-sync", "POST", access, payload) }
+        catch (error: IllegalStateException) {
+            if (!error.message.orEmpty().contains("401")) throw error
+            access = refresh(context)
+            request("/functions/v1/bank-sms-sync", "POST", access, payload)
+        }
     }
 }
