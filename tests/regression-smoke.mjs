@@ -276,3 +276,14 @@ assert.match(app, /if\(!confirm\(moneySummary\)\)\{toast\('Money record not save
 assert.match(app, /Saved task: '\+title/,'Voice task success confirmation must identify the saved task.');
 assert.match(app, /Saved '\+category\+' '\+amountLabel/,'Voice money success confirmation must echo the saved amount and category.');
 
+
+// One quick capture and loan tracker regressions.
+assert.ok(app.includes('id="home-quick-note-form"'), 'Today dashboard must expose quick note capture.');
+assert.ok(app.includes("if(e.target.id==='home-quick-note-form')"), 'Quick notes must save through the workspace data model.');
+assert.ok(app.includes("function loanTracker(){"), 'Dedicated udhaar and loan tracker page is missing.');
+assert.ok(app.includes("data-page=\"loans\""), 'Money page must link to the dedicated loan tracker.');
+assert.ok(app.includes("field('Due date (udhaar)','dueDate'"), 'Udhaar entries must support due dates.');
+assert.ok(app.includes("'loan-repayment':()=>"), 'Loan tracker must support repayment entry.');
+assert.ok(app.includes('window.loanPersonFilter'), 'Loan history must be filterable by person.');
+assert.ok(html.includes('data-page="loans"'), 'Primary navigation must expose Udhaar & Loans.');
+assert.ok(css.includes('.quick-note-widget') && css.includes('.loan-person-card'), 'Quick note and loan tracker mobile styles are missing.');
