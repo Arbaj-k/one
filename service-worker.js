@@ -1,5 +1,5 @@
 /* One PWA service worker. Bump version on each release. */
-const CACHE_VERSION="one-shell-v9",ASSET_CACHE="one-assets-v9";
+const CACHE_VERSION="one-shell-v10",ASSET_CACHE="one-assets-v10";
 const PRECACHE=["./","./index.html","./styles.css","./app.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./icons/student-brain.svg"];
 const OFFLINE_PAGE="./index.html";
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_VERSION).then(c=>c.addAll(PRECACHE))));
