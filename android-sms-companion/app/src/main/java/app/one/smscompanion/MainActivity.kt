@@ -3,6 +3,9 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.view.View
 import android.widget.*
 import androidx.core.app.ActivityCompat
@@ -18,6 +21,7 @@ class MainActivity : Activity() {
     private lateinit var password: EditText
     private lateinit var capture: Switch
     private lateinit var loginButton: Button
+    private lateinit var bubbleButton: Button
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val pad = (22 * resources.displayMetrics.density).toInt()
@@ -35,9 +39,22 @@ class MainActivity : Activity() {
             isChecked = getSharedPreferences("one_sms_settings", MODE_PRIVATE).getBoolean("capture_enabled", false)
             isEnabled = !OneApi.token(this@MainActivity).isNullOrBlank()
         }; root.addView(capture)
+        root.addView(label("Floating One assistant", 20f).apply { setPadding(0, pad, 0, pad / 3) })
+        root.addView(label("Keep a small movable One bubble above other apps. Tap it anytime to open quick note capture.", 13f))
+        bubbleButton = Button(this).apply { text = "Enable floating One bubble" }; root.addView(bubbleButton)
+        bubbleButton.setOnClickListener {
+            if (!Settings.canDrawOverlays(this)) {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            } else {
+                ContextCompat.startForegroundService(this, Intent(this, OneBubbleService::class.java))
+                status.text = "One floating bubble is active. Tap it to capture a note."
+                bubbleButton.text = "Floating bubble is active"
+            }
+        }
         root.addView(label("Only messages clearly marked UPI with a debit/credit signal and amount are considered. OTPs and unrelated SMS are ignored. You can turn capture off or disconnect at any time.", 12f))
         val disconnect = Button(this).apply { text = "Disconnect One account" }; root.addView(disconnect)
         setContentView(ScrollView(this).apply { addView(root) })
+        bubbleButton.isEnabled = true
         if (!OneApi.token(this).isNullOrBlank()) {
             status.text = "Connected to One. Turn on capture when ready."
             email.visibility = View.GONE; password.visibility = View.GONE; loginButton.visibility = View.GONE; capture.isEnabled = true
