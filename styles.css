@@ -1264,3 +1264,31 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
   border-radius:14px!important;
  }
 }
+
+
+/* Quick capture and udhaar tracker */
+.quick-note-widget{margin:0 0 22px;padding:22px;border:1px solid #dfe6f5;background:linear-gradient(135deg,#fff 0%,#f8faff 100%)}
+.quick-note-widget h2{margin:0 0 5px}.quick-note-widget .muted{font-size:12px;margin:0 0 14px}
+.quick-note-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:#eaf0ff;color:#4263eb;font-size:22px}
+#home-quick-note-form{display:grid;gap:10px}
+#home-quick-note-form input,#home-quick-note-form textarea{width:100%;border:1px solid #e2e8f2;background:#fff;border-radius:12px;padding:12px 14px;color:var(--ink);outline:none;resize:vertical}
+#home-quick-note-form input:focus,#home-quick-note-form textarea:focus{border-color:#8ea5ff;box-shadow:0 0 0 3px #4263eb14}
+#home-quick-note-form .row{flex-wrap:wrap}
+.loan-stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:20px 0}
+.loan-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+.loan-people{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:25px}
+.loan-person-card{padding:19px}
+.loan-person-name{font:700 16px Manrope,sans-serif;margin-bottom:4px}
+.loan-balance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:17px 0;padding:13px;background:#f7f9fd;border-radius:12px}
+.loan-balance-grid div{display:grid;gap:5px}
+.loan-balance-grid small,.loan-record span{color:var(--muted);font-size:11px}
+.loan-balance-grid b{font:700 17px Manrope,sans-serif}
+.loan-due{font-size:12px;color:#23764f;margin:0 0 10px}
+.loan-due.overdue{color:#c34b4b;font-weight:700}
+.loan-records{border-top:1px solid var(--line);padding-top:8px}
+.loan-record{display:flex;justify-content:space-between;gap:10px;padding:7px 0}
+.loan-record b{font-size:12px}
+.loan-card-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.loan-history-title{margin:25px 0 12px}
+@media(max-width:900px){.loan-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.quick-note-widget{padding:16px}.loan-people{grid-template-columns:1fr}.loan-person-card{padding:16px}.loan-stats{gap:10px}.loan-actions .btn{flex:1}}
