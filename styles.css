@@ -1175,3 +1175,40 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
  .chat-shell .voice-controls .voice-language{font-size:9px;padding-left:7px}
  .chat-shell .chat-send{min-width:68px}
 }
+
+
+/* Ask One: true edge-to-edge conversation and compact message actions */
+.chat-shell .bubble-actions,
+.chat-shell .copy-message{display:none!important}
+.chat-shell .chat-messages{min-height:0}
+.home-brain-search{display:flex;align-items:center;gap:8px}
+.home-brain-search .home-chat-open{
+ flex:0 0 48px;width:48px;height:48px;display:grid;place-items:center;
+ border:1px solid #8197db66;border-radius:15px;background:#ffffff18;color:#fff;
+}
+.home-brain-search .home-chat-open svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.home-brain-search .home-chat-open:hover{background:#ffffff2b;border-color:#c3d0ff}
+
+/* On desktop the chat uses the full content height; on phones it becomes a
+   dedicated app-like screen with the composer anchored at the bottom. */
+.main:has(.chat-shell){display:flex;flex-direction:column;min-height:100dvh}
+.main:has(.chat-shell) .content:has(.chat-shell){width:100%;max-width:none;flex:1;min-height:0;padding:12px 18px}
+.main:has(.chat-shell) .site-footer{display:none}
+.main:has(.chat-shell) .chat-shell{width:100%;max-width:none;height:calc(100dvh - 96px);min-height:0;max-height:none;margin:0;padding:18px 22px 14px}
+.main:has(.chat-shell) .chat-messages{flex:1 1 0;min-height:0;height:auto;max-height:none}
+@media(max-width:760px){
+ body:has(.chat-shell){overflow:hidden}
+ .main:has(.chat-shell){height:100dvh;min-height:0;padding:0!important;overflow:hidden}
+ .main:has(.chat-shell) .topbar{display:none}
+ .main:has(.chat-shell) .content:has(.chat-shell){height:100dvh;min-height:0;padding:0!important;margin:0;overflow:hidden}
+ .main:has(.chat-shell) .chat-shell{
+  width:100%;height:100dvh;min-height:0;max-height:none;margin:0;padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  border-radius:0;border-left:0;border-right:0;display:flex;flex-direction:column;gap:0;
+ }
+ .main:has(.chat-shell) .chat-intro{flex:0 0 auto;padding:7px 2px 12px}
+ .main:has(.chat-shell) .chat-messages{flex:1 1 0!important;min-height:0!important;height:auto!important;max-height:none!important;overflow-y:auto;padding:14px 2px 12px;margin:0}
+ .main:has(.chat-shell) .chat-welcome{flex:0 0 auto}
+ .main:has(.chat-shell) .chat-form{position:relative;bottom:auto;flex:0 0 auto;margin-top:8px}
+ .main:has(.chat-shell) .voice-controls{flex:0 0 auto}
+ .main:has(.chat-shell) .chat-note{flex:0 0 auto;margin-top:8px;padding-top:8px}
+}
