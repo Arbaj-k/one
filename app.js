@@ -376,7 +376,7 @@ function tasks(){const current=today(),monthStart=new Date(current.slice(0,7)+'-
  const sort=(a,b)=>(a.due||'9999').localeCompare(b.due||'9999')||(priorityRank[a.priority||'Medium']??1)-(priorityRank[b.priority||'Medium']??1)||(a.created||0)-(b.created||0);
  tasks.sort(sort);
  const tabs=['Today','Tomorrow','Upcoming','Overdue','All','Completed'];
- const taskHtml=arr=>arr.length?arr.map(t=>`${taskRow(t)}<div class="task-row-actions"><button class="btn small" data-action="edit-task" data-id="${t.id}">Edit</button> <button class="btn small danger" data-action="delete-task" data-id="${t.id}">Delete</button></div>`).join(''):empty('No tasks in this view. Add a task or choose another day.','☑');
+ const taskHtml=arr=>arr.length?arr.map(t=>`${taskRow(t)}<div class="task-row-actions"><button class="btn small" data-action="share-task-whatsapp" data-id="${t.id}">WhatsApp</button><button class="btn small" data-action="share-task-telegram" data-id="${t.id}">Telegram</button><button class="btn small" data-action="edit-task" data-id="${t.id}">Edit</button> <button class="btn small danger" data-action="delete-task" data-id="${t.id}">Delete</button></div>`).join(''):empty('No tasks in this view. Add a task or choose another day.','☑');
  const monthKey=window.plannerMonth||now.slice(0,7);
  const [monthYear,monthNumber]=monthKey.split('-').map(Number);
  const monthStart=new Date(monthYear,monthNumber-1,1);
@@ -1148,7 +1148,7 @@ async function checkTaskReminders(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>checkTaskReminders());
 else checkTaskReminders();
-setInterval(checkTaskReminders,60000);
+setInterval(checkTaskReminders,60000);window.addEventListener('focus',checkTaskReminders);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkTaskReminders()});
 
 function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRepliesOn!=='function'||!window.isStudentBrainVoiceRepliesOn()||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(message);u.lang='en-IN';window.speechSynthesis.speak(u)}
 
