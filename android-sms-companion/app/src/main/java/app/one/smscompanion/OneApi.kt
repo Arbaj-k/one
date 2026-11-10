@@ -54,6 +54,20 @@ object OneApi {
         saveSession(context, access, nextRefresh.ifBlank { refresh })
         return access
     }
+    suspend fun addQuickNote(context: Context, title: String, content: String) {
+        var access = token(context) ?: throw IllegalStateException("Sign in to One first.")
+        val note = JSONObject().put("id", "android-" + java.util.UUID.randomUUID().toString())
+            .put("title", title.ifBlank { "Quick note" }).put("content", content)
+            .put("subject", "Quick note").put("tags", "quick capture")
+            .put("created", System.currentTimeMillis()).put("updated", System.currentTimeMillis())
+        try { request("/rest/v1/rpc/add_workspace_note", "POST", access, JSONObject().put("note", note)) }
+        catch (error: IllegalStateException) {
+            if (!error.message.orEmpty().contains("401")) throw error
+            access = refresh(context)
+            request("/rest/v1/rpc/add_workspace_note", "POST", access, JSONObject().put("note", note))
+        }
+    }
+
     suspend fun sync(context: Context, transactions: List<ParsedTransaction>): JSONObject {
         var access = token(context) ?: throw IllegalStateException("Sign in to One in the companion app first.")
         val array = JSONArray()
