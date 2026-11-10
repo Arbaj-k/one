@@ -1,6 +1,7 @@
 package app.one.smscompanion
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.content.Intent
@@ -8,6 +9,7 @@ import android.net.Uri
 import android.provider.Settings
 import android.view.View
 import android.widget.*
+import android.text.InputType
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.MainScope
@@ -54,6 +56,7 @@ class MainActivity : Activity() {
         root.addView(label("Only messages clearly marked UPI with a debit/credit signal and amount are considered. OTPs and unrelated SMS are ignored. You can turn capture off or disconnect at any time.", 12f))
         val disconnect = Button(this).apply { text = "Disconnect One account" }; root.addView(disconnect)
         setContentView(ScrollView(this).apply { addView(root) })
+        if (intent.getBooleanExtra("open_quick_note", false)) showQuickNoteDialog()
         bubbleButton.isEnabled = true
         if (!OneApi.token(this).isNullOrBlank()) {
             status.text = "Connected to One. Turn on capture when ready."
@@ -89,6 +92,42 @@ class MainActivity : Activity() {
             status.text = "Disconnected. Your One workspace data is not deleted."
         }
     }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent?.getBooleanExtra("open_quick_note", false) == true) showQuickNoteDialog()
+    }
+    private fun showQuickNoteDialog() {
+        if (OneApi.token(this).isNullOrBlank()) { status.text = "Sign in to One before saving a note."; return }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(36, 12, 36, 0) }
+        val title = EditText(this).apply { hint = "Title (optional)"; setSingleLine() }
+        val body = EditText(this).apply { hint = "Write a thought or idea…"; minLines = 4; gravity = android.view.Gravity.TOP; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE }
+        box.addView(title); box.addView(body)
+        AlertDialog.Builder(this).setTitle("Quick note").setView(box)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save", null).create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        val content = body.text.toString().trim()
+                        if (content.isBlank()) { body.error = "Write something first"; return@setOnClickListener }
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                        scope.launch {
+                            try {
+                                OneApi.addQuickNote(this@MainActivity, title.text.toString().trim(), content)
+                                status.text = "Note saved to your One account."
+                                dialog.dismiss()
+                            } catch (e: Exception) {
+                                status.text = e.message ?: "Could not save note."
+                                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                            }
+                        }
+                    }
+                }
+                dialog.show()
+            }
+    }
+
     private fun requestSmsPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECEIVE_SMS), 41)
