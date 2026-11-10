@@ -1334,3 +1334,10 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .money-budget-card>.muted{font-size:12px;margin-top:14px}
 .task-row-actions{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:600px){.money-tabs{margin-right:-4px}.money-tab{padding:9px 13px;font-size:12px}.money-budget-form input{max-width:100%;width:100%}.task-row-actions .btn{font-size:11px;padding:7px 9px}}
+
+/* Task list details: keep full user notes visible below title/category/due date. */
+.planner-task .list-copy{min-width:0;}
+.planner-task .task-meta{display:block;margin-top:3px;font-size:12px;line-height:1.5;color:var(--muted,#718096);white-space:normal;}
+.planner-task .task-notes{display:block;margin-top:5px;font-size:13px;line-height:1.55;color:var(--text,#dce5f3);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;}
+.planner-task .task-notes-empty{font-size:11px;color:var(--muted,#718096);font-style:italic;}
+@media(max-width:560px){.planner-task .task-meta{font-size:11px;}.planner-task .task-notes{font-size:12px;line-height:1.5;}}
