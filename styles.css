@@ -1212,3 +1212,55 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
  .main:has(.chat-shell) .voice-controls{flex:0 0 auto}
  .main:has(.chat-shell) .chat-note{flex:0 0 auto;margin-top:8px;padding-top:8px}
 }
+
+
+/* FIX: make the chat-history launcher visible on both light and dark surfaces.
+   The Ask One pill is white, so a white/transparent icon blended into it. */
+#page-content .home-brain-search .home-chat-open,
+.home-hero .home-brain-search .home-chat-open{
+ display:grid!important;
+ visibility:visible!important;
+ opacity:1!important;
+ position:relative!important;
+ z-index:3!important;
+ flex:0 0 48px!important;
+ width:48px!important;
+ min-width:48px!important;
+ height:48px!important;
+ padding:0!important;
+ margin:0!important;
+ align-items:center!important;
+ justify-content:center!important;
+ border:0!important;
+ border-radius:15px!important;
+ background:#4263eb!important;
+ background-image:none!important;
+ color:#fff!important;
+ box-shadow:0 4px 12px rgba(66,99,235,.28)!important;
+ cursor:pointer!important;
+}
+#page-content .home-brain-search .home-chat-open svg,
+.home-hero .home-brain-search .home-chat-open svg{
+ display:block!important;
+ width:23px!important;
+ height:23px!important;
+ fill:none!important;
+ stroke:#fff!important;
+ stroke-width:2!important;
+ stroke-linecap:round!important;
+ stroke-linejoin:round!important;
+ opacity:1!important;
+}
+#page-content .home-brain-search .home-chat-open:hover,
+.home-hero .home-brain-search .home-chat-open:hover{
+ background:#294bd0!important;
+ color:#fff!important;
+ transform:translateY(-1px);
+}
+@media(max-width:600px){
+ #page-content .home-brain-search .home-chat-open,
+ .home-hero .home-brain-search .home-chat-open{
+  flex-basis:44px!important;width:44px!important;min-width:44px!important;height:44px!important;
+  border-radius:14px!important;
+ }
+}
