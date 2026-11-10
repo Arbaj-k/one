@@ -1133,6 +1133,19 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 if(!history.state||!history.state.sbPage)history.replaceState({sbPage:'overview'},'',location.href);
 window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render();});
 render();
+(function handlePwaShortcut(){
+ const params=new URLSearchParams(location.search);
+ if(params.get('quick-note')==='1'){
+  history.replaceState({sbPage:'overview'},'',location.pathname);
+  page='overview';render();
+  requestAnimationFrame(()=>document.querySelector('#home-quick-note-form [name=content]')?.focus());
+ }
+ const requestedPage=params.get('open');
+ if(requestedPage==='loans'){
+  history.replaceState({sbPage:'loans'},'',location.pathname);
+  page='loans';render();
+ }
+})();
 // Separate every signed-in account's workspace on this device. The old unscoped
 // workspace is claimed once by the first account that signs in; later accounts
 // start with their own empty workspace and never inherit another account's data.
