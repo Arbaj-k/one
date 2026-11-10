@@ -282,7 +282,7 @@ assert.ok(app.includes('id="home-quick-note-form"'), 'Today dashboard must expos
 assert.ok(app.includes("if(e.target.id==='home-quick-note-form')"), 'Quick notes must save through the workspace data model.');
 assert.ok(app.includes('function loanTracker(){'), 'Udhaar tracker must remain available inside Money Spending.');
 assert.ok(app.includes('function moneyTabs(active){'), 'Money Spending must expose consolidated tabs.');
-assert.ok(app.includes('data-money-tab="udhaar"'), 'Udhaar must be a Money Spending tab.');
+assert.ok(app.includes("['udhaar','Udhaar']"), 'Udhaar must be a Money Spending tab.');
 assert.ok(app.includes("loans:()=>{window.moneyTab='udhaar';return expenses()}"), 'Legacy loan links must redirect into Money Spending.');
 assert.ok(app.includes("field('Due date (udhaar)','dueDate'"), 'Udhaar entries must support due dates.');
 assert.ok(app.includes("'loan-repayment':()=>"), 'Loan tracker must support repayment entry.');
