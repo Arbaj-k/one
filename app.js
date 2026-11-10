@@ -370,7 +370,7 @@ function tasks(){const current=today(),monthStart=new Date(current.slice(0,7)+'-
  const dueWeek=open.filter(t=>t.due&&t.due>=now&&t.due<=weekEnd).sort((a,b)=>a.due.localeCompare(b.due));
  const later=open.filter(t=>t.due&&t.due>weekEnd).sort((a,b)=>a.due.localeCompare(b.due));
  const noDate=open.filter(t=>!t.due).sort((a,b)=>(a.created||0)-(b.created||0));
- const view=window.plannerView||'Today',completedView=view==='Completed';const completedTasks=data.tasks.filter(t=>t.done);const total=all.length,doneCount=done.length,progress=total?Math.round(doneCount/total*100):0;
+ const view=window.plannerView||'Today',completedView=view==='Completed';const completedTasks=view==='Completed'?data.tasks.filter(t=>t.done):done;const total=all.length,doneCount=done.length,progress=total?Math.round(doneCount/total*100):0;
  const dateLabel=new Date(now+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'}).toUpperCase();
  const card=t=>'<article class="daily-task-card '+(t.done?'is-complete':'')+'"><div class="daily-task-main">'+taskRow(t)+'</div><div class="task-row-actions"><button class="btn small" data-action="share-task-whatsapp" data-id="'+t.id+'">WhatsApp</button><button class="btn small" data-action="share-task-telegram" data-id="'+t.id+'">Telegram</button><button class="btn small" data-action="edit-task" data-id="'+t.id+'">Edit</button><button class="btn small danger" data-action="delete-task" data-id="'+t.id+'">Delete</button></div></article>';
  const group=(label,items)=>items.length?'<section class="daily-task-group"><div class="daily-group-heading"><span>'+label+'</span><b>'+items.length+'</b></div><div class="daily-task-stack">'+items.map(card).join('')+'</div></section>':'';
