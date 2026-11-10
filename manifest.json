@@ -14,5 +14,31 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick note",
+      "short_name": "Note",
+      "description": "Capture a note in One",
+      "url": "./?quick-note=1",
+      "icons": [
+        {
+          "src": "icons/student-brain.svg",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "Udhaar tracker",
+      "short_name": "Udhaar",
+      "description": "Open your loan and repayment tracker",
+      "url": "./?open=loans",
+      "icons": [
+        {
+          "src": "icons/student-brain.svg",
+          "sizes": "any"
+        }
+      ]
+    }
   ]
 }
