@@ -1292,3 +1292,27 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .loan-history-title{margin:25px 0 12px}
 @media(max-width:900px){.loan-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.quick-note-widget{padding:16px}.loan-people{grid-template-columns:1fr}.loan-person-card{padding:16px}.loan-stats{gap:10px}.loan-actions .btn{flex:1}}
+
+
+/* Task planner accessibility, summary interactions and dark/mobile contrast */
+.planner-summary>button{appearance:none;text-align:left;cursor:pointer;width:100%;font:inherit;display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:var(--card, #202a38);color:var(--text, #f4f6fb);border:1px solid var(--line, #3b4656);border-radius:16px;padding:15px 17px;min-width:0;transition:transform .16s,border-color .16s,background .16s}
+.planner-summary>button:hover,.planner-summary>button:focus-visible{border-color:var(--blue);transform:translateY(-1px);outline:2px solid transparent}
+.planner-summary>button b{font-size:26px;line-height:1.2;color:inherit}
+.planner-summary>button span{font-size:13px;color:var(--muted);font-weight:600}
+.planner-summary>button small{font-size:11px;color:var(--blue);font-weight:700}
+.planner-summary>button.overdue-summary{background:color-mix(in srgb,#e85b5b 12%,var(--card,#202a38));border-color:color-mix(in srgb,#e85b5b 35%,var(--line));color:var(--text)}
+.planner-summary>button.completed-summary{background:color-mix(in srgb,#19a875 11%,var(--card,#202a38));border-color:color-mix(in srgb,#19a875 32%,var(--line))}
+.planner-tab{color:var(--text,#f4f6fb);background:var(--card,#202a38);border-color:var(--line,#3b4656);min-height:44px}
+.planner-tab.active{color:#fff;background:var(--blue);border-color:var(--blue)}
+.planner-task-list{background:var(--card,#202a38);border-color:var(--line,#3b4656)}
+.planner-task{color:var(--text,#f4f6fb)}
+.planner-task .list-copy b{color:var(--text,#f4f6fb)}
+.planner-task .list-copy small{color:var(--muted,#aab5c6);display:flex;flex-wrap:wrap;gap:3px;align-items:center;line-height:1.6}
+.task-completed-at{color:#27b884;font-weight:700}
+.task-row-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin:0;padding:8px 0 14px}
+.task-row-actions .btn{min-width:100px}
+.planner-view-heading{gap:10px;flex-wrap:wrap}
+.planner-calendar-wrap,.planner-selected-date{background:var(--card,#202a38);border-color:var(--line,#3b4656)}
+.planner-calendar-day{background:var(--surface,#182232);color:var(--text,#f4f6fb);border-color:var(--line,#3b4656)}
+.planner-calendar-day.is-today{background:color-mix(in srgb,var(--blue) 15%,var(--surface));}
+@media(max-width:700px){.planner-summary{gap:8px}.planner-summary>button{padding:12px 9px;min-height:108px}.planner-summary>button b{font-size:23px}.planner-summary>button span{font-size:11px}.planner-summary>button small{font-size:10px}.planner-tabs{scrollbar-width:none}.planner-tab{padding:10px 14px}.task-row-actions{justify-content:stretch}.task-row-actions .btn{flex:1;min-height:42px}.planner-view-heading h2{font-size:20px}}
