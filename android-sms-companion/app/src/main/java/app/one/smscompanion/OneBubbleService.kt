@@ -17,6 +17,7 @@ import kotlin.math.abs
 class OneBubbleService : Service() {
     private lateinit var wm: WindowManager
     private var bubble: View? = null
+    private lateinit var bubbleParams: WindowManager.LayoutParams
     private var startX = 0
     private var startY = 0
     private var touchX = 0f
@@ -51,7 +52,7 @@ class OneBubbleService : Service() {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         moved = false
-                        startX = params.x; startY = params.y
+                        startX = bubbleParams.x; startY = bubbleParams.y
                         touchX = event.rawX; touchY = event.rawY
                         true
                     }
@@ -59,9 +60,9 @@ class OneBubbleService : Service() {
                         val dx = (event.rawX - touchX).toInt()
                         val dy = (event.rawY - touchY).toInt()
                         if (abs(dx) > 5 || abs(dy) > 5) moved = true
-                        params.x = startX - dx
-                        params.y = startY + dy
-                        try { wm.updateViewLayout(v, params) } catch (_: Exception) {}
+                        bubbleParams.x = startX - dx
+                        bubbleParams.y = startY + dy
+                        try { wm.updateViewLayout(v, bubbleParams) } catch (_: Exception) {}
                         true
                     }
                     MotionEvent.ACTION_UP -> {
@@ -76,7 +77,8 @@ class OneBubbleService : Service() {
             }
         }
         bubble = view
-        try { wm.addView(view, params) } catch (_: Exception) { stopSelf() }
+        bubbleParams = params
+        try { wm.addView(view, bubbleParams) } catch (_: Exception) { stopSelf() }
     }
 
     private val params: WindowManager.LayoutParams
