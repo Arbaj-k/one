@@ -287,3 +287,12 @@ assert.ok(app.includes("'loan-repayment':()=>"), 'Loan tracker must support repa
 assert.ok(app.includes('window.loanPersonFilter'), 'Loan history must be filterable by person.');
 assert.ok(html.includes('data-page="loans"'), 'Primary navigation must expose Udhaar & Loans.');
 assert.ok(css.includes('.quick-note-widget') && css.includes('.loan-person-card'), 'Quick note and loan tracker mobile styles are missing.');
+
+
+// Planner summary navigation and completion timestamp regressions.
+assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
+assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
+assert.ok(app.includes('t.completedAt=Date.now()'), 'Completing a task must record its completion timestamp.');
+assert.ok(app.includes('task-completed-at'), 'Completed tasks must display their completion time.');
+assert.ok(app.includes("'planner-view':()=>{window.plannerView=id"), 'Planner view controls must be interactive.');
+assert.ok(css.includes('.planner-summary>button') && css.includes('.task-completed-at'), 'Planner summary and completion timestamp styles are missing.');
