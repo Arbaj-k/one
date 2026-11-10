@@ -1341,3 +1341,28 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
 .planner-task .task-notes{display:block;margin-top:5px;font-size:13px;line-height:1.55;color:var(--text,#dce5f3);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;}
 .planner-task .task-notes-empty{font-size:11px;color:var(--muted,#718096);font-style:italic;}
 @media(max-width:560px){.planner-task .task-meta{font-size:11px;}.planner-task .task-notes{font-size:12px;line-height:1.5;}}
+
+/* Daily Planner task cards — clearer hierarchy and mobile-first actions */
+.planner-task-list{padding:14px!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.planner-task-list>.list{display:grid;gap:14px}
+.planner-task-card{min-width:0;padding:15px;border:1px solid #3b4654;border-radius:18px;background:linear-gradient(145deg,#252d37 0%,#202832 100%);box-shadow:0 7px 18px rgba(0,0,0,.14)}
+.planner-task-card .planner-task{align-items:flex-start;padding:0 0 13px;margin:0;border:0;border-bottom:1px solid #3b4654;border-radius:0;background:transparent;gap:12px}
+.planner-task-card .planner-task-open .list-copy{gap:8px}
+.planner-task-card .planner-task-open .list-copy>b{font-size:16px;line-height:1.35;color:#f3f5f8;font-weight:800;text-decoration:none}
+.planner-task-card .task-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12px;color:#aeb9c8}
+.planner-task-card .task-category{display:inline-flex;padding:5px 10px;border-radius:9px;background:#263d68;color:#c7d9ff;font-weight:750}
+.planner-task-card .task-meta-separator{display:none}
+.planner-task-card .task-due{font-weight:650;color:#b9c5d4}
+.planner-task-card .task-notes{margin-top:2px;font-size:13px;line-height:1.55;color:#cbd4df}
+.planner-task-card .task-complete-action{min-height:40px;padding:8px 12px;border-radius:11px;background:#315eea;border:1px solid #4774ff;color:#fff;font-weight:750;white-space:nowrap}
+.planner-task-card .task-complete-action.checked{background:#174b3a;border-color:#267b5a;color:#baf3d6}
+.planner-task-card .task-row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 0;padding:0}
+.planner-task-card .task-row-actions .btn{min-height:43px;border-radius:11px;background:#303b48;border:1px solid #526174;color:#f0f4fa;font-weight:700}
+.planner-task-card .task-row-actions .btn.danger{background:#612f38;border-color:#87414c;color:#ffd9de}
+.planner-task-card.is-complete{border-color:#28634e;background:linear-gradient(145deg,#22332f 0%,#202b2a 100%)}
+.planner-task-card.is-complete .planner-task{opacity:1}
+.planner-task-card.is-complete .planner-task-open .list-copy>b{color:#aab9b4;text-decoration:line-through}
+.planner-task-card .task-completed-at{color:#8fe0b7;font-weight:700}
+.planner-task-card .task-notes-empty{color:#8e9bab}
+.planner-view-heading{scroll-margin-top:18px}
+@media(max-width:560px){.planner-task-list{padding:8px 0!important}.planner-task-list>.list{gap:12px}.planner-task-card{padding:13px;border-radius:16px}.planner-task-card .planner-task-open .list-copy>b{font-size:15px}.planner-task-card .task-row-actions .btn{min-height:46px;font-size:12px}.planner-task-card .task-complete-action{min-height:42px}}
