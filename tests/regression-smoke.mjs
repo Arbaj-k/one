@@ -294,6 +294,7 @@ assert.ok(css.includes('.quick-note-widget') && css.includes('.loan-person-card'
 
 // Ask One money capture, persistence and retrieval regressions.
 assert.ok(app.includes('const moneyAddIntent=!!moneyAmountMatch'), 'Ask One must recognize Hindi/Hinglish money add commands.');
+assert.ok(app.includes('function extractMoneyPerson(question)'), 'Ask One must extract a person name from Hindi “Arbaj ko” and English “to Arbaj” phrasing.');
 assert.ok(app.includes("kind:'lent',updated:Date.now(),created:Date.now()"), 'Ask One money capture must create a lending record.');
 assert.ok(app.includes('person,amount:String(amount),category:\'Udhaar\',date:transactionDate,dueDate'), 'Ask One lending record must save person, amount, transaction date and due date.');
 assert.ok(app.includes('const duplicate=(data.expenses||[]).find'), 'Ask One must avoid creating duplicate lending records.');
