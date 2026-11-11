@@ -304,6 +304,17 @@ assert.ok(app.includes("e.kind==='lent'&&e.person===person"), 'Ask One must retr
 assert.ok(app.includes("money|rupees?|rs\\.?|kharch"), 'Money questions must route through local saved-data answers.');
 assert.ok(app.includes('dueDate:expense.dueDate||\'\''), 'AI money context must include repayment due dates.');
 
+// Ask One chat command-center CRUD regressions.
+assert.ok(app.includes("const addTask="), 'Ask One must create tasks from chat commands.');
+assert.ok(app.includes("const note={id:uid(),title:'Quick note'"), 'Ask One must save notes from chat commands.');
+assert.ok(app.includes("const project={id:uid(),name"), 'Ask One must create projects from chat commands.');
+assert.ok(app.includes("const complete=/\\b(?:complete|finish|mark|done|ho gaya|kar diya)"), 'Ask One must complete tasks from chat commands.');
+assert.ok(app.includes("const reopen=/\\b(?:reopen|undo|uncomplete"), 'Ask One must reopen completed tasks from chat commands.');
+assert.ok(app.includes("const deleteTask=/\\b(?:delete|remove|hata do|delete kar)"), 'Ask One must delete specifically matched tasks from chat commands.');
+assert.ok(app.includes("if(!verify('tasks',task))"), 'Ask One must verify task persistence before confirming.');
+assert.ok(app.includes("if(!verify('notes',note))"), 'Ask One must verify note persistence before confirming.');
+assert.ok(app.includes("if(!verify('projects',project))"), 'Ask One must verify project persistence before confirming.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
