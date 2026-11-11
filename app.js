@@ -878,11 +878,17 @@ function knowledgeAnswerCompleteness(answer,question){
  if(asksForTime&&!/\b\d{1,2}:\d{2}\s*(?:am|pm)?\b/i.test(a))missing.push('time');
  return {complete:missing.length===0,missing};
 }
+function extractMoneyPerson(question){
+ const raw=String(question||'');
+ const patterns=[/\bto\s+([a-z][a-z'-]*)/i,/\b(?:diye|diya|gave|lent|udhaar)\s+(?:hai\s+)?([a-z][a-z'-]*)\s+ko\b/i,/^\s*([a-z][a-z'-]*)\s+ko\b/i,/\b([a-z][a-z'-]*)\s+ko\s+(?:kitna|how much)\b/i];
+ for(const pattern of patterns){const match=raw.match(pattern);if(match)return match[1]}
+ return '';
+}
 function aiAnswer(question){
  const raw=String(question||''),terms=aiQueryTerms(raw);
  if(/\b(spend|spent|expense|expenses|money|rupees?|rs\.?|kharch|udhaar|lent|borrowed|owe|repaid|kitna|diye|diya)\b/i.test(raw)){
   const expenses=data.expenses||[],fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
-  const personMatch=raw.match(/\b(?:to|ko)\s+([a-z][a-z'-]*)/i),person=personMatch?.[1]||'';
+  const person=extractMoneyPerson(raw);
   if(person&&/\b(kitna|how much|rupees?|rs\.?|diye|diya|lent|gave|paid)\b/i.test(raw)){
    const matches=expenses.filter(e=>String(e.person||'').toLowerCase()===person.toLowerCase()&&['lent','lent_repayment'].includes(e.kind));
    const given=matches.filter(e=>e.kind==='lent').reduce((n,e)=>n+Number(e.amount||0),0),returned=matches.filter(e=>e.kind==='lent_repayment').reduce((n,e)=>n+Number(e.amount||0),0),balance=given-returned;
@@ -912,7 +918,7 @@ function chatActionIntent(question){
  const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const moneyAddIntent=!!moneyAmountMatch&&/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*/i.test(lower)&&/\b(?:diye|diya|gave|lend|lent|udhaar)\b/i.test(lower);
  if(moneyAddIntent){
-  const amount=Number(moneyAmountMatch[1].replace(/,/g,'')),personMatch=raw.match(/\b(?:ko|to)\s+([a-z][a-z'-]*)/i),person=personMatch?.[1]||'';
+  const amount=Number(moneyAmountMatch[1].replace(/,/g,'')),person=extractMoneyPerson(raw);
   const dateMatches=[...raw.matchAll(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/ig)];
   const monthMap={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
   const parsedDate=m=>{if(!m)return '';const month=monthMap[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);if(d.getFullYear()!==year||d.getMonth()!==month||d.getDate()!==day)return '';return year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0')};
