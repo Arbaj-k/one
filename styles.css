@@ -1438,3 +1438,34 @@ body:not(.home-page) .site-footer>span:last-child{display:none}
   height:44px!important;min-height:44px!important;border-radius:15px!important;
  }
 }
+
+
+/* Minimal back navigation: arrow only, with no reserved header gap. */
+.has-page-back .content{padding-top:8px!important}
+#page-content>.back-home-icon,
+.chat-shell .chat-back,
+#modal-root .create-form-screen .modal-back-button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:30px!important;min-width:30px!important;max-width:30px!important;
+ height:32px!important;min-height:32px!important;flex:0 0 30px!important;
+ margin:0 0 4px!important;padding:0!important;
+ border:0!important;border-radius:0!important;background:transparent!important;
+ color:inherit!important;box-shadow:none!important;
+ font:500 30px/1 'DM Sans',sans-serif!important;
+}
+#page-content>.back-home-icon:hover,
+.chat-shell .chat-back:hover,
+#modal-root .create-form-screen .modal-back-button:hover{
+ background:transparent!important;border:0!important;box-shadow:none!important;
+ transform:translateX(-3px);color:var(--blue,#7895ff)!important;
+}
+#modal-root .create-form-screen .modal-back-button span{font-size:30px!important;line-height:1!important}
+#modal-root .create-form-screen .modal-head{gap:8px;margin-bottom:12px}
+@media(max-width:760px){
+ .has-page-back .content{padding-top:3px!important}
+ #page-content>.back-home-icon,.chat-shell .chat-back,
+ #modal-root .create-form-screen .modal-back-button{
+  width:28px!important;min-width:28px!important;height:30px!important;min-height:30px!important;flex-basis:28px!important;
+  margin-bottom:2px!important;font-size:29px!important;
+ }
+}
