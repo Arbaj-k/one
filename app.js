@@ -922,7 +922,7 @@ function chatActionIntent(question){
   if(duplicate)return {answer:'This money record is already saved: '+fmtMoney(amount)+' lent to '+person+' on '+dateFmt(transactionDate)+(dueDate?' · due '+dateFmt(dueDate):'')+'. I did not create a duplicate.',sources:['Money & Udhaar']};
   const record={id:uid(),description:'Lent to '+person,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind:'lent',updated:Date.now(),created:Date.now()};
   data.expenses.push(record);persist();
-  const saved=(data.expenses||[]).some(e=>e.id===record.id&&e.kind==='lent'&&e.person===person&&Number(e.amount)===amount);
+  let saved=false;try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');saved=Array.isArray(disk.expenses)&&disk.expenses.some(e=>e.id===record.id&&e.kind==='lent'&&e.person===person&&Number(e.amount)===amount&&String(e.dueDate||'')===dueDate)}catch{saved=false}
   if(!saved)return {answer:'I could not verify that the record was saved. Please check Money & Udhaar; I will not claim it was added.',sources:[]};
   page='expenses';window.moneyTab='udhaar';window.expenseMonth=transactionDate.slice(0,7);render();
   return {answer:'Saved in Money & Udhaar: '+fmtMoney(amount)+' lent to '+person+' on '+dateFmt(transactionDate)+(dueDate?' · collect by '+dateFmt(dueDate):'')+'. I verified the record is in your saved transactions.',sources:['Money & Udhaar']};
