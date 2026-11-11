@@ -817,7 +817,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const projects=(data.projects||[]).slice(0,20).map(project=>{const source='Project: '+String(project.name||project.title||'Untitled project');sources.push(source);return {source,name:project.name||project.title||'',description:String(project.description||'').slice(0,700),status:project.status||'In progress',targetDate:project.targetDate||null}});
  const memories=(data.memories||[]).slice(0,20).map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
  const studySessions=(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined)));if(studySessions.length)sources.push('Study sessions');
- const expenses=(data.expenses||[]).slice(-40).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||''}));if(expenses.length)sources.push('Money & Udhaar');
+ const expenses=(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''}));if(expenses.length)sources.push('Money & Udhaar');
  return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
 }
 async function requestStudentBrainAI(question,targetDocId=null){
@@ -868,7 +868,7 @@ async function requestStudentBrainAI(question,targetDocId=null){
  return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
 function isStructuredWorkspaceQuestion(question){
- return /\b(spend|spent|spending|expense|expenses|money|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
+ return /\b(spend|spent|spending|expense|expenses|money|rupees?|rs\.?|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|kitna|diye|diya|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
 }
 function knowledgeAnswerCompleteness(answer,question){
  const q=String(question||'').toLowerCase(),a=String(answer||'').toLowerCase();
@@ -880,8 +880,15 @@ function knowledgeAnswerCompleteness(answer,question){
 }
 function aiAnswer(question){
  const raw=String(question||''),terms=aiQueryTerms(raw);
- if(/\b(spend|spent|expense|expenses|money|kharch|udhaar|lent|borrowed|owe|repaid)\b/i.test(raw)){
+ if(/\b(spend|spent|expense|expenses|money|rupees?|rs\.?|kharch|udhaar|lent|borrowed|owe|repaid|kitna|diye|diya)\b/i.test(raw)){
   const expenses=data.expenses||[],fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
+  const personMatch=raw.match(/\b(?:to|ko)\s+([a-z][a-z'-]*)/i),person=personMatch?.[1]||'';
+  if(person&&/\b(kitna|how much|rupees?|rs\.?|diye|diya|lent|gave|paid)\b/i.test(raw)){
+   const matches=expenses.filter(e=>String(e.person||'').toLowerCase()===person.toLowerCase()&&['lent','lent_repayment'].includes(e.kind));
+   const given=matches.filter(e=>e.kind==='lent').reduce((n,e)=>n+Number(e.amount||0),0),returned=matches.filter(e=>e.kind==='lent_repayment').reduce((n,e)=>n+Number(e.amount||0),0),balance=given-returned;
+   const answer=matches.length?'You gave '+person+' '+fmt(given)+'.'+(returned?' They returned '+fmt(returned)+', so '+fmt(balance)+' is still due.':'')+' '+matches.filter(e=>e.kind==='lent').map(e=>'Record: '+fmt(e.amount)+' on '+dateFmt(e.date)+(e.dueDate?' · due '+dateFmt(e.dueDate):'')).join('; '):'I could not find a saved lending record for '+person+'. No matching money record exists in Money & Udhaar yet.';
+   return {answer,sources:['Money & Udhaar']};
+  }
   const total=expenses.filter(e=>(e.kind||'expense')==='expense').reduce((sum,e)=>sum+Number(e.amount||0),0);
   const lent=expenses.filter(e=>e.kind==='lent').reduce((sum,e)=>sum+Number(e.amount||0),0)-expenses.filter(e=>e.kind==='lent_repayment').reduce((sum,e)=>sum+Number(e.amount||0),0);
   const borrowed=expenses.filter(e=>e.kind==='borrowed').reduce((sum,e)=>sum+Number(e.amount||0),0)-expenses.filter(e=>e.kind==='borrowed_repayment').reduce((sum,e)=>sum+Number(e.amount||0),0);
@@ -899,8 +906,27 @@ function aiAnswer(question){
  const selected=hits.slice(0,5);
  const answer=selected.map((hit,index)=>(index+1)+'. '+hit.text).join('\n\n');const completeness=knowledgeAnswerCompleteness(answer,raw);return selected.length?{answer:answer+(completeness.complete?'':'\n\nI could not verify the '+completeness.missing.join(' and ')+'. Open the source extract to check the original page.'),sources:[...new Set(selected.map(hit=>hit.source))]}:{answer:'I could not find matching saved content. Try mentioning a course name, keyword, or phrase from your file. When AI is connected, Brain can explain the relevant content in natural language.',sources:[]};
 }
+function fmtMoney(amount){return '₹'+Number(amount).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function chatActionIntent(question){
  const raw=String(question||'').trim(),lower=raw.toLowerCase();
+ const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
+ const moneyAddIntent=!!moneyAmountMatch&&/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*/i.test(lower)&&/\b(?:diye|diya|gave|lend|lent|udhaar)\b/i.test(lower);
+ if(moneyAddIntent){
+  const amount=Number(moneyAmountMatch[1].replace(/,/g,'')),personMatch=raw.match(/\b(?:ko|to)\s+([a-z][a-z'-]*)/i),person=personMatch?.[1]||'';
+  const dateMatches=[...raw.matchAll(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/ig)];
+  const monthMap={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const parsedDate=m=>{if(!m)return '';const month=monthMap[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);if(d.getFullYear()!==year||d.getMonth()!==month||d.getDate()!==day)return '';return year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0')};
+  const transactionDate=parsedDate(dateMatches[0])||today(),dueDate=parsedDate(dateMatches[1])||'';
+  if(!person||!Number.isFinite(amount)||amount<=0)return {answer:'I could not safely identify the person or amount, so I have not saved anything. Please include the person and amount.',sources:['Money & Udhaar']};
+  const duplicate=(data.expenses||[]).find(e=>e.kind==='lent'&&String(e.person||'').toLowerCase()===person.toLowerCase()&&Number(e.amount)===amount&&e.date===transactionDate&&String(e.dueDate||'')===dueDate);
+  if(duplicate)return {answer:'This money record is already saved: '+fmtMoney(amount)+' lent to '+person+' on '+dateFmt(transactionDate)+(dueDate?' · due '+dateFmt(dueDate):'')+'. I did not create a duplicate.',sources:['Money & Udhaar']};
+  const record={id:uid(),description:'Lent to '+person,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind:'lent',updated:Date.now(),created:Date.now()};
+  data.expenses.push(record);persist();
+  const saved=(data.expenses||[]).some(e=>e.id===record.id&&e.kind==='lent'&&e.person===person&&Number(e.amount)===amount);
+  if(!saved)return {answer:'I could not verify that the record was saved. Please check Money & Udhaar; I will not claim it was added.',sources:[]};
+  page='expenses';window.moneyTab='udhaar';window.expenseMonth=transactionDate.slice(0,7);render();
+  return {answer:'Saved in Money & Udhaar: '+fmtMoney(amount)+' lent to '+person+' on '+dateFmt(transactionDate)+(dueDate?' · collect by '+dateFmt(dueDate):'')+'. I verified the record is in your saved transactions.',sources:['Money & Udhaar']};
+ }
  const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit)\b/i.test(lower);
  if(addTask){
   let title=raw.replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|a|an|the|task|todo|assignment|deadline|homework|exam|submit|due|today|tomorrow|kal|aaj|on|by)\b/ig,' ').replace(/\s+/g,' ').trim();
