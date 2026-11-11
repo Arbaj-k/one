@@ -34,7 +34,7 @@ for (const token of [
 // Money & Udhaar quick-action wiring.
 for (const token of [
   "expenseStat('Spending this month'", "expenseStat('You are owed'",
-  "expenseStat('You owe others'", "expenseStat('Records'",
+  "expenseStat('You owe others'", 'Income this month',
   'data-action="expense-quick-action"', "'expense-quick-action':()=>",
   "openForm('expense')", 'typeField.value=id', "if(id==='all')",
   "field('Transaction type','kind'", "field('Person','person'", 'expense-quick-action'
