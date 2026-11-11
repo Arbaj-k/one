@@ -16,7 +16,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
-  await page.evaluate(()=>localStorage.setItem('student-brain-data-v1',JSON.stringify({schemaVersion:2,notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[]})));
+  await page.evaluate(()=>localStorage.setItem('student-brain-data-v1-guest',JSON.stringify({schemaVersion:2,notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[]})));
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
   assert.ok(await page.locator('#page-content').innerText().then(t=>t.includes('Good to see you again')));
@@ -30,8 +30,8 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   // Saving closes the modal; verify the persisted model directly rather than
   // assuming the task appears in the current Today/Upcoming filtered view.
   await taskForm.waitFor({state:'detached',timeout:10000});
-  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('student-brain-data-v1')||'{}').tasks?.some(t=>t.title==='Browser regression task')}catch{return false}},{timeout:10000});
-  let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1')));
+  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('student-brain-data-v1-guest')||'{}').tasks?.some(t=>t.title==='Browser regression task')}catch{return false}},null,{timeout:10000});
+  let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.tasks.some(t=>t.title==='Browser regression task'),'Task UI save must persist to workspace storage.');
 
   // Exercise Money & Udhaar create form and verify the amount/category record.
@@ -43,7 +43,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await expenseForm.locator('[name="date"]').fill(new Date().toISOString().slice(0,10));
   await expenseForm.locator('button[type="submit"]').click();
   await page.getByText('Browser regression expense',{exact:true}).waitFor();
-  saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1')));
+  saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.expenses.some(e=>e.description==='Browser regression expense'&&Number(e.amount)===125),'Expense UI save must persist its description and amount.');
 
   // Exercise Knowledge note creation and ensure saved text survives a reload.
@@ -56,7 +56,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await page.getByText('Browser regression knowledge',{exact:true}).waitFor();
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
-  saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1')));
+  saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.notes.some(n=>n.title==='Browser regression knowledge'&&n.content.includes('reliable browser')),'Knowledge note must persist across reload.');
 
   await page.evaluate(()=>navigator.serviceWorker?.ready);
