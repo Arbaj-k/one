@@ -332,3 +332,9 @@ const moneyEnd=app.indexOf('function ask(){',moneyStart);
 const moneySource=app.slice(moneyStart,moneyEnd);
 assert.ok(!overviewSource.includes("stat('You are owed'")&&!overviewSource.includes("stat('You owe'"), 'Udhaar balance cards must not appear on the Today dashboard.');
 assert.ok(moneySource.includes("expenseStat('You are owed'")&&moneySource.includes("expenseStat('You owe others'"), 'You are owed and You owe others must both appear in Money Spending.');
+
+// Home dashboard exposes Money alongside tasks, uploads and notes.
+const homeStart=app.indexOf('function overview(){');
+const homeEnd=app.indexOf('function documentsCards(){',homeStart);
+const homeSource=app.slice(homeStart,homeEnd);
+assert.ok(homeSource.includes("stat('Money',money(spend),'Spent this month','₹','expenses')"), 'Home dashboard must include a Money card linking to Money Spending.');
