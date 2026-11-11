@@ -292,6 +292,17 @@ assert.ok(app.includes('save-money-budget') && app.includes('moneyBudgets'), 'Mo
 assert.ok(app.includes('Monthly reports') && app.includes('Spending by category'), 'Money reports must include category breakdown.');
 assert.ok(css.includes('.quick-note-widget') && css.includes('.loan-person-card') && css.includes('.money-tabs'), 'Quick note, loan tracker and money tabs styles are missing.');
 
+// Ask One money capture, persistence and retrieval regressions.
+assert.ok(app.includes('const moneyAddIntent=!!moneyAmountMatch'), 'Ask One must recognize Hindi/Hinglish money add commands.');
+assert.ok(app.includes("kind:'lent',updated:Date.now(),created:Date.now()"), 'Ask One money capture must create a lending record.');
+assert.ok(app.includes('person,amount:String(amount),category:\'Udhaar\',date:transactionDate,dueDate'), 'Ask One lending record must save person, amount, transaction date and due date.');
+assert.ok(app.includes('const duplicate=(data.expenses||[]).find'), 'Ask One must avoid creating duplicate lending records.');
+assert.ok(app.includes("localStorage.getItem(workspaceStorageKey())"), 'Ask One must verify a money record against persisted workspace data before confirming.');
+assert.ok(app.includes('function fmtMoney(amount)'), 'Ask One money actions must format saved amounts.');
+assert.ok(app.includes("e.kind==='lent'&&e.person===person"), 'Ask One must retrieve lending records by person.');
+assert.ok(app.includes("money|rupees?|rs\\.?|kharch"), 'Money questions must route through local saved-data answers.');
+assert.ok(app.includes('dueDate:expense.dueDate||\'\''), 'AI money context must include repayment due dates.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
