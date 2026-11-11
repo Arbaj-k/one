@@ -915,44 +915,82 @@ function aiAnswer(question){
 function fmtMoney(amount){return '₹'+Number(amount).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function chatActionIntent(question){
  const raw=String(question||'').trim(),lower=raw.toLowerCase();
+ const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
+ const parseDate=()=>{
+  if(/\b(?:tomorrow|kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  if(/\b(?:today|aaj)\b/i.test(lower))return today();
+  const m=raw.match(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/i);
+  if(!m)return '';
+  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11},month=months[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);
+  return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
+ };
  const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const moneyAddIntent=!!moneyAmountMatch&&/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*/i.test(lower)&&/\b(?:diye|diya|gave|lend|lent|udhaar)\b/i.test(lower);
  if(moneyAddIntent){
-  const amount=Number(moneyAmountMatch[1].replace(/,/g,'')),person=extractMoneyPerson(raw);
-  const dateMatches=[...raw.matchAll(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/ig)];
+  const amount=Number(moneyAmountMatch[1].replace(/,/g,'')),person=extractMoneyPerson(raw),dateMatches=[...raw.matchAll(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/ig)];
   const monthMap={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-  const parsedDate=m=>{if(!m)return '';const month=monthMap[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);if(d.getFullYear()!==year||d.getMonth()!==month||d.getDate()!==day)return '';return year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0')};
+  const parsedDate=m=>{if(!m)return '';const month=monthMap[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):''};
   const transactionDate=parsedDate(dateMatches[0])||today(),dueDate=parsedDate(dateMatches[1])||'';
-  if(!person||!Number.isFinite(amount)||amount<=0)return {answer:'I could not safely identify the person or amount, so I have not saved anything. Please include the person and amount.',sources:['Money & Udhaar']};
+  if(!person||!Number.isFinite(amount)||amount<=0)return {answer:'Person aur valid amount clear nahi hua, isliye kuch save nahi kiya. Example: Arbaj ko ₹10 diye 10 Nov ko, 15 Nov ko wapas lene hain.',sources:['Money & Udhaar']};
   const duplicate=(data.expenses||[]).find(e=>e.kind==='lent'&&String(e.person||'').toLowerCase()===person.toLowerCase()&&Number(e.amount)===amount&&e.date===transactionDate&&String(e.dueDate||'')===dueDate);
-  if(duplicate)return {answer:'This money record is already saved: '+fmtMoney(amount)+' lent to '+person+' on '+dateFmt(transactionDate)+(dueDate?' · due '+dateFmt(dueDate):'')+'. I did not create a duplicate.',sources:['Money & Udhaar']};
+  if(duplicate)return {answer:'Yeh record pehle se saved hai: '+fmtMoney(amount)+' lent to '+person+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
   const record={id:uid(),description:'Lent to '+person,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind:'lent',updated:Date.now(),created:Date.now()};
   data.expenses.push(record);persist();
-  let saved=false;try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');saved=Array.isArray(disk.expenses)&&disk.expenses.some(e=>e.id===record.id&&e.kind==='lent'&&e.person===person&&Number(e.amount)===amount&&String(e.dueDate||'')===dueDate)}catch{saved=false}
-  if(!saved)return {answer:'I could not verify that the record was saved. Please check Money & Udhaar; I will not claim it was added.',sources:[]};
+  if(!verify('expenses',record))return {answer:'Money record save hone ki verification fail hui. Main ise added nahi bolunga; Money & Udhaar check karo.',sources:[]};
   page='expenses';window.moneyTab='udhaar';window.expenseMonth=transactionDate.slice(0,7);render();
-  return {answer:'Saved in Money & Udhaar: '+fmtMoney(amount)+' lent to '+person+' on '+dateFmt(transactionDate)+(dueDate?' · collect by '+dateFmt(dueDate):'')+'. I verified the record is in your saved transactions.',sources:['Money & Udhaar']};
+  return {answer:'Money & Udhaar mein saved: '+fmtMoney(amount)+' Arbaj ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Saved record verify kar liya hai.',sources:['Money & Udhaar']};
  }
- const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit)\b/i.test(lower);
+ const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar|jod do|likh lo|yaad dilana)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
  if(addTask){
-  let title=raw.replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|a|an|the|task|todo|assignment|deadline|homework|exam|submit|due|today|tomorrow|kal|aaj|on|by)\b/ig,' ').replace(/\s+/g,' ').trim();
-  if(!title)return {answer:'Task ka naam bhi batao. Example: Add DSA assignment due tomorrow.',sources:['Planner']};
-  let due='';
-  if(/\b(?:tomorrow|kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()+1);due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-  else if(/\b(?:today|aaj)\b/i.test(lower))due=today();
-  const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':'Personal',due,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
-  data.tasks.push(task);persist();return {answer:'Task added: '+title+(due?' · Due '+dateFmt(due):' · No due date set')+'.',sources:['Planner']};
+  const noteMatch=raw.match(/\b(?:notes?|details?)\s*[:\-]\s*(.+)$/i),notes=noteMatch?noteMatch[1].trim():'';
+  let title=raw.replace(/\b(?:notes?|details?)\s*[:\-]\s*.+$/i,'').replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|jod do|likh lo|yaad dilana|a|an|the|task|todo|assignment|deadline|homework|exam|submit|kaam|due|today|tomorrow|kal|aaj|on|by)\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s:,-]+|[\s:,-]+$/g,'').trim();
+  if(!title)return {answer:'Task ka naam batao. Example: Add task DSA assignment due tomorrow. Notes: chapter 4 complete karna.',sources:['Planner']};
+  const due=parseDate(),task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
+  data.tasks.push(task);persist();
+  if(!verify('tasks',task))return {answer:'Task save verify nahi hua, isliye confirm nahi kar raha. Planner check karo.',sources:[]};
+  page='planner';render();return {answer:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',sources:['Planner']};
  }
- const complete=/\b(?:complete|finish|mark)\b/i.test(lower)&&/\b(?:task|assignment|todo|done)\b/i.test(lower);
+ const addNote=/\b(?:add|save|create|write|likh|save kar)\b/i.test(lower)&&/\b(?:note|notes|notepad)\b/i.test(lower);
+ if(addNote){
+  const content=raw.replace(/^\s*(?:please\s+)?(?:add|save|create|write|likh(?:\s+do)?|save kar(?:\s+do)?)\s+(?:a\s+)?note\s*[:\-]?\s*/i,'').trim();
+  if(!content)return {answer:'Note ka content bhi likho. Example: Save note: Kal project meeting hai.',sources:['Notes & Memory']};
+  const note={id:uid(),title:'Quick note',content,subject:'Quick note',tags:'chat capture',created:Date.now(),updated:Date.now()};
+  data.notes.push(note);persist();
+  if(!verify('notes',note))return {answer:'Note save verify nahi hua; main saved nahi bolunga.',sources:[]};
+  page='notes';render();return {answer:'Note Notes & Memory mein save ho gaya: '+content,sources:['Notes & Memory']};
+ }
+ const addProject=/\b(?:add|create|start|banao|bana do)\b/i.test(lower)&&/\bproject\b/i.test(lower);
+ if(addProject){
+  const name=raw.replace(/^\s*(?:please\s+)?(?:add|create|start|banao|bana do)\s+(?:a\s+)?project\s*/i,'').replace(/\s+/g,' ').trim();
+  if(!name)return {answer:'Project ka naam batao. Example: Create project Hapn redesign.',sources:['Projects']};
+  const project={id:uid(),name,description:'',status:'In progress',targetDate:'',created:Date.now(),updated:Date.now()};
+  data.projects.push(project);persist();
+  if(!verify('projects',project))return {answer:'Project save verify nahi hua; main saved nahi bolunga.',sources:[]};
+  page='projects';render();return {answer:'Project created: '+name+'. Projects mein saved aur verified hai.',sources:['Projects']};
+ }
+ const complete=/\b(?:complete|finish|mark|done|ho gaya|kar diya)\b/i.test(lower)&&/\b(?:task|assignment|todo|kaam|done)\b/i.test(lower);
  if(complete){
-  const needle=raw.replace(/\b(?:please|complete|finish|mark|as|done|task|the|my|todo)\b/ig,' ').trim().toLowerCase();
+  const needle=raw.replace(/\b(?:please|complete|finish|mark|as|done|task|the|my|todo|assignment|kaam|ho gaya|kar diya)\b/ig,' ').trim().toLowerCase();
   const found=(data.tasks||[]).filter(t=>!t.done&&needle&&String(t.title||'').toLowerCase().includes(needle));
-  if(found.length===1){found[0].done=true;found[0].updated=Date.now();persist();return {answer:'Marked "'+found[0].title+'" as completed.',sources:['Planner']}}
-  return {answer:found.length?'I found multiple tasks. Mention a more specific task title.':'I could not find that task. Please use its saved title.',sources:['Planner']};
+  if(found.length===1){found[0].done=true;found[0].completedAt=Date.now();found[0].updated=Date.now();persist();if(!verify('tasks',found[0]))return {answer:'Task completion save verify nahi hua.',sources:[]};page='planner';render();return {answer:'Task "'+found[0].title+'" completed and saved.',sources:['Planner']}}
+  return {answer:found.length?'Multiple tasks mile. Exact task name batao.':'Woh open task nahi mila. Saved task ka exact naam batao.',sources:['Planner']};
+ }
+ const reopen=/\b(?:reopen|undo|uncomplete|mark.*(?:open|pending)|pending kar)\b/i.test(lower);
+ if(reopen){
+  const needle=raw.replace(/\b(?:please|reopen|undo|uncomplete|mark|as|open|pending|task|the|my)\b/ig,' ').trim().toLowerCase();
+  const found=(data.tasks||[]).filter(t=>t.done&&needle&&String(t.title||'').toLowerCase().includes(needle));
+  if(found.length===1){found[0].done=false;delete found[0].completedAt;found[0].updated=Date.now();persist();page='planner';render();return {answer:'Task "'+found[0].title+'" moved back to Open Tasks.',sources:['Planner']}}
+  return {answer:found.length?'Multiple completed tasks mile. Exact title batao.':'Matching completed task nahi mila.',sources:['Planner']};
+ }
+ const deleteTask=/\b(?:delete|remove|hata do|delete kar)\b/i.test(lower)&&/\b(?:task|todo|assignment|kaam)\b/i.test(lower);
+ if(deleteTask){
+  const needle=raw.replace(/\b(?:please|delete|remove|hata do|delete kar|task|todo|assignment|the|my)\b/ig,' ').trim().toLowerCase();
+  const found=(data.tasks||[]).filter(t=>needle&&String(t.title||'').toLowerCase().includes(needle));
+  if(found.length===1){const title=found[0].title;data.tasks=data.tasks.filter(t=>t.id!==found[0].id);persist();page='planner';render();return {answer:'Task "'+title+'" deleted from Planner.',sources:['Planner']}}
+  return {answer:found.length?'Multiple tasks match. Exact task title batao.':'Task nahi mila; kuch delete nahi kiya.',sources:['Planner']};
  }
  return null;
 }
-
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
