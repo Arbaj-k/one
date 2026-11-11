@@ -62,7 +62,7 @@ assert.ok(!app.includes('class="xbtn" data-action="close-modal"'), 'Duplicate mo
 assert.ok(!app.includes('class="btn" data-action="close-modal">Cancel</button>'), 'Duplicate bottom Cancel action must not return.');
 assert.ok(css.includes('.modal-back-button'), 'Single back control needs a clear visual style.');
 assert.ok(css.includes('#page-content .back-home-icon,')&&css.includes('#modal-root .create-form-screen .modal-back-button{'), 'All page and form back buttons must share the same reference style.');
-assert.ok(css.includes('background:#171e30!important')&&css.includes('border:1px solid #2d3a5e!important'), 'Back buttons must use the rounded dark reference surface.');
+assert.ok(css.includes('.has-page-back .content{padding-top:8px!important}')&&css.includes('border:0!important;border-radius:0!important;background:transparent!important'), 'Back controls must be arrow-only and pages with back navigation must not reserve a large top gap.');
 
 assert.ok(css.includes('.floating-create-button.is-hidden{display:none!important}'), 'Create launcher must stay hidden behind active forms.');
 
