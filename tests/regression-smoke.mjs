@@ -300,7 +300,7 @@ assert.ok(app.includes('person,amount:String(amount),category:\'Udhaar\',date:tr
 assert.ok(app.includes('const duplicate=(data.expenses||[]).find'), 'Ask One must avoid creating duplicate lending records.');
 assert.ok(app.includes("localStorage.getItem(workspaceStorageKey())"), 'Ask One must verify a money record against persisted workspace data before confirming.');
 assert.ok(app.includes('function fmtMoney(amount)'), 'Ask One money actions must format saved amounts.');
-assert.ok(app.includes("e.kind==='lent'&&e.person===person"), 'Ask One must retrieve lending records by person.');
+assert.ok(app.includes("String(e.person||'').toLowerCase()===person.toLowerCase()&&['lent','lent_repayment'].includes(e.kind)"), 'Ask One must retrieve lending and repayment records for the matching person, case-insensitively.');
 assert.ok(app.includes("money|rupees?|rs\\.?|kharch"), 'Money questions must route through local saved-data answers.');
 assert.ok(app.includes('dueDate:expense.dueDate||\'\''), 'AI money context must include repayment due dates.');
 
