@@ -322,3 +322,13 @@ assert.ok(app.includes('t.completedAt=Date.now()'), 'Completing a task must reco
 assert.ok(app.includes('task-completed-at'), 'Completed tasks must display their completion time.');
 assert.ok(app.includes("'planner-view':()=>{window.plannerView=id"), 'Planner view controls must be interactive.');
 assert.ok(css.includes('.planner-summary>button') && css.includes('.task-completed-at'), 'Planner summary and completion timestamp styles are missing.');
+
+// Udhaar balances belong only in the Money area, not the Today dashboard.
+const overviewStart=app.indexOf('function overview(){');
+const overviewEnd=app.indexOf('function documentsCards(){',overviewStart);
+const overviewSource=app.slice(overviewStart,overviewEnd);
+const moneyStart=app.indexOf('function expenses(){');
+const moneyEnd=app.indexOf('function ask(){',moneyStart);
+const moneySource=app.slice(moneyStart,moneyEnd);
+assert.ok(!overviewSource.includes("stat('You are owed'")&&!overviewSource.includes("stat('You owe'"), 'Udhaar balance cards must not appear on the Today dashboard.');
+assert.ok(moneySource.includes("expenseStat('You are owed'")&&moneySource.includes("expenseStat('You owe others'"), 'You are owed and You owe others must both appear in Money Spending.');
