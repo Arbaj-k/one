@@ -18,6 +18,12 @@ assert.equal(bearerPattern.exec('Basic test-token'), null, 'Document JSON must r
 
 
 // Parse the application before checking that its key routes remain wired.
+// Ask One should only send personal record categories that match the user's intent.
+assert.ok(source.includes('const asksTasks=overviewIntent||'), 'Ask One task context must be intent-gated');
+assert.ok(source.includes('const asksMoney=overviewIntent||'), 'Ask One money context must be intent-gated');
+assert.ok(source.includes('const expenses=asksMoney?'), 'Unrelated money records must not be sent to AI');
+assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routine records must not be sent to AI');
+
 new vm.Script(source, { filename: 'app.js' });
 
 // The static app shell must retain the containers required by app.js.
