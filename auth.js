@@ -78,7 +78,7 @@
   async function upsertProfile(user,name=''){
     if(!user)return;
     const profile={id:user.id,display_name:name||user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'One user',avatar_url:user.user_metadata?.avatar_url||user.user_metadata?.picture||null,updated_at:new Date().toISOString()};
-    const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn('Profile sync unavailable; auth remains active.',error.message);
+    const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn('Profile sync unavailable; authentication remains active.');
   }
   function paintUser(user){
     window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user}}));
@@ -86,10 +86,10 @@
     const top=$('.topbar-right');
     if(top&&!$('#one-account-menu')){
       const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';
-      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><p id="one-update-message" class="one-update-message" hidden>A new version of One is available.</p><button id="one-update-now" type="button" hidden>Update Now</button><button id="one-logout" type="button">Log out</button></div>';
+      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><p id="one-update-message" class="one-update-message" hidden>A new version of One is available.</p><button id="one-update-now" type="button" hidden>Update Now</button><button id="one-logout" type="button">Log out</button><button id="one-delete-account" type="button" class="danger">Delete account</button></div>';
       top.append(menu);
       $('#one-account-trigger').onclick=()=>{const pop=$('#one-account-pop'),trigger=$('#one-account-trigger');pop.hidden=!pop.hidden;trigger.setAttribute('aria-expanded',String(!pop.hidden));};
-      $('#one-logout').onclick=logout;
+      $('#one-logout').onclick=logout;$('#one-delete-account').onclick=deleteAccount;
       const revealUpdate=()=>{const msg=$('#one-update-message'),btn=$('#one-update-now');if(msg)msg.hidden=false;if(btn)btn.hidden=false;};
       window.addEventListener('one:pwa-update-ready',revealUpdate);
       if(window.OnePWAUpdate?.available)revealUpdate();
@@ -102,14 +102,29 @@
     if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error(err);status(err.message||'Could not log out.',true)}}
+  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error('Sign-out failed.');status('Could not log out. Please try again.',true)}}
+  async function deleteAccount(){
+    const user=session?.user;if(!user)return;
+    if(!confirm('Permanently delete your One account and all cloud data, uploaded files, notes, tasks, messages and linked records? This cannot be undone.'))return;
+    if(prompt('Type DELETE to permanently remove this account:')!=='DELETE'){status('Account deletion cancelled.');return}
+    const button=$('#one-delete-account');if(button){button.disabled=true;button.textContent='Deleting…'}
+    try{
+      const response=await fetch(URL+'/functions/v1/account-delete',{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({confirmation:'DELETE'})});
+      if(!response.ok)throw new Error('Deletion request failed');
+      await window.OneWorkspace?.purgeUserLocalData(user.id);
+      await getClient().auth.signOut({scope:'local'});session=null;
+      window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();
+      const signIn=$('#one-signin');if(signIn)signIn.hidden=false;
+      alert('Your One account and cloud data have been deleted.');
+    }catch(error){console.error('Account deletion failed.');status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
+  }
   async function boot(){
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
       auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
       if(session?.user){paintUser(session.user);await upsertProfile(session.user)}else window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
-    }catch(err){console.warn('One auth unavailable; local guest mode remains enabled.',err.message);const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
+    }catch(err){console.warn('One auth unavailable; local guest mode remains enabled.');const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
   }
   window.OneAuth={open,logout,getSession:()=>session,getUser:()=>session?.user||null};
   document.addEventListener('DOMContentLoaded',boot);
