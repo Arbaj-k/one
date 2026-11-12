@@ -1557,6 +1557,8 @@ async function enableAndroidPush(){
  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(config.publicKey)});
  const {error}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
  if(error)throw error;
+ const test=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
+ if(test.error)console.warn('Push test notification could not be sent',test.error);
  return subscription;
 }
 async function checkTaskReminders(){
