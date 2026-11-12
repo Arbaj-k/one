@@ -38,7 +38,8 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
   try {
-    const token = (req.headers.get("Authorization") || "").match(/^Bearer\\s+(.+)$/i)?.[1];
+    // Parse a real Bearer token (the regex must use a whitespace escape, not a literal "\\s").
+    const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return json({ error: "An active assistant session is required." }, 401);
     const url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY"), key = Deno.env.get("GEMINI_API_KEY");
     if (!url || !anon || !key) return json({ error: "AI server configuration is incomplete. Check GEMINI_API_KEY." }, 500);
