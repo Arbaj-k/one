@@ -116,7 +116,7 @@ assert.ok(source.includes('function upcomingUdhaar()'), 'Upcoming Udhaar summary
 assert.ok(!source.slice(source.indexOf('function overview(){'),source.indexOf('async function summarizeDocument')).includes('upcomingUdhaar()'), 'Home dashboard must keep repayment reminders out of its layout.');
 assert.ok(source.includes('Daily briefing'), 'Today dashboard daily briefing is missing');
 assert.ok(source.includes('const reminderIntent='), 'Natural-language reminders are missing');
-assert.ok(source.includes('Reminder saved:'), 'Reminder save confirmation is missing');
+assert.ok(source.includes("successMessage:(daily?'Daily briefing':'Reminder')+' saved: '"), 'Reminder save confirmation is missing.');
 assert.ok(source.includes('reminderTime,notes,priority'), 'Task reminder time extraction is missing');
 assert.ok(source.includes("const loanRows=(data.expenses||[]).filter(e=>['lent','borrowed'].includes(e.kind)"), 'Udhaar notification checks are missing');
 assert.ok(source.includes("const key='loan-'+entry.id"), 'Udhaar notifications need per-record duplicate protection');
