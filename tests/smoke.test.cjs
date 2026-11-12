@@ -70,6 +70,40 @@ assert.ok(source.includes("previous=addDaysToDate(month+'-01',-1).slice(0,7)"), 
 assert.ok(source.includes("String(item.extractedText||'').slice(0,220)"), 'Workspace search should include extracted document text');
 assert.ok(source.includes("(data.expenses||[]).forEach(item=>add("), 'Workspace search should include money records');
 
+// Phase 5 document vault: account-workspace documents, OCR text search, metadata,
+ // summaries, note connections, expiry reminders and a personal timeline.
+for (const token of [
+ 'function documentVault()',
+ 'function phase5SearchResults(query)',
+ 'function personalTimeline()',
+ 'function documentRelatedNotes(doc)',
+ 'async function summarizeDocument(id)',
+ 'function openVaultResult(id)',
+ "'data-page=\"vault\"'",
+ "'toggle-document-pin'",
+ "'save-document-expiry'",
+ "'connect-document-note'",
+ "'summarize-document'",
+ "'open-vault-result'",
+ "'document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate",
+ 'doc.summary= result.answer'
+]) {
+ if(token==="'data-page=\"vault\"'") assert.ok(html.includes('data-page="vault"'),'Document Vault navigation is missing');
+ else if(token==="'document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate") assert.ok(source.includes("document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate"),'Expiry reminder deduplication is missing');
+ else if(token==="'toggle-document-pin'") assert.ok(source.includes("'toggle-document-pin':"),'Document pin action is missing');
+ else if(token==="'save-document-expiry'") assert.ok(source.includes("'save-document-expiry':"),'Document expiry action is missing');
+ else if(token==="'connect-document-note'") assert.ok(source.includes("'connect-document-note':"),'Document note connection action is missing');
+ else if(token==="'summarize-document'") assert.ok(source.includes("'summarize-document':"),'Document summary action is missing');
+ else if(token==="'open-vault-result'") assert.ok(source.includes("'open-vault-result':"),'Universal search navigation action is missing');
+ else if(token==='doc.summary= result.answer') assert.ok(source.includes('doc.summary=result.answer.trim()'),'AI summary must be saved into document metadata');
+ else assert.ok(source.includes(token),'Phase 5 feature missing: '+token);
+}
+assert.ok(source.includes('x.extractedText,x.summary,JSON.stringify(x.extractedJson||{})'),'Universal search must include extracted document text and summary');
+assert.ok(source.includes('thresholds.find(value=>days===Number(value))'),'Expiry reminders should trigger on explicit reminder days only');
+assert.ok(source.includes('relatedNoteIds'),'Documents must persist related-note connections');
+assert.ok(source.includes('data.documents||[]'),'Vault must use the existing account workspace documents collection');
+assert.ok(css.includes('.vault-search-card')&&css.includes('.vault-timeline'),'Vault UI styles are missing');
+
 // Phase 3 smart automation: weekly review, project progress, Udhaar due alerts and natural-language reminders.
 assert.ok(source.includes('function smartWeekSummary()'), 'Weekly review summary is missing');
 assert.ok(source.includes('function smartProjectProgress()'), 'Project progress intelligence is missing');
