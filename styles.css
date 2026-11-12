@@ -1805,3 +1805,16 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
  .floating-create-button{bottom:10px;padding:12px 19px;gap:8px;font-size:14px;background:#fff;color:#111827;box-shadow:0 5px 18px #0003}
  .floating-create-button span{font-size:19px}
 }
+
+/* Final mobile Create pill geometry — overrides legacy fixed-position rules. */
+@media(max-width:760px){
+ .floating-create-button{
+  left:50%!important;right:auto!important;transform:translateX(-50%)!important;
+  bottom:calc(6px + env(safe-area-inset-bottom))!important;
+  width:max-content!important;min-width:0!important;max-width:calc(100vw - 24px)!important;
+  padding:7px 10px!important;gap:5px!important;min-height:34px!important;
+  border-radius:999px!important;font-size:12px!important;
+ }
+ .floating-create-button span{font-size:17px!important;line-height:1!important}
+ .floating-create-button:active{transform:translateX(-50%) scale(.96)!important}
+}
