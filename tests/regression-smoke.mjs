@@ -385,6 +385,13 @@ assert.ok(app.includes('task-completed-at'), 'Completed tasks must display their
 assert.ok(app.includes("'planner-view':()=>{window.plannerView=id"), 'Planner view controls must be interactive.');
 assert.ok(css.includes('.planner-summary>button') && css.includes('.task-completed-at'), 'Planner summary and completion timestamp styles are missing.');
 
+// Smart Action Extraction: local candidate detection, explicit review, linked tasks and deduplication.
+assert.ok(app.includes('function oneExtractDate(line)') && app.includes('function oneExtractActionCandidates(text,sourceLabel)'), 'Smart Action Extraction must detect action candidates and dates from extracted text.');
+assert.ok(app.includes("reviewOneExtractedActions('document',id)") && app.includes("reviewOneExtractedActions('note',id)"), 'Both document vault items and notes must expose action extraction.');
+assert.ok(app.includes('Review suggested action items') && app.includes('Nothing is saved until you confirm'), 'Action suggestions must require user review before task creation.');
+assert.ok(app.includes('relatedDocumentId:review.kind===\'document\'?review.id:\'\'') && app.includes('relatedNoteId:review.kind===\'note\'?review.id:\'\''), 'Created tasks must retain their source document or note link.');
+assert.ok(app.includes('const duplicate=(data.tasks||[]).some(t=>!t.done'), 'Action extraction must skip duplicate open tasks.');
+assert.ok(app.includes('window.oneActionReview&&e.target.querySelector(\'[name="oneActionPick"]\')'), 'Only the action review form may trigger action-extraction task creation.');
 // Udhaar balances belong only in the Money area, not the Today dashboard.
 const overviewStart=app.indexOf('function overview(){');
 const overviewEnd=app.indexOf('function documentsCards(){',overviewStart);
