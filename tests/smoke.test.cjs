@@ -58,7 +58,7 @@ for (const token of [
   'return phase4SpendingInsights()',
   'return phase4ProjectRisks()',
   "const expenses=(data.expenses||[]).filter(e=>(e.kind||'expense')==='expense')",
-  'const overdue=open.filter(t=>t.due&&t.due<todayDate)',
+  'overdue=open.filter(t=>t.due&&t.due<todayDate)',
   'This is a suggested order, not an automatic change to your tasks.',
   'spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined'
 ]) {
