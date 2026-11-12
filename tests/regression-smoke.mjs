@@ -478,3 +478,10 @@ assert.ok(app.includes("today|aaj|abhi|आज"), 'Hindi today wording must be re
 assert.ok(app.includes("tomorrow|kal|next day|कल"), 'Hindi tomorrow wording must be recognized.');
 const sendChatCode=app.slice(app.indexOf('async function sendChat('),app.indexOf('function action(',app.indexOf('async function sendChat(')));
 assert.ok(sendChatCode.indexOf('chatActionIntent(query)') < sendChatCode.indexOf('requestStudentBrainAI(query'), 'Local reminder/briefing actions must run before document AI retrieval.');
+
+// Calendar integration is removed from the daily task planner; task date filters remain.
+const dailyPlanner=app.slice(app.indexOf('function tasks(){'),app.indexOf('function studyPlanner(){'));
+assert.ok(!dailyPlanner.includes('planner-calendar-wrap'), 'Daily planner must not render the monthly calendar integration.');
+assert.ok(!dailyPlanner.includes('MONTH AT A GLANCE'), 'Monthly calendar heading must be removed.');
+assert.ok(dailyPlanner.includes("'Tomorrow'"), 'Tomorrow task filter must remain available.');
+assert.ok(dailyPlanner.includes("'Upcoming'"), 'Upcoming task filter must remain available.');
