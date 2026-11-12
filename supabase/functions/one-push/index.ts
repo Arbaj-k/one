@@ -55,6 +55,24 @@ Deno.serve(async(req:Request)=>{
     const note=(workspace.workspace_data?.notes||[]).find((n:any)=>n.id===task.relatedNoteId),doc=(workspace.workspace_data?.documents||[]).find((d:any)=>d.id===task.relatedDocumentId),linked=note?" · Note: "+(note.title||"Saved note"):doc?" · Document: "+(doc.name||"Saved document"):"";
     const result=await sendToUser(workspace.user_id,{title:"One · Task reminder",body:task.title+" · Due "+occurrence+" at "+dueTime+linked,tag:key,url:"./?open=task&id="+encodeURIComponent(task.id)});sent+=result.sent;if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
    }}
+   // One daily digest at 09:00 Asia/Kolkata: include every unfinished dated task
+   // plus explicit Reminder/Briefing items, so users don't have to ask Ask One again.
+   if(hhmm>="09:00"){
+    for(const workspace of workspaces||[]){
+     const tasks=Array.isArray(workspace.workspace_data?.tasks)?workspace.workspace_data.tasks:[];
+     const pending=tasks.filter((task:any)=>!task.done&&task.id&&task.title&&(
+      Boolean(task.due)||["assignment","reminder","briefing"].includes(String(task.category||"").toLowerCase())
+     ));
+     if(!pending.length)continue;
+     const digestKey="daily-pending-summary:"+date;
+     const {data:claim,error:claimError}=await admin.from("one_push_deliveries").insert({user_id:workspace.user_id,delivery_key:digestKey,notification_type:"daily_digest"}).select("id").maybeSingle();
+     if(claimError?.code==="23505")continue;if(claimError)throw claimError;if(!claim)continue;
+     const sorted=pending.sort((a:any,b:any)=>String(a.due||"9999").localeCompare(String(b.due||"9999")));
+     const preview=sorted.slice(0,5).map((task:any)=>String(task.title).trim()+(task.due?" ("+task.due+")":"")).join(" · ");
+     const more=sorted.length>5?" · +"+(sorted.length-5)+" more":"";
+     const result=await sendToUser(workspace.user_id,{title:"One · Your pending reminders",body=undefined});
+    }
+   }
    return json({ok:true,checked,sent});
   }
   const jwt=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");if(!jwt)return json({error:"Sign in required"},401);
