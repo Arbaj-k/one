@@ -230,6 +230,27 @@ assert.match(app, /function splitDocumentIntoChunks\(text\)/);
 assert.match(app, /if\(!file\s*\|\|\s*file\.size===0\)/);
 assert.match(app, /Unsupported file type\. Upload a PDF or image\./);
 
+
+// Voice → Structured Capture: one spoken sentence creates linked person, Udhaar, follow-up and note records after one confirmation.
+assert.ok(app.includes('function parseStructuredVoiceCapture(raw){'), 'Structured voice capture parser is missing.');
+assert.ok(app.includes('data.people=Array.isArray(data.people)?data.people:[]'), 'People collection must be initialized before capture.');
+assert.ok(app.includes("source:'voice-structured-capture'"), 'Structured voice records must retain their source marker.');
+assert.ok(app.includes('if(!confirm(preview)){toast(\'Capture cancelled. Nothing was saved.\')'), 'Structured capture must require confirmation before writing records.');
+assert.match(app, /people:\[\]/, 'People records must be part of the account workspace schema.');
+const structuredStart=app.indexOf('function parseStructuredVoiceCapture(raw){');
+const structuredEnd=app.indexOf('window.handleStudentBrainVoiceCommand = function(raw) {',structuredStart);
+assert.ok(structuredStart>=0&&structuredEnd>structuredStart,'Structured capture parser boundaries are missing.');
+const structuredSandbox={today:()=> '2026-11-13',Date,Number,String,RegExp,Math};
+vm.createContext(structuredSandbox);
+vm.runInContext(app.slice(structuredStart,structuredEnd),structuredSandbox,{filename:'structured-voice-parser.js'});
+const parsed=structuredSandbox.parseStructuredVoiceCapture('Kal Suresh ko 2500 udhaar diye the, 20 tarikh ko return, usse project ke baare mein baat karni hai');
+assert.equal(parsed.person,'Suresh','Person name should be extracted.');
+assert.equal(parsed.amount,2500,'Udhaar amount should be extracted.');
+assert.equal(parsed.transactionDate,'2026-11-12','Past-tense kal should resolve to yesterday for the lending date.');
+assert.equal(parsed.dueDate,'2026-11-20','Return date should resolve to the next upcoming 20th.');
+assert.equal(parsed.taskTitle,'Follow up with Suresh about the project','Conversation follow-up should become a task.');
+assert.equal(parsed.hasFollowup,true,'Follow-up intent should be detected.');
+
 console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, spoken task-save behavior, chat file uploads, data safety and CRUD routes.');
 console.log('Note: UI behavior, OCR extraction, backup round-trip, and mobile layout still require browser/device testing.');
 
