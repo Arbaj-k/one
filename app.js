@@ -1438,7 +1438,8 @@ async function chatActionIntent(question){
  const briefingIntent=/\\b(?:brief me|briefing|roz|daily|every day|har roz|har din|is date ko|iss date ko|us date ko|batana|bata dena)\\b/i.test(lower)&&/\\b(?:bata|batana|bata dena|remind|yaad|brief|briefing|update)\\b/i.test(lower);
  if(briefingIntent){
   const daily=/\\b(?:roz|daily|every day|har roz|har din)\\b/i.test(lower);
-  const due=daily?today():parseDate();
+  let due=daily?today():parseDate();
+  if(!daily&&!due){const dayOnly=lower.match(/\\b(\\d{1,2})\\s*(?:tarikh|tareekh|तारीख)\\b/i);if(dayOnly){const n=Number(dayOnly[1]);if(n>=1&&n<=31){const [yy,mm]=today().split('-').map(Number);let d=new Date(yy,mm-1,n);if(d.getDate()===n&&d.toISOString().slice(0,10)<today())d=new Date(yy,mm,n);if(d.getDate()===n)due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}}}
   if(!due)return {answer:'Kis date ko briefing chahiye? Example: 20 November ko mujhe project update batana, ya roz subah 9 baje batana.',sources:['Planner','Ask One']};
   const timeMatch=raw.match(/\\b(?:at\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)\\b/i),clockMatch=raw.match(/\\b(?:at\\s+)?([01]?\\d|2[0-3]):([0-5]\\d)\\b/i);
   let reminderTime='09:00';
