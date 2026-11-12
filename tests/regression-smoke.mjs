@@ -329,6 +329,21 @@ assert.ok(app.includes('Related saved note ID: '+''), 'Note reminders must retai
 assert.ok(app.includes("Confirm reminder for your existing note"), 'Ask One must confirm the selected saved note and reminder schedule before saving.');
 assert.ok(app.includes("page:'planner',successMessage:'Saved note"), 'Confirmed note reminders must be saved in Planner.');
 
+// Advanced reminder scheduling and notification-centre controls.
+assert.ok(app.includes("field('Repeat','repeatRule'") && app.includes("daily|Daily") && app.includes("weekly|Weekly") && app.includes("monthly|Monthly"), 'Tasks must support daily, weekly and monthly recurring reminders.');
+assert.ok(app.includes("field('Notify before','notifyBeforeMinutes'") && app.includes("10|10 minutes before") && app.includes("60|1 hour before") && app.includes("1440|1 day before"), 'Task reminders must support 10-minute, 1-hour and 1-day advance alerts.');
+assert.ok(app.includes("field('Related note (optional)','relatedNoteId'") && app.includes("field('Related document (optional)','relatedDocumentId'"), 'Reminders must link to existing notes and documents.');
+assert.ok(app.includes('function reminderOccurrenceOn(task,date)'), 'Local reminder checks must calculate recurring occurrences.');
+assert.ok(app.includes('function snoozeTaskReminder(taskId,minutes)'), 'Notification centre must support snoozing reminders.');
+assert.ok(app.includes("data-action=\"snooze-task-10\"") && app.includes("data-action=\"reschedule-notification-task\"") && app.includes("data-action=\"complete-notification-task\""), 'Notification centre must expose snooze, reschedule and complete actions.');
+assert.ok(app.includes("data-action=\"open-notification-note\"") && app.includes("data-action=\"open-notification-document\""), 'Notification centre must open linked notes and documents.');
+assert.ok(app.includes('task.snoozedUntil') && app.includes('notifyBeforeMinutes'), 'Reminder scheduler must respect snooze time and advance-notice offsets.');
+assert.ok(app.includes("function action(name,id,extra)"), 'Delegated action handler must accept action metadata.');
+const push = readFileSync(new URL('../supabase/functions/one-push/index.ts', import.meta.url), 'utf8');
+assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') && push.includes('snoozedUntil'), 'Background push dispatcher must support recurrence, advance notices and snoozes.');
+assert.ok(push.includes('relatedNoteId') && push.includes('relatedDocumentId'), 'Background push messages must include linked note/document context.');
+assert.ok(push.includes('one_push_deliveries'), 'Background reminder deliveries must remain idempotent.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
