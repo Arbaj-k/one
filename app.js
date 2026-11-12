@@ -1088,7 +1088,11 @@ async function requestStudentBrainAI(question,targetDocId=null){
  if(!privacy.documents){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[]}
  if(!privacy.money)selectedWorkspace.expenses=[];
  if(!privacy.memories)selectedWorkspace.memories=[];
- const body={message:question,workspace:selectedWorkspace,allowedSources:context.sources.filter(source=>privacy.notes||!source.startsWith('Note: ')),inlineFile:privacy.documents?context.inlineFile:undefined};
+ if(!privacy.tasks)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,dailyPlan:undefined};
+ if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
+ if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
+ const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.money||!['Money & Udhaar','Study sessions'].includes(source))&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
+ const body={message:question,workspace:selectedWorkspace,allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // AI requests are read-only: retry once on a transient transport/5xx failure.
