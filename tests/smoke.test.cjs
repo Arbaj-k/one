@@ -6,6 +6,16 @@ const { execFileSync } = require('node:child_process');
 const source = fs.readFileSync('app.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 const css = fs.readFileSync('styles.css', 'utf8');
+const documentFunction = fs.readFileSync('supabase/functions/document-json/index.ts', 'utf8');
+
+// Document JSON must accept a normal HTTP Bearer token (not a literal \\s sequence).
+assert.match(documentFunction, /\.match\(\/\^Bearer\\\\s\+\(\.\+\)\$\/i\)/);
+const bearerPattern = /^Bearer\\s+(.+)$/i;
+for (const header of ['Bearer test-token', 'bearer another-token']) {
+  assert.ok(bearerPattern.exec(header)?.[1], 'Document JSON rejected a valid Bearer header');
+}
+assert.equal(bearerPattern.exec('Basic test-token'), null, 'Document JSON must reject non-Bearer authorization');
+
 
 // Parse the application before checking that its key routes remain wired.
 new vm.Script(source, { filename: 'app.js' });
