@@ -32,6 +32,18 @@ assert.ok(source.includes('This exact note was already saved recently'), 'Note c
 assert.ok(source.includes('A project with this name already exists'), 'Project creation must detect duplicates');
 assert.ok(source.includes('The action was cancelled. No data was changed.'), 'Action cancellation must be supported');
 
+// Ask One Phase 2: amount/date parsing, income/expense capture, record updates and cloud-sync messaging.
+assert.ok(source.includes('async function chatActionIntent(question)'), 'Ask One actions must await cloud sync checks');
+assert.ok(source.includes('const moneyCreateCue='), 'Natural-language money capture is missing');
+assert.ok(source.includes("kind==='income'"), 'Income records must be supported');
+assert.ok(source.includes('const fieldDateForMoney='), 'Money date parsing is missing');
+assert.ok(source.includes('const relative=lower.match('), 'Relative date parsing is missing');
+assert.ok(source.includes('type:\'update-record\''), 'Record updates must require confirmation');
+assert.ok(source.includes('Please confirm update for '), 'Record update confirmation prompt is missing');
+assert.ok(source.includes('Object.assign(record,pending.patch,{updated:Date.now()})'), 'Confirmed record updates must be applied');
+assert.ok(source.includes('await syncQueue'), 'Action confirmation must wait for queued cloud sync');
+assert.ok(source.includes('const actionResult=await chatActionIntent(query)'), 'Chat handler must await async actions');
+
 new vm.Script(source, { filename: 'app.js' });
 
 // The static app shell must retain the containers required by app.js.
