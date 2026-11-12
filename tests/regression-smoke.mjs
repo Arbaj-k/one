@@ -88,8 +88,8 @@ assert.ok(app.includes('const AI_FILES_DB='), 'Original file browser storage is 
 assert.ok(!app.includes('dataBase64:await fileToBase64(saved.blob)'), 'Ask My Brain should use extracted text only, not send original PDF/image for multimodal analysis.');
 assert.ok(app.includes('async function sendChat('), 'Ask My Brain must use the asynchronous AI response flow.');
 assert.ok(app.includes('function chatActionIntent('), 'Quick task and money actions must remain available.');
-assert.ok(app.includes('const explicitTaskAddIntent=/\\\\b(?:add|create|make)'), 'Ask One must have a deterministic explicit Task Add intent.');
-assert.ok(app.includes('const reminderCommandIntent=/\\\\b(?:remind\\\\s+me|reminder'), 'Ask One must route reminder/briefing language separately from Task Add.');
+assert.ok(app.includes('const explicitTaskAddIntent=/\\b(?:add|create|make)'), 'Ask One must have a deterministic explicit Task Add intent.');
+assert.ok(app.includes('const reminderCommandIntent=/\\b(?:remind\\s+me|reminder'), 'Ask One must route reminder/briefing language separately from Task Add.');
 assert.ok(app.includes("category:'Briefing'")&&app.includes("page:'overview',successMessage:(daily?'Daily briefing':'Reminder')"), 'Confirmed reminders must be saved as Home Task Briefings.');
 assert.ok(app.includes("category:/assignment|homework/i.test(lower)"), 'Explicit Task Add must remain a Planner task, not a briefing.');
 
