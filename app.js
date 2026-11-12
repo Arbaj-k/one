@@ -311,12 +311,14 @@ async function handleOneSharedCapture(capture){
    const isImage=file.type.startsWith('image/')||/\.(png|jpe?g|webp|gif|bmp|tiff?)$/i.test(file.name);
    let ocr='';
    if(isImage&&window.Tesseract){try{ocr=await runImageOCR(file)}catch(error){console.warn('Shared image OCR failed',error)}}
-   const receipt=isImage&&/(tax invoice|invoice|receipt|total amount|grand total|amount paid|gstin|cashier|subtotal)/i.test(ocr)&&/\b(?:total|amount|paid|rs\.?|inr|₹)\b/i.test(ocr);
    await processUploadedDocuments([file]);
+   const savedDocument=[...(data.documents||[])].reverse().find(doc=>doc.name===file.name);
+   const receiptText=ocr||savedDocument?.extractedText||'';
+   const receipt=/(tax invoice|invoice|receipt|total amount|grand total|amount paid|gstin|cashier|subtotal)/i.test(receiptText)&&/\b(?:total|amount|paid|rs\.?|inr|₹)\b/i.test(receiptText);
    if(receipt){
-    const amounts=[...ocr.matchAll(/(?:grand\s+total|total\s+amount|amount\s+paid|total|₹|rs\.?|inr)\s*[:\-]?\s*(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.\d{1,2})?)/gi)].map(x=>Number(x[1].replace(/,/g,''))).filter(x=>x>0&&x<10000000);
+    const amounts=[...receiptText.matchAll(/(?:grand\s+total|total\s+amount|amount\s+paid|total|₹|rs\.?|inr)\s*[:\-]?\s*(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.\d{1,2})?)/gi)].map(x=>Number(x[1].replace(/,/g,''))).filter(x=>x>0&&x<10000000);
     const amount=amounts.length?amounts[amounts.length-1]:'';
-    const vendor=ocr.split(/\r?\n/).map(x=>x.trim()).find(x=>x.length>2&&x.length<65&&!/invoice|receipt|gstin|phone|date|total|cashier/i.test(x))||file.name.replace(/\.[^.]+$/,'');
+    const vendor=receiptText.split(/\r?\n/).map(x=>x.trim()).find(x=>x.length>2&&x.length<65&&!/invoice|receipt|gstin|phone|date|total|cashier/i.test(x))||file.name.replace(/\.[^.]+$/,'');
     openForm('expense');const form=document.querySelector('#edit-form');
     if(form){form.elements.description.value=vendor;form.elements.amount.value=amount;form.elements.category.value='Other';}
     toast(amount?'Receipt saved to Document Vault. Check the expense details.':'Receipt saved to Document Vault. Enter its amount to finish.');
