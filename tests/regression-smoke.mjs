@@ -444,3 +444,11 @@ for(const marker of ['parseICS','calendarEvents','followUps','conflicts','calend
 assert.ok(intelligence.includes('buildStudentBrainAIRequest=async function'),'Ask One must retrieve follow-up, calendar, and connected knowledge context.');
 assert.ok(intelligence.includes('reminderMinutes??15'),'Imported meetings must receive a preparation reminder.');
 assert.ok(css.includes('.one-intel'),'Workspace intelligence panels must be styled.');
+
+// Home dashboard cleanup: remove Today, project progress and repayment panels.
+const homeOverview=app.slice(app.indexOf('function overview(){'),app.indexOf('async function summarizeDocument'));
+assert.ok(!homeOverview.includes('home-today'), 'Today panel must be removed from the home dashboard.');
+assert.ok(!homeOverview.includes('Project progress'), 'Project progress panel must be removed from the home dashboard.');
+assert.ok(!homeOverview.includes('PAYMENTS & REPAYMENTS'), 'Payments and repayments panel must be removed from the home dashboard.');
+assert.ok(!homeOverview.includes('loansDue'), 'Home dashboard must not surface repayment reminders.');
+assert.ok(homeOverview.includes('home-coming-up'), 'Upcoming tasks should remain on the home dashboard.');
