@@ -129,7 +129,7 @@ new vm.Script(source, { filename: 'app.js' });
 assert.ok(!html.includes('class="sidebar"'), 'The old sidebar navigation must be removed');
 assert.ok(!html.includes('id="nav"'), 'The old navigation menu must be removed');
 assert.ok(!html.includes('class="nav-item"'), 'Navigation menu items must not render in the app shell');
-assert.ok(!css.includes('.mobile-nav{display:flex;position:fixed'), 'A fixed mobile navigation bar must not be enabled');
+assert.ok(css.includes('.mobile-nav{display:none!important}'), 'Legacy mobile navigation styles must be explicitly disabled');
 
 // The static app shell must retain the containers required by app.js.
 for (const id of ['page-content', 'modal-root', 'toast']) {
