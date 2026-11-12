@@ -289,7 +289,7 @@ assert.ok(app.includes("field('Due date (udhaar)','dueDate'"), 'Udhaar entries m
 assert.ok(app.includes("'loan-repayment':()=>"), 'Loan tracker must support repayment entry.');
 assert.ok(app.includes('window.loanPersonFilter'), 'Loan history must be filterable by person.');
 assert.ok(!html.includes('data-page="expenses"') && !html.includes('data-page="loans"'), 'Money Spending navigation entry must stay hidden in the navigation-free shell.');
-assert.ok(app.includes("expenses:()=>expenses()"), 'Money Spending page must remain available internally after navigation cleanup.');
+assert.ok(app.includes("projects,expenses,loans:()=>{window.moneyTab='udhaar';return expenses()}"), 'Money Spending page must remain available internally after navigation cleanup.');
 assert.ok(app.includes('save-money-budget') && app.includes('moneyBudgets'), 'Monthly budgets must persist in workspace data.');
 assert.ok(app.includes('Monthly reports') && app.includes('Spending by category'), 'Money reports must include category breakdown.');
 assert.ok(css.includes('.quick-note-widget') && css.includes('.loan-person-card') && css.includes('.money-tabs'), 'Quick note, loan tracker and money tabs styles are missing.');
