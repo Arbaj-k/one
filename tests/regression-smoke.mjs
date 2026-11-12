@@ -163,7 +163,8 @@ for (const feature of [
   assert.ok(app.includes(feature), `Regression guard missing: ${feature}`);
 }
 
-assert.ok(html.includes('data-page="memory"'), 'Personal memory navigation entry is missing from the app shell.');
+assert.ok(!html.includes('data-page="memory"'), 'Removed navigation must not reintroduce the Personal Memory menu entry.');
+assert.ok(app.includes('memory:personalMemory'), 'Personal Memory page must remain available internally after navigation cleanup.');
 
 const dashboardStart=app.indexOf('function overview(){');
 const dashboardEnd=app.indexOf('function knowledge(){',dashboardStart);
