@@ -52,6 +52,11 @@ Deno.serve(async (req: Request) => {
     };
     await removeFolder(userId);
 
+    // Revoke active sessions before deleting the identity. Existing access tokens
+    // must not remain usable after a destructive account action.
+    const { error: revokeError } = await admin.auth.admin.signOut(token, "global");
+    if (revokeError) throw revokeError;
+
     // This legacy table has a non-cascading auth.users FK; delete it explicitly.
     const { error: historyError } = await admin.from("whatsapp_processed_messages").delete().eq("user_id", userId);
     if (historyError) throw historyError;
