@@ -352,7 +352,7 @@ assert.ok(app.includes("data.notes.unshift") && app.includes("Shared text saved 
 assert.ok(app.includes("processUploadedDocuments([file])"), 'Shared PDFs and images must enter the existing Document Vault pipeline.');
 assert.ok(app.includes("const receipt=isImage") && app.includes("openForm('expense')"), 'Receipt screenshots must be identified and offered as prefilled expenses.');
 assert.ok(app.includes("function quickCaptureVoice()") && app.includes("sendChat(transcript)"), 'Voice capture must route speech into Ask One.');
-assert.ok(app.includes("window.addEventListener('one:auth-changed',()=>consumeOneShareInbox())"), 'Share inbox must retry after account workspace activation.');
+assert.ok(app.includes("switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())"), 'Share inbox must retry after account workspace activation.');
 const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 assert.ok(manifest.share_target?.action === './share/' && manifest.share_target.method === 'POST', 'PWA must register an Android Web Share Target.');
 assert.ok(manifest.share_target.params?.files?.some(file => file.name === 'shared_files'), 'Share target must accept PDFs and images.');
