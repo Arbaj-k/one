@@ -338,6 +338,8 @@ assert.ok(app.includes('function snoozeTaskReminder(taskId,minutes)'), 'Notifica
 assert.ok(app.includes("data-action=\"snooze-task-10\"") && app.includes("data-action=\"reschedule-notification-task\"") && app.includes("data-action=\"complete-notification-task\""), 'Notification centre must expose snooze, reschedule and complete actions.');
 assert.ok(app.includes("data-action=\"open-notification-note\"") && app.includes("data-action=\"open-notification-document\""), 'Notification centre must open linked notes and documents.');
 assert.ok(app.includes('task.snoozedUntil') && app.includes('notifyBeforeMinutes'), 'Reminder scheduler must respect snooze time and advance-notice offsets.');
+assert.ok(app.includes('tomorrowDate=addDaysToDate(currentDate,1)') && app.includes('reminderOccurrenceOn(task,day)'), 'Local reminders must fire a day-ahead alert for tomorrow due dates.');
+assert.ok(app.includes("'-snooze-'+snoozed") && app.includes('delete savedTask.snoozedUntil'), 'Snoozed reminders must create a new delivery and task edits must clear stale snoozes.');
 assert.ok(app.includes("function action(name,id,extra)"), 'Delegated action handler must accept action metadata.');
 const push = readFileSync(new URL('../supabase/functions/one-push/index.ts', import.meta.url), 'utf8');
 assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') && push.includes('snoozedUntil'), 'Background push dispatcher must support recurrence, advance notices and snoozes.');
