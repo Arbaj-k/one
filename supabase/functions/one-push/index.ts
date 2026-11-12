@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -13,7 +14,7 @@ function corsFor(req: Request) {
   return headers;
 }
 
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
+const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(activeRequest),"Content-Type":"application/json","Cache-Control":"no-store"}});
 const url=Deno.env.get("SUPABASE_URL")!,anon=Deno.env.get("SUPABASE_ANON_KEY")!,service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
 async function getPushConfig(){
