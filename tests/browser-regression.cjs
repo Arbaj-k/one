@@ -21,7 +21,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await page.waitForSelector('#page-content');
   assert.ok(await page.locator('#page-content').innerText().then(t=>t.includes('Good to see you again')));
   // Exercise task creation through the actual planner UI and verify persistence.
-  await page.locator('button[data-page="planner"]').first().click();
+  await page.locator('.stat-card[data-page="planner"]').first().click();
   await page.locator('[data-action="new-task"]').first().click();
   const taskForm=page.locator('#edit-form');
   await taskForm.locator('[name="title"]').fill('Browser regression task');
@@ -35,7 +35,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   assert.ok(saved.tasks.some(t=>t.title==='Browser regression task'),'Task UI save must persist to workspace storage.');
 
   // Exercise Money & Udhaar create form and verify the amount/category record.
-  await page.locator('button[data-page="expenses"]').first().click();
+  await page.locator('.stat-card[data-page="expenses"]').first().click();
   await page.locator('[data-action="new-expense"]').first().click();
   const expenseForm=page.locator('#edit-form');
   await expenseForm.locator('[name="description"]').fill('Browser regression expense');
@@ -47,7 +47,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   assert.ok(saved.expenses.some(e=>e.description==='Browser regression expense'&&Number(e.amount)===125),'Expense UI save must persist its description and amount.');
 
   // Exercise Knowledge note creation and ensure saved text survives a reload.
-  await page.locator('button[data-page="knowledge"]').first().click();
+  await page.locator('.stat-card[data-page="notes"]').first().click();
   await page.locator('[data-action="new-note"]').first().click();
   const noteForm=page.locator('#edit-form');
   await noteForm.locator('[name="title"]').fill('Browser regression knowledge');
@@ -66,8 +66,8 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   assert.ok(await page.locator('#page-content').count());
   await page.context().setOffline(false);
 
-  // Mobile layout: the full navigation remains reachable in a fixed thumb-friendly bar,
-  // and common workspace pages must not create horizontal viewport overflow.
+  // Mobile layout: the old navigation was intentionally removed; verify
+  // replacement home shortcuts remain reachable and each destination fits.
   const mobile=await context.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const mobileErrors=[];mobile.on('pageerror',e=>mobileErrors.push(e.message));
   await mobile.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
@@ -75,17 +75,26 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   const mobileLayout=await mobile.evaluate(()=>({
     viewport:document.documentElement.clientWidth,
     documentWidth:document.documentElement.scrollWidth,
-    navVisible:getComputedStyle(document.querySelector('.sidebar')).display!=='none'&&document.querySelector('#nav').getBoundingClientRect().bottom>innerHeight-100,
-    navItems:[...document.querySelectorAll('#nav .nav-item')].filter(x=>getComputedStyle(x).display!=='none').length
+    createVisible:!!document.querySelector('.floating-create-button')&&getComputedStyle(document.querySelector('.floating-create-button')).display!=='none',
+    shortcuts:[...document.querySelectorAll('#page-content [data-page]')].filter(x=>getComputedStyle(x).display!=='none').length
   }));
-  assert.ok(mobileLayout.navVisible,'Mobile bottom navigation must be visible');
-  assert.ok(mobileLayout.navItems>=8,'Mobile navigation must keep workspace sections reachable');
+  assert.ok(mobileLayout.createVisible,'Mobile Create shortcut must be visible');
+  assert.ok(mobileLayout.shortcuts>=5,'Home must expose reachable shortcuts without restoring removed navigation');
   assert.ok(mobileLayout.documentWidth<=mobileLayout.viewport+1,'Mobile layout must not overflow horizontally');
-  for(const section of ['vault','planner','expenses','knowledge','projects','ask']){
-    await mobile.locator('#nav [data-page="'+section+'"]').click();
+  const mobileRoutes=[
+    ['planner','.stat-card[data-page="planner"]'],
+    ['uploads','.stat-card[data-page="uploads"]'],
+    ['notes','.stat-card[data-page="notes"]'],
+    ['expenses','.stat-card[data-page="expenses"]'],
+    ['projects','button[data-page="projects"]'],
+    ['ask','button[data-page="ask"]']
+  ];
+  for(const [section,selector] of mobileRoutes){
+    await mobile.locator(selector).first().click();
     await mobile.waitForTimeout(60);
     const widths=await mobile.evaluate(()=>({viewport:document.documentElement.clientWidth,document:document.documentElement.scrollWidth}));
     assert.ok(widths.document<=widths.viewport+1,'Mobile '+section+' page must not overflow horizontally');
+    if(section!=='ask')await mobile.locator('.back-home-icon').click();
   }
   assert.deepEqual(mobileErrors,[]);
   await mobile.close();
