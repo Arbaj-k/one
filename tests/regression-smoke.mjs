@@ -467,3 +467,14 @@ assert.ok(!tasksScreen.includes('planner-calendar-wrap'), 'Tasks screen must not
 assert.ok(!tasksScreen.includes('calendarSection'), 'Tasks screen must not render a calendar integration section.');
 assert.ok(tasksScreen.includes("renderGroup('Open tasks',open,'open')"), 'Open task list must remain available.');
 assert.ok(tasksScreen.includes("renderGroup('Completed',done,'completed')"), 'Completed task list must remain available.');
+
+// Ask One briefing commands must be handled locally before AI document retrieval, with working regexes and India-local dates.
+const briefingCode=app.slice(app.indexOf('const briefingIntent='),app.indexOf('const reminderIntent=',app.indexOf('const briefingIntent=')));
+assert.ok(briefingCode.includes('/\\\\b(?:brief me|briefing|roz|daily'), 'Briefing intent must use real word-boundary regexes.');
+assert.ok(!briefingCode.includes('\\\\\\\\b'), 'Briefing regexes must not be double escaped.');
+assert.ok(briefingCode.includes("category:'Briefing'"), 'Briefing commands must create a local briefing task.');
+assert.ok(app.includes("timezone:'Asia/Kolkata'"), 'AI must receive the authoritative India-local date context.');
+assert.ok(app.includes("today|aaj|abhi|आज"), 'Hindi today wording must be recognized.');
+assert.ok(app.includes("tomorrow|kal|next day|कल"), 'Hindi tomorrow wording must be recognized.');
+const sendChatCode=app.slice(app.indexOf('async function sendChat('),app.indexOf('function action(',app.indexOf('async function sendChat(')));
+assert.ok(sendChatCode.indexOf('chatActionIntent(query)') < sendChatCode.indexOf('requestStudentBrainAI(query'), 'Local reminder/briefing actions must run before document AI retrieval.');
