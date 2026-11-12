@@ -70,7 +70,7 @@ Deno.serve(async(req:Request)=>{
      const sorted=pending.sort((a:any,b:any)=>String(a.due||"9999").localeCompare(String(b.due||"9999")));
      const preview=sorted.slice(0,5).map((task:any)=>String(task.title).trim()+(task.due?" ("+task.due+")":"")).join(" · ");
      const more=sorted.length>5?" · +"+(sorted.length-5)+" more":"";
-     const result=await sendToUser(workspace.user_id,{title:"One · Your pending reminders",body=undefined});
+     const result=await sendToUser(workspace.user_id,{title:"One · Your pending reminders",body:sorted.length+" pending item(s): "+preview+more,tag:digestKey,url:"./?open=tasks"});sent+=result.sent;if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
     }
    }
    return json({ok:true,checked,sent});
