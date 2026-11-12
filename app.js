@@ -281,6 +281,65 @@ window.addEventListener('focus',()=>{if(cloudReady&&cloudUser)refreshCloudWorksp
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
 
 
+async function readOneShareInbox(){
+ return await new Promise((resolve,reject)=>{
+  const request=indexedDB.open('one-share-inbox',1);
+  request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains('captures'))request.result.createObjectStore('captures',{keyPath:'id'})};
+  request.onerror=()=>reject(request.error);
+  request.onsuccess=()=>{const db=request.result,tx=db.transaction('captures','readonly'),get=tx.objectStore('captures').getAll();get.onsuccess=()=>{resolve(get.result||[]);db.close()};get.onerror=()=>{reject(get.error);db.close()}};
+ });
+}
+async function removeOneSharedCapture(id){
+ return await new Promise(resolve=>{const request=indexedDB.open('one-share-inbox',1);request.onsuccess=()=>{const db=request.result,tx=db.transaction('captures','readwrite');tx.objectStore('captures').delete(id);tx.oncomplete=()=>{db.close();resolve(true)};tx.onerror=()=>{db.close();resolve(false)}};request.onerror=()=>resolve(false)});
+}
+function quickCaptureVoice(){
+ const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!Speech){toast('Voice capture is not supported in this browser');return}
+ const recognition=new Speech();recognition.lang='en-IN';recognition.interimResults=false;recognition.maxAlternatives=1;
+ const button=document.querySelector('#quick-capture-voice');if(button){button.disabled=true;button.textContent='Listening…'}
+ recognition.onresult=event=>{const transcript=String(event.results?.[0]?.[0]?.transcript||'').trim();if(!transcript){toast('I could not hear that clearly');return}page='ask';render();sendChat(transcript)};
+ recognition.onerror=event=>toast(event.error==='not-allowed'?'Allow microphone access to capture by voice':'Voice capture failed. Try again.');
+ recognition.onend=()=>{if(button?.isConnected){button.disabled=false;button.textContent='🎙 Voice'}};
+ try{recognition.start()}catch(error){toast('Could not start voice capture');if(button){button.disabled=false;button.textContent='🎙 Voice'}}
+}
+async function handleOneSharedCapture(capture){
+ const text=String(capture.text||'').trim(),url=String(capture.url||'').trim(),title=String(capture.title||'').trim(),files=Array.isArray(capture.files)?capture.files:[];
+ if(files.length){
+  for(const item of files){
+   if(!item?.blob||item.size>12*1024*1024){toast('Shared file is empty or over 12 MB');continue}
+   const file=new File([item.blob],item.name||'Shared file',{type:item.type||item.blob.type||'application/octet-stream'});
+   const isImage=file.type.startsWith('image/')||/\.(png|jpe?g|webp|gif|bmp|tiff?)$/i.test(file.name);
+   let ocr='';
+   if(isImage&&window.Tesseract){try{ocr=await runImageOCR(file)}catch(error){console.warn('Shared image OCR failed',error)}}
+   const receipt=isImage&&/(tax invoice|invoice|receipt|total amount|grand total|amount paid|gstin|cashier|subtotal)/i.test(ocr)&&/\b(?:total|amount|paid|rs\.?|inr|₹)\b/i.test(ocr);
+   await processUploadedDocuments([file]);
+   if(receipt){
+    const amounts=[...ocr.matchAll(/(?:grand\s+total|total\s+amount|amount\s+paid|total|₹|rs\.?|inr)\s*[:\-]?\s*(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.\d{1,2})?)/gi)].map(x=>Number(x[1].replace(/,/g,''))).filter(x=>x>0&&x<10000000);
+    const amount=amounts.length?amounts[amounts.length-1]:'';
+    const vendor=ocr.split(/\r?\n/).map(x=>x.trim()).find(x=>x.length>2&&x.length<65&&!/invoice|receipt|gstin|phone|date|total|cashier/i.test(x))||file.name.replace(/\.[^.]+$/,'');
+    openForm('expense');const form=document.querySelector('#edit-form');
+    if(form){form.elements.description.value=vendor;form.elements.amount.value=amount;form.elements.category.value='Other';}
+    toast(amount?'Receipt saved to Document Vault. Check the expense details.':'Receipt saved to Document Vault. Enter its amount to finish.');
+   }else toast(file.type==='application/pdf'?'PDF added to Document Vault':'Image added to Document Vault');
+  }
+ }
+ if(text||url){
+  const command=/\b(remind me|set (?:a )?reminder|reminder laga|yaad dila|add (?:a )?task|create (?:a )?task|task bana|task add)\b/i.test(text);
+  if(command){page='ask';render();await sendChat(text);return}
+  const content=[text,url?'Shared link: '+url:''].filter(Boolean).join('\n\n');
+  data.notes.unshift({id:uid(),title:title||'Shared from another app',content,subject:'Quick capture',tags:'shared quick capture',created:Date.now(),updated:Date.now()});
+  persist();toast('Shared text saved as a note');
+ }
+}
+async function consumeOneShareInbox(){
+ const params=new URLSearchParams(location.search);if(params.get('shared')!=='1')return;
+ history.replaceState(history.state||{sbPage:page},'',location.pathname);
+ try{
+  const captures=await readOneShareInbox();
+  for(const capture of captures){await handleOneSharedCapture(capture);await removeOneSharedCapture(capture.id)}
+  if(!captures.length)toast('No shared item was found. Please share it again.');
+ }catch(error){console.error('One share inbox failed',error);toast('Could not open the shared item. Try sharing again.')}
+}
 function formatChatText(value=''){
  let text=String(value??'').replace(/\\n/g,'\n').replace(/\/n/g,'\n').replace(/\r\n?/g,'\n');
  return text.split('\n').map(line=>{
@@ -438,7 +497,7 @@ function overview(){
    <div class="home-prompts"><span>Try:</span><button type="button" data-question="Summarize today's priorities">Summarize today's priority</button><button type="button" data-question="Track an expense">Track expense</button><button type="button" data-question="Draft a note">Draft note</button></div>
   </section>
   <div class="grid stats home-stats">${stat('Open tasks',open.length,'Tasks & deadlines','◷','planner')}${stat('Uploaded items',(data.documents||[]).length,'PDFs & images','↥','uploads')}${stat('Notes',data.notes.length,'Written notes','▤','notes')}${stat('Money',money(spend),'Spent this month','₹','expenses')}</div>
-  <section class="card quick-note-widget"><div class="row"><div><div class="eyebrow">QUICK CAPTURE</div><h2>Save a note instantly</h2><p class="muted">A thought, reminder or idea — saved to your One notes.</p></div><span class="quick-note-icon">✎</span></div><form id="home-quick-note-form"><input name="title" aria-label="Note title" placeholder="Title (optional)"><textarea name="content" aria-label="Quick note" placeholder="Write something to remember…" required rows="3"></textarea><div class="row"><small class="muted">♙ Private to your One workspace</small><button class="btn primary" type="submit">Save note ↗</button></div></form></section>
+  <section class="card quick-note-widget"><div class="row"><div><div class="eyebrow">QUICK CAPTURE</div><h2>Save a note instantly</h2><p class="muted">A thought, reminder or idea — saved to your One notes.</p></div><span class="quick-note-icon">✎</span></div><form id="home-quick-note-form"><input name="title" aria-label="Note title" placeholder="Title (optional)"><textarea name="content" aria-label="Quick note" placeholder="Write something to remember…" required rows="3"></textarea><div class="row"><small class="muted">♙ Private to your One workspace</small><button class="btn primary" type="submit">Save note ↗</button><button class="btn" type="button" id="quick-capture-voice" onclick="quickCaptureVoice()">🎙 Voice</button></div></form></section>
   <section class="card home-today"><div class="home-section-heading"><div class="row"><h2>Today</h2><span class="tag">${todayTasks.length} due</span></div><button class="home-section-icon" type="button" data-page="planner" aria-label="Open task planner" title="Open task planner">☷</button></div><div class="list">${todayTasks.length?todayTasks.map(taskRow).join(''):`${empty('Nothing due today. Add your first task, or ask One to capture it.','☑')}${btn('+ Add your first task','new-task',true)}`}</div></section>
   <section class="card home-coming-up"><div class="home-section-heading"><h2>Coming up</h2>${btn('View all →','go-planner',false,true)}</div><div class="list">${due.length?due.map(taskRow).join(''):empty('No upcoming tasks yet. Add a task with a due date.','▦')}</div></section>
   <section class="grid smart-insights-grid">
@@ -1460,6 +1519,7 @@ function restoreData(){
 }
 function clearData(){if(confirm('Delete all Student Brain data saved in this browser? Export first if you need a backup.')){data=starter();persist();render();toast('Local data cleared')}}
 document.addEventListener('click',e=>{const moneyTab=e.target.closest('[data-money-tab]');if(moneyTab){window.moneyTab=moneyTab.dataset.moneyTab;page='expenses';render();return}const copyButton=e.target.closest('[data-copy-message]');if(copyButton){const index=Number(copyButton.dataset.copyMessage);const message=data.messages[index];if(message){const value=String(message.content||'');if(navigator.clipboard?.writeText){navigator.clipboard.writeText(value).then(()=>toast('Message copied')).catch(()=>toast('Could not copy message'));}else{const temp=document.createElement('textarea');temp.value=value;temp.style.position='fixed';temp.style.opacity='0';document.body.appendChild(temp);temp.select();try{document.execCommand('copy');toast('Message copied')}catch(_){toast('Could not copy message')}temp.remove();}}return}const choice=e.target.closest('[data-choice-name]');if(choice){const form=choice.closest('form');const input=form?.querySelector('[name="'+choice.dataset.choiceName+'"]');if(input){input.value=choice.dataset.choiceValue;choice.parentElement.querySelectorAll('[data-choice-name="'+choice.dataset.choiceName+'"]').forEach(option=>{const selected=option===choice;option.classList.toggle('is-selected',selected);option.setAttribute('aria-pressed',selected?'true':'false')})}return}if(e.target.closest('.create-radial-backdrop')){e.preventDefault();closeQuickAddMenu();return}const backdrop=e.target.closest('.modal-backdrop');if(backdrop&&e.target===backdrop){e.preventDefault();e.stopPropagation();action('close-modal');return}if(e.target.closest('.modal')){const modalAction=e.target.closest('[data-action]');if(modalAction){e.preventDefault();e.stopPropagation();action(modalAction.dataset.action,modalAction.dataset.id);return}return}const close=e.target.closest('[data-action="close-modal"]');if(close){e.preventDefault();e.stopPropagation();action('close-modal');return}if(e.target.closest('.modal'))return;const pg=e.target.closest('[data-page]');if(pg){document.querySelector('#modal-root').innerHTML='';page=pg.dataset.page;history.pushState({sbPage:page},'',location.href);render();return}const a=e.target.closest('[data-action]');if(a){action(a.dataset.action,a.dataset.id,a.dataset.minutes);return}const q=e.target.closest('[data-question]');if(q){sendChat(q.dataset.question);return}});
+document.addEventListener('click',e=>{if(e.target.closest('#quick-capture-voice')){quickCaptureVoice();}});
 document.addEventListener('submit',e=>{if(e.target.id==='home-quick-note-form'){e.preventDefault();const fd=new FormData(e.target),content=String(fd.get('content')||'').trim(),title=String(fd.get('title')||'').trim();if(!content){toast('Write something first');return}data.notes.push({id:uid(),title:title||'Quick note',content,subject:'Quick note',tags:'quick capture',created:Date.now(),updated:Date.now()});persist();e.target.reset();toast('Note saved to One');return}if(e.target.id==='edit-form')saveForm(e);if(e.target.id==='chat-form'){e.preventDefault();const i=document.querySelector('#chat-input');sendChat(i.value);}if(e.target.id==='home-brain-search'){e.preventDefault();const q=document.querySelector('#home-brain-query')?.value.trim();page='ask';render();if(q)sendChat(q);else document.querySelector('#chat-input')?.focus()}});
 document.addEventListener('input',e=>{if(e.target.id==='vault-search'){window.vaultSearchQuery=e.target.value;const old=document.querySelector('.vault-search-results');if(old)old.remove();const box=document.querySelector('.vault-search-card');if(box){const q=window.vaultSearchQuery.trim(),results=q?phase5SearchResults(q):[];if(q){const wrap=document.createElement('div');wrap.className='vault-search-results';wrap.innerHTML=results.length?results.map(x=>'<button class=\"vault-search-result\" type=\"button\" data-action=\"open-vault-result\" data-id=\"'+esc(x.id)+'\" data-type=\"'+esc(x.type)+'\"><span><b>'+esc(x.title)+'</b><small>'+esc(x.type)+' · '+esc(x.detail)+'</small></span><span>Open ↗</span></button>').join(''):'<p class=\"muted\">No matching records found.</p>';box.appendChild(wrap)}}}if(e.target.id==='vault-document-search'){window.vaultDocumentQuery=e.target.value;const el=document.querySelector('#vault-documents');if(el)el.innerHTML=documentsCards()}if(e.target.id==='note-search'){window.noteQuery=e.target.value;const el=document.querySelector('#notes-list');if(el)el.innerHTML=notesCards()}});
 document.addEventListener('change',e=>{if(e.target.id==='restore-file')updateRestorePreview();if(e.target.id==='document-upload')processUploadedDocuments(e.target.files);if(e.target.id==='quick-add-file-upload'){const selected=Array.from(e.target.files||[]);e.target.value='';processUploadedDocuments(selected)}if(e.target.id==='subject-filter'){window.subjectFilter=e.target.value;const el=document.querySelector('#notes-list');if(el)el.innerHTML=notesCards()}if(e.target.id==='task-filter'){window.taskFilter=e.target.value;render()}if(e.target.id==='expense-month'){window.expenseMonth=e.target.value;render()}});
@@ -1676,6 +1736,8 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 if(!history.state||!history.state.sbPage)history.replaceState({sbPage:'overview'},'',location.href);
 window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render();});
 render();
+consumeOneShareInbox();
+window.addEventListener('one:auth-changed',()=>consumeOneShareInbox());
 (function handlePwaShortcut(){
  const params=new URLSearchParams(location.search);
  if(params.get('quick-note')==='1'){
