@@ -45,6 +45,23 @@ async function getStudentBrainAIToken(){
  })();
  try{return await studentBrainAITokenPromise}finally{studentBrainAITokenPromise=null}
 }
+async function purgeUserLocalData(userId){
+ if(!userId)return false;
+ const key=KEY+'-user-'+userId;
+ let snapshot={};try{snapshot=JSON.parse(localStorage.getItem(key)||'{}')}catch(_){}
+ const fileIds=(snapshot.documents||[]).map(d=>d?.id).filter(Boolean);
+ try{
+  const db=await openAIFileDB();
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction(['files','workspace'],'readwrite');
+   const files=tx.objectStore('files');for(const id of fileIds)files.delete(id);
+   tx.objectStore('workspace').delete('workspace:'+key);
+   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+  });db.close();
+ }catch(error){console.warn('Local account cleanup incomplete; remove local One site data after account deletion.');throw error}
+ for(const suffix of ['', '-last-good','-pending-cloud','-idb-migrated-at','-sync-meta','-sync-meta-'+userId]){try{localStorage.removeItem(key+suffix)}catch(_){}}
+ return true;
+}
 function openAIFileDB(){
  return new Promise((resolve,reject)=>{
   if(!('indexedDB' in window)){reject(new Error('This browser does not support local file storage.'));return}
@@ -1867,6 +1884,7 @@ function switchAccountWorkspace(user){
  });
  return workspaceSwitchQueue;
 }
+window.OneWorkspace={purgeUserLocalData};
 window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())});
 initCloud();
 migrateWorkspaceToIndexedDB();
