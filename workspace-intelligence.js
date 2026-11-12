@@ -19,6 +19,31 @@ render=function(){oldRender();const root=document.querySelector('#page-content')
 document.addEventListener('submit',e=>{if(!e.target.matches('.one-follow-form'))return;e.preventDefault();const v=Object.fromEntries(new FormData(e.target));data.followUps.push({id:uid(),person:v.person.trim(),context:v.context.trim(),kind:v.kind,due:v.due||null,done:false,created:Date.now(),updated:Date.now()});persist();render();toast('Follow-up saved')},true);
 document.addEventListener('click',e=>{const b=e.target.closest('[data-intel-done]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const item=followups().find(x=>x.id===b.dataset.intelDone);if(item){item.done=true;item.updated=Date.now();persist();render();toast('Follow-up completed')}},true);
 document.addEventListener('change',e=>{if(e.target.id!=='one-ics-file')return;const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=parseICS(reader.result);if(!parsed.length)throw Error('No supported events found in this .ics file');for(const x of parsed){const id=x.uid||btoa(unescape(encodeURIComponent(x.title+'|'+x.start)));const record={id,title:x.title,start:x.start,end:x.end||x.start,location:x.location||'',description:x.description||'',source:'google-calendar-ics',updated:Date.now()},i=events().findIndex(y=>y.id===id);if(i<0)data.calendarEvents.push(record);else data.calendarEvents[i]=record}persist();render();toast(parsed.length+' calendar event(s) imported')}catch(err){toast(err.message||'Calendar import failed')}};reader.readAsText(file)});
+
+/* Reuse the existing notification engine for meeting preparation reminders. */
+const previousTaskReminderCheck=checkTaskReminders;
+checkTaskReminders=async function(){
+ await previousTaskReminderCheck();
+ const storageKey='one-calendar-reminders-'+workspaceStorageKey();
+ let sent={};try{sent=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(_){}
+ const now=Date.now();
+ for(const meeting of events()){
+  if(!meeting.start)continue;
+  const start=Date.parse(meeting.start),lead=Math.max(0,Number(meeting.reminderMinutes??15))*60000,fireAt=start-lead;
+  if(!Number.isFinite(start)||start<now-3600000||now<fireAt||now>=start)continue;
+  const key=meeting.id+'-'+meeting.start+'-'+lead;
+  if(sent[key])continue;
+  const body=(lead?('Starts in '+Math.max(1,Math.round(lead/60000))+' minutes. '):'Starts now. ')+(meeting.location?'Location: '+meeting.location+'. ':'')+'Review your notes and agenda before joining.';
+  addAppNotification({title:'Prepare for '+meeting.title,body,type:'meeting',tag:'meeting-'+key});
+  if('Notification'in window&&Notification.permission==='granted'){
+   try{const registration=await navigator.serviceWorker?.ready;if(registration?.showNotification)await registration.showNotification('One · Prepare for '+meeting.title,{body,icon:'./icons/student-brain.svg',tag:'meeting-'+key,data:{url:'./?open=notifications'}})}catch(_){}
+  }
+  sent[key]=now;
+ }
+ try{localStorage.setItem(storageKey,JSON.stringify(sent))}catch(_){}
+};
+setInterval(()=>checkTaskReminders().catch(()=>{}),60000);
+
 window.addEventListener('one:auth-changed',()=>{data=migrateData(data)});
 data=migrateData(data);persist();render();
 })();
