@@ -413,3 +413,13 @@ const homeStart=app.indexOf('function overview(){');
 const homeEnd=app.indexOf('function documentsCards(){',homeStart);
 const homeSource=app.slice(homeStart,homeEnd);
 assert.ok(homeSource.includes("stat('Money',money(spend),'Spent this month','₹','expenses')"), 'Home dashboard must include a Money card linking to Money Spending.');
+
+
+// Calendar import, people follow-ups, connected knowledge, and AI retrieval.
+const intelligence=readFileSync(new URL('../workspace-intelligence.js',import.meta.url),'utf8');
+execFileSync(process.execPath,['--check',fileURLToPath(new URL('../workspace-intelligence.js',import.meta.url))]);
+assert.ok(html.includes('workspace-intelligence.js'),'Workspace intelligence integration must load.');
+for(const marker of ['parseICS','calendarEvents','followUps','conflicts','calendarHTML','peopleHTML','knowledgeHTML','Prepare for '])assert.ok(intelligence.includes(marker),'Missing workspace intelligence feature: '+marker);
+assert.ok(intelligence.includes('buildStudentBrainAIRequest=async function'),'Ask One must retrieve follow-up, calendar, and connected knowledge context.');
+assert.ok(intelligence.includes('reminderMinutes??15'),'Imported meetings must receive a preparation reminder.');
+assert.ok(css.includes('.one-intel'),'Workspace intelligence panels must be styled.');
