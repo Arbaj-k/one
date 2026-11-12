@@ -377,6 +377,9 @@ const push = readFileSync(new URL('../supabase/functions/one-push/index.ts', imp
 assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') && push.includes('snoozedUntil'), 'Background push dispatcher must support recurrence, advance notices and snoozes.');
 assert.ok(push.includes('relatedNoteId') && push.includes('relatedDocumentId'), 'Background push messages must include linked note/document context.');
 assert.ok(push.includes('one_push_deliveries'), 'Background reminder deliveries must remain idempotent.');
+assert.ok(push.includes('daily-pending-summary:') && push.includes('hhmm>="09:00"'), 'Background dispatcher must send one daily 09:00 Asia/Kolkata digest.');
+assert.ok(push.includes('["assignment","reminder","briefing"]') && push.includes('Boolean(task.due)'), 'Daily digest must include all unfinished dated tasks and explicit reminders/briefings.');
+assert.ok(push.includes('notification_type:"daily_digest"') && push.includes('Your pending reminders'), 'Daily digest must use idempotency tracking and a clear notification.');
 
 // Android Universal Quick Capture share-target and voice entry points.
 assert.ok(app.includes("async function consumeOneShareInbox()") && app.includes("readOneShareInbox()"), 'Shared content must be consumed from the service-worker inbox.');
