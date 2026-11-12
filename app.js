@@ -1066,7 +1066,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    content:String(note.content||'').slice(0,2400)
   }));
  const overviewIntent=/\b(?:summari[sz]e|daily briefing|my day|overview|what should i do|today'?s priorities)\b/i.test(question);
- const asksTasks=overviewIntent||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework)\b/i.test(question);
+ const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework)\b/i.test(question);
  const asksProjects=overviewIntent||/\b(?:project|projects|milestone|progress)\b/i.test(question);
  const asksMoney=overviewIntent||/\b(?:money|expense|expenses|spent|spending|udhaar|owe|lent|borrowed|budget|rupees?|rs\.?|₹|payment|paid)\b/i.test(question);
  const asksMemories=/\b(?:remember|memory|memories|preference|previously|before|last time|what did i tell)\b/i.test(question);
