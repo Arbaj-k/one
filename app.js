@@ -900,7 +900,8 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  if(studySessions.length)sources.push('Study sessions');
  const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
- return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
+ const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
+ return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
 }
 async function requestStudentBrainAI(question,targetDocId=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
@@ -950,7 +951,7 @@ async function requestStudentBrainAI(question,targetDocId=null){
  return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
 function isStructuredWorkspaceQuestion(question){
- return /\b(spend|spent|spending|expense|expenses|money|rupees?|rs\.?|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|kitna|diye|diya|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
+ return /\b(spend|spent|spending|spending pattern|spending insight|spending trend|category breakdown|compare.*(?:spend|expense)|budget insight|where.*money go|project risk|projects at risk|behind schedule|what should i do|plan my day|plan today|daily plan|prioriti[sz]e my tasks|search|find|look for|where is|locate|workspace|memory|memories|expense|expenses|money|rupees?|rs\.?|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|kitna|diye|diya|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
 }
 function knowledgeAnswerCompleteness(answer,question){
  const q=String(question||'').toLowerCase(),a=String(answer||'').toLowerCase();
@@ -966,8 +967,61 @@ function extractMoneyPerson(question){
  for(const pattern of patterns){const match=raw.match(pattern);if(match)return match[1]}
  return '';
 }
+function phase4SearchWorkspace(question){
+ const raw=String(question||'').trim(),terms=aiQueryTerms(raw);
+ const cleaned=raw.replace(/^\s*(?:please\s+)?(?:search(?:\s+for)?|find|look\s+for|where\s+is|show\s+me|locate)\s*/i,'').replace(/\b(?:in|across|inside)\s+(?:my\s+)?(?:workspace|one|everything|all records)\b/ig,'').trim();
+ const queryTerms=aiQueryTerms(cleaned).length?aiQueryTerms(cleaned):terms;
+ if(!queryTerms.length)return {answer:'Search ke liye ek naam ya keyword batao. Example: Search for Hapn project.',sources:[]};
+ const results=[];
+ const add=(text,source,score,detail='')=>{if(score>0)results.push({text,source,score,detail})};
+ (data.tasks||[]).forEach(item=>add(item.title||'Untitled task','Task · Planner',aiTextScore([item.title,item.category,item.notes,item.due,item.priority].join(' '),queryTerms),[item.done?'Completed':'Open',item.due?'Due '+dateFmt(item.due):'No due date',item.priority||'Medium'].join(' · ')));
+ (data.notes||[]).forEach(item=>add(item.title||'Untitled note','Note · Notes',aiTextScore([item.title,item.subject,item.tags,item.content].join(' '),queryTerms),String(item.content||'').slice(0,220)));
+ (data.memories||[]).forEach(item=>add(item.title||'Saved memory','Memory · Personal Memory',aiTextScore([item.title,item.category,item.content].join(' '),queryTerms),String(item.content||'').slice(0,220)));
+ (data.projects||[]).forEach(item=>add(item.name||item.title||'Untitled project','Project · Projects',aiTextScore([item.name,item.title,item.description,item.status].join(' '),queryTerms),[item.status||'In progress',item.targetDate?'Target '+dateFmt(item.targetDate):'No target date'].join(' · ')));
+ (data.documents||[]).forEach(item=>add(item.name||'Uploaded item','File · Uploaded Items',aiTextScore([item.name,item.extractedText].join(' '),queryTerms),String(item.extractedText||'').slice(0,220)));
+ (data.expenses||[]).forEach(item=>add(item.description||item.person||'Money record','Money · Money & Udhaar',aiTextScore([item.description,item.category,item.person,item.kind,item.amount,item.date,item.dueDate].join(' '),queryTerms),[item.kind||'expense','₹'+Number(item.amount||0).toLocaleString('en-IN'),item.person||'',item.date||''].filter(Boolean).join(' · ')));
+ results.sort((a,b)=>b.score-a.score);
+ const selected=results.slice(0,8);
+ return selected.length?{answer:'I found these matching records in your One workspace:\n'+selected.map((item,i)=>(i+1)+'. '+item.text+'\n   '+item.detail+'\n   Source: '+item.source).join('\n\n'),sources:[...new Set(selected.map(item=>item.source))]}:{answer:'No matching saved records found for "'+cleaned+'". Try a shorter keyword or a different spelling.',sources:[]};
+}
+function phase4DailyPlan(){
+ const open=(data.tasks||[]).filter(t=>!t.done);
+ const ranked=open.map(task=>{
+  const days=task.due?Math.ceil((new Date(task.due+'T00:00:00')-new Date(today()+'T00:00:00'))/86400000):null;
+  const priority=String(task.priority||'Medium').toLowerCase();
+  const score=(priority==='high'?5:priority==='medium'?2:0)+(days===null?0:days<0?10:days===0?8:days<=2?6:days<=7?3:0);
+  return {task,days,score};
+ }).sort((a,b)=>b.score-a.score||(a.days??999)-(b.days??999)).slice(0,7);
+ const lines=ranked.map((item,i)=>{const t=item.task,when=item.days===null?'No due date':item.days<0?'Overdue by '+Math.abs(item.days)+' day(s)':item.days===0?'Due today': 'Due in '+item.days+' day(s)';return (i+1)+'. '+t.title+' — '+when+' · '+(t.priority||'Medium')});
+ return {answer:ranked.length?'Suggested plan based on saved deadlines and priorities:\n'+lines.join('\n')+'\n\nThis is a suggested order, not an automatic change to your tasks.': 'No open tasks found. Your planner is clear.',sources:['Tasks & Planner']};
+}
+function phase4SpendingInsights(){
+ const now=today(),month=now.slice(0,7),previous=addDaysToDate(month+'-01',-1).slice(0,7);
+ const expenses=(data.expenses||[]).filter(e=>(e.kind||'expense')==='expense');
+ const current=expenses.filter(e=>String(e.date||'').startsWith(month)),prior=expenses.filter(e=>String(e.date||'').startsWith(previous));
+ const total=rows=>rows.reduce((n,e)=>n+Number(e.amount||0),0),currentTotal=total(current),priorTotal=total(prior);
+ const byCategory=rows=>{const map=new Map();for(const e of rows){const key=String(e.category||'Uncategorized');map.set(key,(map.get(key)||0)+Number(e.amount||0))}return [...map.entries()].sort((a,b)=>b[1]-a[1])};
+ const cats=byCategory(current),priorCats=new Map(byCategory(prior));
+ const lines=cats.slice(0,5).map(([name,amount])=>{const before=priorCats.get(name)||0,change=before?Math.round((amount-before)/before*100):null;return name+': ₹'+amount.toLocaleString('en-IN')+(change===null?' · no previous-month baseline':' · '+(change>0?'+':'')+change+'% vs last month')});
+ const delta=priorTotal?Math.round((currentTotal-priorTotal)/priorTotal*100):null;
+ return {answer:'Spending insights for '+month+':\nThis month: ₹'+currentTotal.toLocaleString('en-IN')+'\nPrevious month: ₹'+priorTotal.toLocaleString('en-IN')+(delta===null?'\nNo previous-month baseline yet.':'\nChange: '+(delta>0?'+':'')+delta+'%')+'\n\nTop categories:\n'+(lines.length?lines.join('\n'):'No expense records for this month.')+'\n\nThese figures use only saved expense records; they are not bank transactions.',sources:['Money & Udhaar']};
+}
+function phase4ProjectRisks(){
+ const todayDate=today(),projects=(data.projects||[]).filter(p=>String(p.status||'In progress').toLowerCase()!=='completed');
+ const risks=projects.map(project=>{
+  const tasks=(data.tasks||[]).filter(t=>t.projectId===project.id),open=tasks.filter(t=>!t.done),overdue=open.filter(t=>t.due&&t.due<todayDate),dueSoon=open.filter(t=>t.due&&t.due>=todayDate&&t.due<=addDaysToDate(todayDate,7));
+  const targetDays=project.targetDate?Math.ceil((new Date(project.targetDate+'T00:00:00')-new Date(todayDate+'T00:00:00'))/86400000):null;
+  const reasons=[];if(overdue.length)reasons.push(overdue.length+' overdue task(s)');if(targetDays!==null&&targetDays<0&&open.length)reasons.push('target date passed');else if(targetDays!==null&&targetDays<=7&&open.length)reasons.push('target date within '+targetDays+' day(s)');if(dueSoon.length)reasons.push(dueSoon.length+' task(s) due this week');
+  return {project,open:open.length,total:tasks.length,done:tasks.length-open.length,reasons,level:overdue.length||targetDays<0?'High':reasons.length?'Watch':'On track'};
+ }).filter(item=>item.reasons.length).sort((a,b)=>(a.level==='High'?-1:1)-(b.level==='High'?-1:1));
+ return {answer:risks.length?'Project risk check:\n'+risks.slice(0,8).map((item,i)=>(i+1)+'. '+(item.project.name||'Untitled project')+' — '+item.level+'\n   '+item.reasons.join(', ')+' · '+item.done+'/'+item.total+' tasks completed').join('\n\n')+'\n\nProjects without linked tasks or target dates may have limited risk visibility.': 'No deadline risks detected in your active projects based on saved task due dates and project targets.',sources:['Projects','Tasks & Planner']};
+}
 function aiAnswer(question){
  const raw=String(question||''),terms=aiQueryTerms(raw);
+ if(/\b(?:search|find|look for|where is|locate)\b/i.test(raw)&&/\b(?:my|in one|workspace|task|note|memory|project|file|document|expense|record|hapn|one)\b/i.test(raw))return phase4SearchWorkspace(raw);
+ if(/\b(?:what should i do|plan my day|plan today|daily plan|prioriti[sz]e my tasks|suggest.*(?:priority|plan)|aaj kya karu)\b/i.test(raw))return phase4DailyPlan();
+ if(/\b(?:spending pattern|spending insight|spending trend|category breakdown|compare.*(?:spend|expense)|budget insight|where.*money go|kharcha.*(?:compare|pattern))\b/i.test(raw))return phase4SpendingInsights();
+ if(/\b(?:project risk|projects at risk|which project.*(?:risk|delay)|project.*behind|risk check)\b/i.test(raw))return phase4ProjectRisks();
  if(/\b(spend|spent|expense|expenses|money|rupees?|rs\.?|kharch|udhaar|lent|borrowed|owe|repaid|kitna|diye|diya)\b/i.test(raw)){
   const expenses=data.expenses||[],fmt=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
   const person=extractMoneyPerson(raw);
@@ -1028,6 +1082,21 @@ async function chatActionIntent(question){
   pendingChatAction=null;
  }
 
+ const rememberMatch=raw.match(/^\s*(?:please\s+)?(?:remember that|remember this|save to memory|yaad rakhna|ise yaad rakhna)\s*[:,-]?\s*(.+)$/i);
+ if(rememberMatch){
+  const content=rememberMatch[1].trim();
+  if(content.length<3)return {answer:'Kya yaad rakhna hai? Ek short fact ya preference likho.',sources:['Personal Memory']};
+  data.memories=Array.isArray(data.memories)?data.memories:[];
+  const duplicate=data.memories.find(m=>String(m.content||'').trim().toLowerCase()===content.toLowerCase());
+  if(duplicate)return {answer:'Yeh baat pehle se Personal Memory mein saved hai: '+(duplicate.title||content)+'. Duplicate nahi banaya.',sources:['Personal Memory']};
+  const title=content.split(/[.!?]/)[0].slice(0,72)||'Remembered detail';
+  const memory={id:uid(),title,category:'Remembered',content,date:today(),created:Date.now(),updated:Date.now()};
+  data.memories.push(memory);persist();
+  const diskVerified=(()=>{try{return JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}').memories?.some(m=>m.id===memory.id)}catch{return false}})();
+  if(!diskVerified){data.memories=data.memories.filter(m=>m.id!==memory.id);return {answer:'Memory save verify nahi hua. Kuch saved claim nahi kar raha.',sources:[]}}
+  const sync=await syncResult();page='memory';render();
+  return {answer:'Saved to Personal Memory: '+content+'. You can review or delete it anytime in Personal Memory.'+sync,sources:['Personal Memory']};
+ }
  const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
  const parseDate=()=>{
   const addDays=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
