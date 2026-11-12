@@ -1121,10 +1121,32 @@ function fmtMoney(amount){return '₹'+Number(amount).toLocaleString('en-IN',{ma
 async function chatActionIntent(question){
  const raw=String(question||'').trim(),lower=raw.toLowerCase();
  const syncResult=async()=>{if(!cloudReady||!cloudUser)return ' Saved on this device; sign in to sync across devices.';if(!navigator.onLine)return ' Saved locally; cloud sync is queued until the device is online.';await syncQueue;return cloudMode==='synced'?' Saved and synced to your account.':' Saved locally, but cloud sync is not confirmed yet. Check the cloud status before relying on another device.'};
+ const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
  if(pendingChatAction){
   const pending=pendingChatAction;
+  if(pending.requestedAt&&Date.now()-pending.requestedAt>5*60*1000){pendingChatAction=null;return {answer:'That confirmation expired after 5 minutes. No data was changed. Please send the request again.',sources:[pending.source||'Ask One']};}
   if(/^(?:yes|yes confirm|confirm|confirm delete|haan|ha|kar do|delete it|proceed)$/i.test(lower)){
    pendingChatAction=null;
+   if(pending.type==='create-record'){
+    const allowed={tasks:'Planner',notes:'Notes & Memory',projects:'Projects',expenses:'Money & Udhaar'};
+    if(!allowed[pending.collection]||!pending.record)return {answer:'This action is no longer valid. No data was changed.',sources:[]};
+    const list=data[pending.collection]=Array.isArray(data[pending.collection])?data[pending.collection]:[];
+    const record=pending.record;
+    const duplicate=list.find(item=>{
+     if(pending.collection==='tasks')return !item.done&&!record.done&&String(item.title||'').trim().toLowerCase()===String(record.title||'').trim().toLowerCase()&&String(item.due||'')===String(record.due||'');
+     if(pending.collection==='notes')return String(item.content||'').trim().toLowerCase()===String(record.content||'').trim().toLowerCase()&&Date.now()-Number(item.created||0)<24*60*60*1000;
+     if(pending.collection==='projects')return String(item.name||item.title||'').trim().toLowerCase()===String(record.name||record.title||'').trim().toLowerCase();
+     return (item.kind||'expense')===(record.kind||'expense')&&Number(item.amount)===Number(record.amount)&&String(item.description||'').trim().toLowerCase()===String(record.description||'').trim().toLowerCase()&&String(item.date||'')===String(record.date||'')&&String(item.person||'').trim().toLowerCase()===String(record.person||'').trim().toLowerCase();
+    });
+    if(duplicate)return {answer:'A matching record was added while this confirmation was waiting. I did not create another copy.',sources:[pending.source||allowed[pending.collection]]};
+    list.push(record);persist();
+    if(!verify(pending.collection,record)){data[pending.collection]=list.filter(item=>item.id!==record.id);persist();return {answer:'Save verification failed. I did not mark this action as successful; please check the relevant section.',sources:[]};}
+    if(pending.page)page=pending.page;
+    if(pending.moneyTab)window.moneyTab=pending.moneyTab;
+    if(pending.expenseMonth)window.expenseMonth=pending.expenseMonth;
+    const sync=await syncResult();render();
+    return {answer:(pending.successMessage||'Record created and verified.')+sync,sources:[pending.source||allowed[pending.collection]]};
+   }
    if(pending.type==='update-record'){
     const collection={task:'tasks',note:'notes',project:'projects'}[pending.recordType],record=(data[collection]||[]).find(item=>item.id===pending.id);
     if(!record)return {answer:'Record ab nahi mila. Kuch update nahi kiya.',sources:[pending.source]};
@@ -1167,7 +1189,6 @@ async function chatActionIntent(question){
   const sync=await syncResult();page='memory';render();
   return {answer:'Saved to Personal Memory: '+content+'. You can review or delete it anytime in Personal Memory.'+sync,sources:['Personal Memory']};
  }
- const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
  const parseDate=()=>{
   const addDays=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
   if(/\b(?:tomorrow|kal|next day)\b/i.test(lower))return addDays(1);
@@ -1195,10 +1216,8 @@ async function chatActionIntent(question){
   const duplicate=(data.expenses||[]).find(e=>e.kind==='lent'&&String(e.person||'').toLowerCase()===person.toLowerCase()&&Number(e.amount)===amount&&e.date===transactionDate&&String(e.dueDate||'')===dueDate);
   if(duplicate)return {answer:'Yeh record pehle se saved hai: '+fmtMoney(amount)+' lent to '+person+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
   const record={id:uid(),description:'Lent to '+person,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind:'lent',updated:Date.now(),created:Date.now()};
-  data.expenses.push(record);persist();
-  if(!verify('expenses',record))return {answer:'Money record save hone ki verification fail hui. Main ise added nahi bolunga; Money & Udhaar check karo.',sources:[]};
-  const sync=await syncResult();page='expenses';window.moneyTab='udhaar';window.expenseMonth=transactionDate.slice(0,7);render();
-  return {answer:'Money & Udhaar mein saved: '+fmtMoney(amount)+' Arbaj ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Saved record verify kar liya hai.'+sync,sources:['Money & Udhaar']};
+  pendingChatAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',moneyTab:'udhaar',expenseMonth:transactionDate.slice(0,7),successMessage:'Money & Udhaar mein saved: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Record verify kar liya hai.',requestedAt:Date.now()};
+  return {answer:'Please confirm this money record: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Reply YES to save or NO to cancel. Abhi koi record add nahi hua.',sources:['Money & Udhaar']};
  }
  const reminderIntent=/\b(?:remind me to|remind me about|set a reminder|reminder for|yaad dilana|yaad dila dena|mujhe yaad dilana)\b/i.test(lower);
  if(reminderIntent&&!/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower)){
@@ -1212,10 +1231,8 @@ async function chatActionIntent(question){
   const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due);
   if(duplicate)return {answer:'Reminder already exists for '+title+' on '+dateFmt(due)+'. Duplicate nahi banaya.',sources:['Planner']};
   const task={id:uid(),title,category:'Reminder',due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
-  data.tasks.push(task);persist();
-  if(!verify('tasks',task))return {answer:'Reminder save verify nahi hua. Planner check karo.',sources:[]};
-  const sync=await syncResult();page='planner';render();setTimeout(checkTaskReminders,0);
-  return {answer:'Reminder saved: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Enable notifications in One to receive a browser alert when One is open or reopened.'+sync,sources:['Planner']};
+  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Reminder saved: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Enable notifications in One to receive a browser alert when One is open or reopened.',requestedAt:Date.now()};
+  return {answer:'Please confirm reminder: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Planner']};
  }
  const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar|jod do|likh lo|yaad dilana)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
  if(addTask){
@@ -1229,9 +1246,8 @@ async function chatActionIntent(question){
   let reminderTime='09:00';
   if(reminderTimeMatch){let hour=Number(reminderTimeMatch[1]),minute=Number(reminderTimeMatch[2]||0),meridiem=(reminderTimeMatch[3]||'').toLowerCase();if(minute>59||hour>12||hour<0)return {answer:'Reminder time valid nahi hai. Example: 7:30 pm.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(meridiem==='baje'&&hour>23)return {answer:'Time 24-hour format mein do, jaise 19:00.',sources:['Planner']};reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
   const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,reminderTime,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
-  data.tasks.push(task);persist();
-  if(!verify('tasks',task))return {answer:'Task save verify nahi hua, isliye confirm nahi kar raha. Planner check karo.',sources:[]};
-  const sync=await syncResult();page='planner';render();return {answer:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.'+sync,sources:['Planner']};
+  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',requestedAt:Date.now()};
+  return {answer:'Please confirm task: '+title+(due?' · Due '+dateFmt(due):' · No due date')+'. Reply YES to save or NO to cancel. Abhi task add nahi hua.',sources:['Planner']};
  }
  const addNote=/\b(?:add|save|create|write|likh|save kar)\b/i.test(lower)&&/\b(?:note|notes|notepad)\b/i.test(lower);
  if(addNote){
@@ -1240,9 +1256,8 @@ async function chatActionIntent(question){
   const duplicate=(data.notes||[]).find(item=>String(item.content||'').trim().toLowerCase()===content.toLowerCase()&&Date.now()-Number(item.created||0)<24*60*60*1000);
   if(duplicate)return {answer:'This exact note was already saved recently. I did not create a duplicate.',sources:['Notes & Memory']};
   const note={id:uid(),title:'Quick note',content,subject:'Quick note',tags:'chat capture',created:Date.now(),updated:Date.now()};
-  data.notes.push(note);persist();
-  if(!verify('notes',note))return {answer:'Note save verify nahi hua; main saved nahi bolunga.',sources:[]};
-  const sync=await syncResult();page='notes';render();return {answer:'Note Notes & Memory mein save ho gaya: '+content+'.'+sync,sources:['Notes & Memory']};
+  pendingChatAction={type:'create-record',collection:'notes',record:note,source:'Notes & Memory',page:'notes',successMessage:'Note Notes & Memory mein save ho gaya: '+content+'.',requestedAt:Date.now()};
+  return {answer:'Please confirm note: '+content+'. Reply YES to save or NO to cancel. Abhi note add nahi hua.',sources:['Notes & Memory']};
  }
  const addProject=/\b(?:add|create|start|banao|bana do)\b/i.test(lower)&&/\bproject\b/i.test(lower);
  if(addProject){
@@ -1251,9 +1266,8 @@ async function chatActionIntent(question){
   const duplicate=(data.projects||[]).find(item=>String(item.name||item.title||'').trim().toLowerCase()===name.toLowerCase());
   if(duplicate)return {answer:'A project with this name already exists: "'+(duplicate.name||duplicate.title)+'". I did not create a duplicate.',sources:['Projects']};
   const project={id:uid(),name,description:'',status:'In progress',targetDate:'',created:Date.now(),updated:Date.now()};
-  data.projects.push(project);persist();
-  if(!verify('projects',project))return {answer:'Project save verify nahi hua; main saved nahi bolunga.',sources:[]};
-  const sync=await syncResult();page='projects';render();return {answer:'Project created: '+name+'. Projects mein saved aur verified hai.'+sync,sources:['Projects']};
+  pendingChatAction={type:'create-record',collection:'projects',record:project,source:'Projects',page:'projects',successMessage:'Project created: '+name+'. Projects mein saved aur verified hai.',requestedAt:Date.now()};
+  return {answer:'Please confirm project: '+name+'. Reply YES to create or NO to cancel. Abhi project add nahi hua.',sources:['Projects']};
  }
 
  const updateCue=/\b(?:update|edit|change|modify|rename|set|badal(?:o|na)?|change kar|update kar|theek kar)\b/i.test(lower);
@@ -1302,10 +1316,8 @@ async function chatActionIntent(question){
   const duplicate=(data.expenses||[]).find(e=>(e.kind||'expense')===kind&&Number(e.amount)===amount&&String(e.description||'').toLowerCase()===description.toLowerCase()&&String(e.date||'')===date);
   if(duplicate)return {answer:'Matching money record already exists: '+fmtMoney(amount)+' for '+description+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
   const record={id:uid(),description,amount:String(amount),category,date,kind,updated:Date.now(),created:Date.now()};
-  data.expenses.push(record);persist();
-  if(!verify('expenses',record))return {answer:'Money record save verify nahi hua. Money section check karo.',sources:[]};
-  const sync=await syncResult();page='expenses';window.expenseMonth=date.slice(0,7);render();
-  return {answer:(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'.'+sync,sources:['Money & Udhaar']};
+  pendingChatAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',expenseMonth:date.slice(0,7),successMessage:(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'.',requestedAt:Date.now()};
+  return {answer:'Please confirm '+(kind==='income'?'income':'expense')+': '+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'. Reply YES to save or NO to cancel. Abhi money record add nahi hua.',sources:['Money & Udhaar']};
  }
 
  const complete=/\b(?:complete|finish|mark|done|ho gaya|kar diya)\b/i.test(lower)&&/\b(?:task|assignment|todo|kaam|done)\b/i.test(lower);
