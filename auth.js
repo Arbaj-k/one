@@ -78,7 +78,7 @@
   async function upsertProfile(user,name=''){
     if(!user)return;
     const profile={id:user.id,display_name:name||user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'One user',avatar_url:user.user_metadata?.avatar_url||user.user_metadata?.picture||null,updated_at:new Date().toISOString()};
-    const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn('Profile sync unavailable; authentication remains active.');
+    const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn("Operation failed; diagnostic details redacted.");
   }
   function paintUser(user){
     window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user}}));
@@ -102,7 +102,7 @@
     if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.error('Sign-out failed.');status('Could not log out. Please try again.',true)}}
+  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out. Please try again.',true)}}
   async function deleteAccount(){
     const user=session?.user;if(!user)return;
     if(!confirm('Permanently delete your One account and all cloud data, uploaded files, notes, tasks, messages and linked records? This cannot be undone.'))return;
@@ -116,7 +116,7 @@
       window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();
       const signIn=$('#one-signin');if(signIn)signIn.hidden=false;
       alert('Your One account and cloud data have been deleted.');
-    }catch(error){console.error('Account deletion failed.');status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
+    }catch(error){console.warn("Operation failed; diagnostic details redacted.");status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
   }
   async function boot(){
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
@@ -124,7 +124,7 @@
       if(session?.user){paintUser(session.user);await upsertProfile(session.user)}else window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
-    }catch(err){console.warn('One auth unavailable; local guest mode remains enabled.');const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
+    }catch(err){console.warn("Operation failed; diagnostic details redacted.");const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
   }
   window.OneAuth={open,logout,getSession:()=>session,getUser:()=>session?.user||null};
   document.addEventListener('DOMContentLoaded',boot);
