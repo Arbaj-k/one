@@ -14,7 +14,7 @@ function migrateData(raw){
  return next;
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn('Could not prepare guest workspace migration',error)}
-let data=loadData(),page='overview',chatBusy=false;
+let data=loadData(),page='overview',chatBusy=false,pendingChatAction=null;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
@@ -960,6 +960,27 @@ function aiAnswer(question){
 function fmtMoney(amount){return '₹'+Number(amount).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function chatActionIntent(question){
  const raw=String(question||'').trim(),lower=raw.toLowerCase();
+ if(pendingChatAction){
+  const pending=pendingChatAction;
+  if(/^(?:yes|yes confirm|confirm|confirm delete|haan|ha|kar do|delete it|proceed)$/i.test(lower)){
+   pendingChatAction=null;
+   if(pending.type==='delete-task'){
+    const target=(data.tasks||[]).find(task=>task.id===pending.id);
+    if(!target)return {answer:'Task ab nahi mila. Kuch delete nahi kiya.',sources:['Planner']};
+    data.tasks=data.tasks.filter(task=>task.id!==pending.id);persist();
+    const verified=!(data.tasks||[]).some(task=>task.id===pending.id);
+    if(!verified)return {answer:'Delete verify nahi hua. Planner mein record check karo.',sources:['Planner']};
+    page='planner';render();
+    return {answer:'Confirmed: task "'+pending.title+'" deleted from Planner.',sources:['Planner']};
+   }
+  }
+  if(/^(?:no|no cancel|cancel|nahi|mat karo|stop)$/i.test(lower)){
+   pendingChatAction=null;
+   return {answer:'The action was cancelled. No data was changed.',sources:['Planner']};
+  }
+  pendingChatAction=null;
+ }
+
  const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
  const parseDate=()=>{
   if(/\b(?:tomorrow|kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -990,7 +1011,10 @@ function chatActionIntent(question){
   const noteMatch=raw.match(/\b(?:notes?|details?)\s*[:\-]\s*(.+)$/i),notes=noteMatch?noteMatch[1].trim():'';
   let title=raw.replace(/\b(?:notes?|details?)\s*[:\-]\s*.+$/i,'').replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|jod do|likh lo|yaad dilana|a|an|the|task|todo|assignment|deadline|homework|exam|submit|kaam|due|today|tomorrow|kal|aaj|on|by)\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s:,-]+|[\s:,-]+$/g,'').trim();
   if(!title)return {answer:'Task ka naam batao. Example: Add task DSA assignment due tomorrow. Notes: chapter 4 complete karna.',sources:['Planner']};
-  const due=parseDate(),task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
+  const due=parseDate();
+  const existing=(data.tasks||[]).find(item=>!item.done&&String(item.title||'').trim().toLowerCase()===title.toLowerCase()&&String(item.due||'')===due);
+  if(existing)return {answer:'A matching open task already exists: "'+existing.title+'". I did not create a duplicate.',sources:['Planner']};
+  const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
   data.tasks.push(task);persist();
   if(!verify('tasks',task))return {answer:'Task save verify nahi hua, isliye confirm nahi kar raha. Planner check karo.',sources:[]};
   page='planner';render();return {answer:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',sources:['Planner']};
@@ -999,6 +1023,8 @@ function chatActionIntent(question){
  if(addNote){
   const content=raw.replace(/^\s*(?:please\s+)?(?:add|save|create|write|likh(?:\s+do)?|save kar(?:\s+do)?)\s+(?:a\s+)?note\s*[:\-]?\s*/i,'').trim();
   if(!content)return {answer:'Note ka content bhi likho. Example: Save note: Kal project meeting hai.',sources:['Notes & Memory']};
+  const duplicate=(data.notes||[]).find(item=>String(item.content||'').trim().toLowerCase()===content.toLowerCase()&&Date.now()-Number(item.created||0)<24*60*60*1000);
+  if(duplicate)return {answer:'This exact note was already saved recently. I did not create a duplicate.',sources:['Notes & Memory']};
   const note={id:uid(),title:'Quick note',content,subject:'Quick note',tags:'chat capture',created:Date.now(),updated:Date.now()};
   data.notes.push(note);persist();
   if(!verify('notes',note))return {answer:'Note save verify nahi hua; main saved nahi bolunga.',sources:[]};
@@ -1008,6 +1034,8 @@ function chatActionIntent(question){
  if(addProject){
   const name=raw.replace(/^\s*(?:please\s+)?(?:add|create|start|banao|bana do)\s+(?:a\s+)?project\s*/i,'').replace(/\s+/g,' ').trim();
   if(!name)return {answer:'Project ka naam batao. Example: Create project Hapn redesign.',sources:['Projects']};
+  const duplicate=(data.projects||[]).find(item=>String(item.name||item.title||'').trim().toLowerCase()===name.toLowerCase());
+  if(duplicate)return {answer:'A project with this name already exists: "'+(duplicate.name||duplicate.title)+'". I did not create a duplicate.',sources:['Projects']};
   const project={id:uid(),name,description:'',status:'In progress',targetDate:'',created:Date.now(),updated:Date.now()};
   data.projects.push(project);persist();
   if(!verify('projects',project))return {answer:'Project save verify nahi hua; main saved nahi bolunga.',sources:[]};
@@ -1031,7 +1059,7 @@ function chatActionIntent(question){
  if(deleteTask){
   const needle=raw.replace(/\b(?:please|delete|remove|hata do|delete kar|task|todo|assignment|the|my)\b/ig,' ').trim().toLowerCase();
   const found=(data.tasks||[]).filter(t=>needle&&String(t.title||'').toLowerCase().includes(needle));
-  if(found.length===1){const title=found[0].title;data.tasks=data.tasks.filter(t=>t.id!==found[0].id);persist();page='planner';render();return {answer:'Task "'+title+'" deleted from Planner.',sources:['Planner']}}
+  if(found.length===1){pendingChatAction={type:'delete-task',id:found[0].id,title:found[0].title,requestedAt:Date.now()};return {answer:'Please confirm: delete task "'+found[0].title+'"? Reply YES to delete or NO to cancel. Nothing has been deleted yet.',sources:['Planner']}}
   return {answer:found.length?'Multiple tasks match. Exact task title batao.':'Task nahi mila; kuch delete nahi kiya.',sources:['Planner']};
  }
  return null;
