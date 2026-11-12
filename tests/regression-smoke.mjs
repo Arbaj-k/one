@@ -380,6 +380,8 @@ assert.ok(push.includes('one_push_deliveries'), 'Background reminder deliveries 
 assert.ok(push.includes('daily-pending-summary:') && push.includes('hhmm>="09:00"'), 'Background dispatcher must send one daily 09:00 Asia/Kolkata digest.');
 assert.ok(push.includes('["assignment","reminder","briefing"]') && push.includes('Boolean(task.due)'), 'Daily digest must include all unfinished dated tasks and explicit reminders/briefings.');
 assert.ok(push.includes('notification_type:"daily_digest"') && push.includes('Your pending reminders'), 'Daily digest must use idempotency tracking and a clear notification.');
+assert.ok(push.includes('doc.expiresOn<=addLocalDays(date,7)') && push.includes('Document expiry:'), 'Daily digest must include upcoming and overdue document expiry reminders.');
+assert.ok(push.includes('const loans=expenses.filter') && push.includes('Collect from ') && push.includes('Repay '), 'Daily digest must include outstanding Udhaar due reminders.');
 
 // Android Universal Quick Capture share-target and voice entry points.
 assert.ok(app.includes("async function consumeOneShareInbox()") && app.includes("readOneShareInbox()"), 'Shared content must be consumed from the service-worker inbox.');
