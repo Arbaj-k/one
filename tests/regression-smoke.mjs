@@ -311,9 +311,10 @@ assert.ok(app.includes("const project={id:uid(),name"), 'Ask One must create pro
 assert.ok(app.includes("const complete=/\\b(?:complete|finish|mark|done|ho gaya|kar diya)"), 'Ask One must complete tasks from chat commands.');
 assert.ok(app.includes("const reopen=/\\b(?:reopen|undo|uncomplete"), 'Ask One must reopen completed tasks from chat commands.');
 assert.ok(app.includes("const deleteTask=/\\b(?:delete|remove|hata do|delete kar)"), 'Ask One must delete specifically matched tasks from chat commands.');
-assert.ok(app.includes("if(!verify('tasks',task))"), 'Ask One must verify task persistence before confirming.');
-assert.ok(app.includes("if(!verify('notes',note))"), 'Ask One must verify note persistence before confirming.');
-assert.ok(app.includes("if(!verify('projects',project))"), 'Ask One must verify project persistence before confirming.');
+assert.ok(app.includes("pending.type==='create-record'"), 'Ask One creates must pass through the shared confirmation handler.');
+assert.ok(app.includes('if(!verify(pending.collection,record))'), 'Ask One must verify persisted data after an explicitly confirmed create.');
+assert.ok(app.includes('Please confirm task:') && app.includes('Please confirm note:') && app.includes('Please confirm project:'), 'Ask One must show a clear confirmation before creating personal records.');
+assert.ok(app.includes('5*60*1000'), 'Ask One pending actions must expire after five minutes.');
 
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
