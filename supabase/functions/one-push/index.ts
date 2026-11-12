@@ -23,7 +23,7 @@ Deno.serve(async(req:Request)=>{
    const now=new Date(),date=now.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"}),hhmm=now.toLocaleTimeString("en-GB",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:false});let checked=0,sent=0;
    for(const workspace of workspaces||[]){const tasks=Array.isArray(workspace.workspace_data?.tasks)?workspace.workspace_data.tasks:[];for(const task of tasks){if(task.done||task.due!==date||!task.id||!task.title)continue;const dueTime=String(task.reminderTime||"09:00").slice(0,5);if(dueTime>hhmm)continue;checked++;const key="task:"+task.id+":"+date+":"+dueTime;
     const {data:claim,error:claimError}=await admin.from("one_push_deliveries").insert({user_id:workspace.user_id,delivery_key:key,notification_type:"task"}).select("id").maybeSingle();if(claimError?.code==="23505")continue;if(claimError)throw claimError;if(!claim)continue;
-    const result=await sendToUser(workspace.user_id,{title:"One · Task reminder",body:task.title+" is due today at "+dueTime+".",tag:key,url:"./?open=task&id="+encodeURIComponent(task.id)});sent+=result.sent;await admin.from("one_push_deliveries").update({sent_at:result.sent?new Date().toISOString():null,last_error:result.sent?"":"No active push subscription"}).eq("id",claim.id);
+    const result=await sendToUser(workspace.user_id,{title:"One · Task reminder",body:task.title+" is due today at "+dueTime+".",tag:key,url:"./?open=task&id="+encodeURIComponent(task.id)});sent+=result.sent;if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
    }}
    return json({ok:true,checked,sent});
   }
