@@ -1769,3 +1769,25 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 /* Navigation removed: One uses the full viewport for its active workspace. */
 .sidebar{display:none!important}.main{margin-left:0!important;width:100%!important}
 @media(max-width:700px){.main{margin:0!important;width:100%!important;padding-bottom:0!important}.mobile-nav{display:none!important}}
+
+
+/* One notification centre */
+.notification-bell{position:relative;width:38px;height:38px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-size:20px;display:grid;place-items:center}
+.notification-bell:hover{background:#f5f7ff;color:var(--blue)}
+.notification-badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:20px;background:#e5484d;color:#fff;border:2px solid #fff;font-size:9px;font-weight:800;display:grid;place-items:center}
+.notification-badge[hidden]{display:none}
+.notification-centre-head{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:8px}
+.notification-list{display:flex;flex-direction:column;max-height:58vh;overflow:auto}
+.notification-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.notification-item-icon{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:11px;background:var(--blue-light);color:var(--blue)}
+.notification-item-copy{flex:1;min-width:0}
+.notification-item-copy b{display:block;font-size:12px}
+.notification-item-copy p{font-size:11px;color:var(--muted);line-height:1.5;margin:4px 0}
+.notification-item-copy small{font-size:10px;color:#98a2b2}
+.notification-item.is-read{opacity:.65}
+.notification-read-action{border:0;background:transparent;color:var(--blue);font-size:19px;padding:5px}
+.notification-empty{text-align:center;padding:36px 12px;color:var(--muted)}
+.notification-empty>span{font-size:30px;display:block;margin-bottom:12px}
+.notification-empty b{display:block;color:var(--ink);font-size:13px}
+.notification-empty p{font-size:11px;margin:7px 0 0}
+@media(max-width:700px){.notification-bell{width:35px;height:35px}.notification-item .btn{padding:6px;font-size:10px}}
