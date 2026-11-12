@@ -1533,11 +1533,12 @@ async function enableTaskReminders(){
  catch(err){toast('Could not enable notifications')}
 }
 async function checkTaskReminders(){
- if(!('Notification' in window)||Notification.permission!=='granted')return;
  let shown={};try{shown=JSON.parse(localStorage.getItem(taskReminderStorageKey())||'{}')}catch{}
  const now=Date.now(),notify=async(title,body,tag,taskId=null,type='reminder')=>{addAppNotification({title,body,tag,taskId,type});
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
   const reg=await navigator.serviceWorker?.ready;
-  if(reg?.showNotification)await reg.showNotification(title,{body,icon:'./icons/student-brain.svg',tag,data:{url:'./'}});
+  const url=taskId?'./?open=task&id='+encodeURIComponent(taskId):'./?open=notifications';
+  if(reg?.showNotification)await reg.showNotification(title,{body,icon:'./icons/student-brain.svg',tag,data:{url}});
   else new Notification(title,{body,tag});
  };
  for(const task of (data.tasks||[])){
@@ -1593,6 +1594,8 @@ render();
   requestAnimationFrame(()=>document.querySelector('#home-quick-note-form [name=content]')?.focus());
  }
  const requestedPage=params.get('open');
+ if(requestedPage==='task'){const taskId=params.get('id');history.replaceState({sbPage:'planner'},'',location.pathname);page='planner';window.plannerView='All';render();requestAnimationFrame(()=>{const task=data.tasks.find(item=>item.id===taskId);if(task){const button=document.querySelector('[data-action="edit-task"][data-id="'+CSS.escape(taskId)+'"]');button?.scrollIntoView({behavior:'smooth',block:'center'});if(button)button.click();}});return}
+ if(requestedPage==='notifications'){history.replaceState({sbPage:'overview'},'',location.pathname);page='overview';render();requestAnimationFrame(()=>action('open-notifications'));return}
  if(requestedPage==='loans'){
   history.replaceState({sbPage:'loans'},'',location.pathname);
   page='loans';render();
