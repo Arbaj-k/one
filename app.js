@@ -1006,6 +1006,13 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
 
  const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:6,maxChunks:targetDocId?24:24,maxChars:39000});
+ if(!targetDocId&&contextProject){
+  const linkedDocs=allDocs.filter(doc=>isProjectLinked(doc)&&!retrieval.evidence.some(hit=>hit.doc.id===doc.id)).slice(0,3);
+  for(const doc of linkedDocs){
+   const text=String(doc.extractedText||doc.summary||'').slice(0,6000);
+   if(text)retrieval.evidence.push({doc,label:'File: '+doc.name+' · linked to project '+(contextProject.name||contextProject.title||''),text});
+  }
+ }
  const documents=[],sources=[];
  let totalChars=0,inlineFile;
  for(const hit of retrieval.evidence){
@@ -1043,7 +1050,10 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    }catch(fileError){console.warn('Could not attach matched original image; using extracted text instead.',fileError)}
   }
  }
- const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
+ const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
+ const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
+ const isProjectLinked=item=>!!contextProject&&(item.projectId===contextProject.id||item.relatedProjectId===contextProject.id||(Array.isArray(item.projectIds)&&item.projectIds.includes(contextProject.id)));
+ const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  // Avoid flooding general questions with unrelated personal notes.
  const notes=rankedNotes
   .filter(item=>terms.length>0&&item.score>0)
