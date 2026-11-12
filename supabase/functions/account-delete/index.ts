@@ -31,19 +31,26 @@ Deno.serve(async (req: Request) => {
     const userId = authData.user.id;
     const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    // Remove private document objects before deleting their metadata and auth owner.
+    // Remove private document objects recursively through the Storage API.
     const bucket = "one-user-documents";
-    for (let offset = 0; ; offset += 100) {
-      const { data: objects, error } = await admin.from("objects" as never)
-        .select("name").eq("bucket_id", bucket).like("name", userId + "/%")
-        .range(offset, offset + 99);
-      if (error) throw error;
-      const names = (objects || []).map((item: { name: string }) => item.name);
-      if (!names.length) break;
-      const { error: storageError } = await admin.storage.from(bucket).remove(names);
-      if (storageError) throw storageError;
-      if (names.length < 100) break;
-    }
+    const removeFolder = async (folder: string): Promise<void> => {
+      for (let offset = 0; ; offset += 100) {
+        const { data: entries, error } = await admin.storage.from(bucket).list(folder, { limit: 100, offset });
+        if (error) throw error;
+        const files: string[] = [];
+        for (const entry of entries || []) {
+          const path = folder ? folder + "/" + entry.name : entry.name;
+          if (entry.id) files.push(path);
+          else await removeFolder(path);
+        }
+        if (files.length) {
+          const { error: storageError } = await admin.storage.from(bucket).remove(files);
+          if (storageError) throw storageError;
+        }
+        if (!entries || entries.length < 100) break;
+      }
+    };
+    await removeFolder(userId);
 
     // This legacy table has a non-cascading auth.users FK; delete it explicitly.
     const { error: historyError } = await admin.from("whatsapp_processed_messages").delete().eq("user_id", userId);
