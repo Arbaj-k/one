@@ -1242,6 +1242,33 @@ async function chatActionIntent(question){
   pendingChatAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',moneyTab:'udhaar',expenseMonth:transactionDate.slice(0,7),successMessage:'Money & Udhaar mein saved: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Record verify kar liya hai.',requestedAt:Date.now()};
   return {answer:'Please confirm this money record: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Reply YES to save or NO to cancel. Abhi koi record add nahi hua.',sources:['Money & Udhaar']};
  }
+ const noteReminderIntent=/\\b(?:is|iss|us|uss|ye|this|that)\\s+(?:note|notes)\\s+(?:ka|ki|ke)?\\s*(?:reminder|yaad)\\b|\\b(?:is|iss|us|uss|iska|uska|in notes? ka|note ka|note ki)\\s+(?:reminder|yaad|laga do|set karo|set kar do)\\b|\\b(?:remind me|yaad dilana|yaad dila do)\\s+(?:about|for|from)\\s+(?:my\\s+)?notes?\\b/i.test(lower);
+ if(noteReminderIntent){
+  const notes=Array.isArray(data.notes)?data.notes:[];
+  if(!notes.length)return {answer:'Notes mein abhi koi saved note nahi mila. Pehle note save karo, phir uska reminder set kar denge.',sources:['Notes & Memory']};
+  const query=lower.replace(/\\b(?:please|remind me|set (?:a )?reminder|reminder|yaad dilana|yaad dila do|is|iss|us|uss|ye|this|that|iska|uska|note|notes|ka|ki|ke|ko|for|about|from|my|kal|tomorrow|today|aaj|next week|agle hafte|shaam|sham|evening|raat|night|subah|morning|at|baje|\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|baje)?)/gi,' ').replace(/\\s+/g,' ').trim();
+  const words=query.split(/[^a-z0-9]+/i).filter(w=>w.length>2);
+  const ranked=notes.map(note=>{const hay=[note.title,note.subject,note.tags,note.content].join(' ').toLowerCase();return {note,score:words.reduce((n,w)=>n+(hay.includes(w)?1:0),0)}}).sort((a,b)=>b.score-a.score||Number(b.note.updated||b.note.created||0)-Number(a.note.updated||a.note.created||0));
+  let selected=ranked[0];
+  if(words.length&&selected.score===0)selected=null;
+  if(!selected&&words.length)return {answer:'Kaunsa saved note? Note ka title ya 2–3 keywords bhejo, main usi ka reminder bana dunga.',sources:['Notes & Memory']};
+  if(selected&&ranked.length>1&&selected.score===ranked[1].score&&selected.score>0)return {answer:'Mujhe ek se zyada matching notes mile. Exact note title bata do: '+ranked.filter(x=>x.score===selected.score).slice(0,4).map(x=>'“'+(x.note.title||'Untitled note')+'”').join(', ')+'.',sources:['Notes & Memory']};
+  if(!selected)selected=notes.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0))[0];
+  const due=parseDate();
+  if(!due)return {answer:'Saved note “'+(selected.title||'Untitled note')+'” mil gaya. Kis date ko reminder chahiye? Example: Kal 7 baje.',sources:['Notes & Memory','Planner']};
+  const timeMatch=raw.match(/\\b(?:at\\s+(\\d{1,2})(?::(\\d{2}))?(?:\\s*(am|pm|baje))?|(?:(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)))\\b/i);
+  const clockMatch=raw.match(/\\b(?:at\\s+)?([01]?\\d|2[0-3]):([0-5]\\d)\\b/i);
+  let reminderTime='';
+  if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
+  else if(timeMatch){let hour=Number(timeMatch[1]||timeMatch[4]),minute=Number(timeMatch[2]||timeMatch[5]||0),meridiem=(timeMatch[3]||timeMatch[6]||'').toLowerCase();if(hour>23||hour<1||minute>59||(meridiem&&hour>12))return {answer:'Reminder time valid nahi hai. Example: 7:30 pm ya 19:30.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(!meridiem&&/\\b(?:shaam|sham|evening|raat|night)\\b/i.test(lower)&&hour<12)hour+=12;reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
+  if(!reminderTime)return {answer:'Saved note “'+(selected.title||'Untitled note')+'” ke liye time bhi batao. Example: Kal shaam 7 baje.',sources:['Notes & Memory','Planner']};
+  const title='Review note: '+(selected.title||String(selected.content||'Saved note').slice(0,70));
+  const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&t.reminderTime===reminderTime);
+  if(duplicate)return {answer:'Is note ka reminder pehle se set hai: “'+(selected.title||'Untitled note')+'” · '+dateFmt(due)+' at '+reminderTime+'. Duplicate nahi banaya.',sources:['Planner','Notes & Memory']};
+  const task={id:uid(),title,category:'Reminder',notes:'Related saved note ID: '+selected.id+'\\n'+String(selected.content||'').slice(0,1200),relatedNoteId:selected.id,due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
+  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Notes & Memory',page:'planner',successMessage:'Saved note “'+(selected.title||'Untitled note')+'” ka reminder set ho gaya: '+dateFmt(due)+' at '+reminderTime+'.',requestedAt:Date.now()};
+  return {answer:'Confirm reminder for your existing note “'+(selected.title||'Untitled note')+'” · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel. Main naya note nahi bana raha.',sources:['Notes & Memory','Planner']};
+ }
  const reminderIntent=/\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do|yaad dilana|yaad dila dena|yaad dila do|mujhe yaad(?:\s+dilana|\s+dila dena|\s+dila do))\b/i.test(lower);
  if(reminderIntent){
   const due=parseDate();
