@@ -360,6 +360,16 @@ const worker = readFileSync(new URL('../service-worker.js', import.meta.url), 'u
 assert.ok(worker.includes('one-share-inbox') && worker.includes('r.formData()'), 'Service worker must persist incoming shares before opening the app.');
 assert.ok(worker.includes('u.pathname.endsWith("/share/")'), 'Service worker must intercept the PWA share endpoint.');
 
+// Stronger data reliability and per-category AI sharing controls.
+assert.ok(app.includes("function syncMetaKey(ownerId=cloudUser?.id)") && app.includes("restoreSyncMeta(userId)"), 'Last successful sync metadata must persist per account.');
+assert.ok(app.includes("workspaceStorageKey()+'-pending-cloud'") && app.includes("removeItem(workspaceStorageKey()+'-pending-cloud')"), 'Cloud sync must keep and clear a durable pending snapshot.');
+assert.ok(app.includes("window.addEventListener('online',()=>{if(cloudReady&&cloudUser") && app.includes("queueCloudSave().then(()=>refreshCloudWorkspace"), 'Returning online must retry queued workspace changes and refresh cloud state.');
+assert.ok(app.includes("activeWorkspaceKey=nextUserId?KEY+'-user-'+nextUserId:KEY+'-guest'") && app.includes("restoreSyncMeta(nextUserId)"), 'Sync metadata and local workspace keys must remain account-scoped.');
+assert.ok(app.includes('function aiPrivacyControls()') && app.includes('data-ai-share'), 'Settings must expose per-category AI data-sharing controls.');
+assert.ok(app.includes("money:false") && app.includes("if(!privacy.money)selectedWorkspace.expenses=[]"), 'Money data must be excluded from AI by default and when disabled.');
+assert.ok(app.includes('const sourceAllowed=source=>') && app.includes('privacy.documents?context.inlineFile:undefined'), 'Disabled categories must also be excluded from AI source permissions and inline files.');
+assert.ok(app.includes("function exportData()") && app.includes("function restoreData()") && app.includes("function parseBackupPayload"), 'Workspace export and validated restore must remain available.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
