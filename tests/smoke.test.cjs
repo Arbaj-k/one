@@ -9,8 +9,8 @@ const css = fs.readFileSync('styles.css', 'utf8');
 const documentFunction = fs.readFileSync('supabase/functions/document-json/index.ts', 'utf8');
 
 // Document JSON must accept a normal HTTP Bearer token (not a literal \\s sequence).
-assert.match(documentFunction, /\.match\(\/\^Bearer\\\\s\+\(\.\+\)\$\/i\)/);
-const bearerPattern = /^Bearer\\s+(.+)$/i;
+assert.match(documentFunction, /\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
+const bearerPattern = /^Bearer\s+(.+)$/i;
 for (const header of ['Bearer test-token', 'bearer another-token']) {
   assert.ok(bearerPattern.exec(header)?.[1], 'Document JSON rejected a valid Bearer header');
 }
