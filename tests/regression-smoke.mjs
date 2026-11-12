@@ -492,3 +492,11 @@ assert.ok(naturalReminder.includes("category:'Briefing'"), 'Natural-language rem
 assert.ok(naturalReminder.includes("source:'Task briefing',page:'overview'"), 'Natural-language reminders must return to the Home Task Briefing section.');
 assert.ok(naturalReminder.includes("'19:00':'09:00'"), 'Morning reminders default to 09:00 and evening reminders to 19:00.');
 assert.ok(naturalReminder.includes('Confirm Task Briefing:'), 'Ask One must confirm natural-language reminders as briefings.');
+
+// Intent distinction: natural reminder language wins over task nouns such as assignment/homework; explicit task-add language creates a task.
+const intentCode=app.slice(app.indexOf('const explicitTaskAdd='),app.indexOf('const addNote=',app.indexOf('const explicitTaskAdd=')));
+assert.ok(intentCode.includes('const naturalReminder='), 'Ask One must classify reminder language independently from task nouns.');
+assert.ok(intentCode.includes('!explicitTaskAdd&&naturalReminder'), 'Reminder wording must route to Task Briefing unless task-add intent is explicit.');
+assert.ok(intentCode.includes('explicitTaskAdd&&!naturalReminder'), 'Explicit task-add wording must remain available.');
+assert.ok(intentCode.includes("category:'Briefing'"), 'Reminder commands must be saved as Task Briefing.');
+assert.ok(intentCode.includes("category:/assignment|submit/i.test(lower)?'Assignment'"), 'Explicit task adds must retain task categories.');
