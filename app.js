@@ -1391,6 +1391,41 @@ async function chatActionIntent(question){
   return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
  };
  const fieldDateForMoney=()=>{if(/\b(?:yesterday|kal\s+tha|beete\s+kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}return parseDate()||today()};
+ // Deterministic command routing: reminder/briefing requests must be handled
+ // locally before document Q&A, while explicit "add task" remains a Planner task.
+ const explicitTaskAddIntent=/\b(?:add|create|make)\s+(?:a\s+)?(?:new\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b|\b(?:task\s+bana\s+do|task\s+create\s+karo|task\s+add\s+kar\s+do|todo\s+bana\s+do)\b/i.test(lower);
+ const reminderCommandIntent=/\b(?:remind\s+me|reminder|yaad\s+(?:dila(?:na|\s+dena|\s+do)?|rakhna)|mat\s+bhoolna|don't\s+let\s+me\s+forget|briefing|brief\s+me|bata\s+dena|batana|yaad\s+karwana)\b/i.test(lower);
+ if(!pendingChatAction&&explicitTaskAddIntent&&!reminderCommandIntent){
+  const due=parseDate();
+  const timeMatch=raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)\b/i),clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
+  let reminderTime=/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)?'19:00':'09:00';
+  if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
+  else if(timeMatch){let h=Number(timeMatch[1]),m=Number(timeMatch[2]||0),mer=timeMatch[3].toLowerCase();if(h<1||h>12||m>59)return {answer:'Time valid nahi hai. Example: 9 am ya 7:30 pm.',sources:['Planner']};if(mer==='pm'&&h<12)h+=12;if(mer==='am'&&h===12)h=0;reminderTime=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
+  const title=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:add|create|make|new|a|an|task|todo|mein|me|add|kar|karo|karna|do|due|on|by|today|tomorrow|kal|aaj|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  if(!title)return {answer:'Task ka naam batao. Example: Add task assignment due tomorrow.',sources:['Planner']};
+  const duplicate=(data.tasks||[]).find(x=>!x.done&&String(x.title||'').toLowerCase()===title.toLowerCase()&&String(x.due||'')===(due||''));
+  if(duplicate)return {answer:'Ye task pehle se Planner mein hai. Duplicate nahi banaya.',sources:['Planner']};
+  const task={id:uid(),title,category:/assignment|homework/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
+  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+'.',requestedAt:Date.now()};
+  return {answer:'Confirm Task Add: '+title+(due?' · '+dateFmt(due):'')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:['Planner']};
+ }
+ if(!pendingChatAction&&reminderCommandIntent){
+  const daily=/\b(?:daily|every\s+day|roz|har\s+roz|har\s+din)\b/i.test(lower);
+  const due=daily?today():parseDate();
+  if(!due)return {answer:'Reminder/briefing ki date batao. Example: Kal subah assignment likhna yaad dilana, ya roz subah 9 baje project update batana.',sources:['Task Briefing','Planner']};
+  const timeMatch=raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)\b/i),clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
+  let reminderTime=/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)?'19:00':'09:00';
+  if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
+  else if(timeMatch){let h=Number(timeMatch[1]),m=Number(timeMatch[2]||0),mer=timeMatch[3].toLowerCase();if(h<1||h>12||m>59)return {answer:'Time valid nahi hai. Example: 9 am ya 7:30 pm.',sources:['Task Briefing']};if(mer==='pm'&&h<12)h+=12;if(mer==='am'&&h===12)h=0;reminderTime=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
+  const title=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:mujhe|mere|ko|roz|daily|every\s+day|har\s+roz|har\s+din|subah|morning|shaam|sham|evening|raat|night|briefing|brief\s+me|remind\s+me|reminder|yaad|dila(?:na|\s+dena|\s+do)?|bata\s+dena|batana|mat\s+bhoolna|don't\s+let\s+me\s+forget|please|on|at|by|around|baje|am|pm|today|tomorrow|kal|aaj|next\s+week|agle\s+hafte)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  if(!title)return {answer:'Kis cheez ka reminder chahiye? Example: Kal subah assignment likhna yaad dilana.',sources:['Task Briefing']};
+  const duplicate=(data.tasks||[]).find(x=>!x.done&&x.category==='Briefing'&&String(x.title||'').toLowerCase()===title.toLowerCase()&&String(x.due||'')===due&&(x.repeatRule||'none')===(daily?'daily':'none'));
+  if(duplicate)return {answer:'Ye briefing pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
+  const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule:daily?'daily':'none',priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder/briefing command.'};
+  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task Briefing',page:'overview',successMessage:(daily?'Daily briefing':'Reminder')+' saved: '+title+' · '+(daily?'every day':dateFmt(due))+' at '+reminderTime+'.',requestedAt:Date.now()};
+  return {answer:'Confirm '+(daily?'daily briefing':'reminder')+': '+title+' · '+(daily?'Every day':dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel. Ye Home ke Task Briefing mein dikhega.',sources:['Task Briefing','Planner']};
+ }
+
  const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const moneyAddIntent=!!moneyAmountMatch&&/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*/i.test(lower)&&/\b(?:diye|diya|gave|lend|lent|udhaar)\b/i.test(lower);
  if(moneyAddIntent){
