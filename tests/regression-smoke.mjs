@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+assert.match(app, /function today\(\)\{return new Intl\.DateTimeFormat\('en-CA',\{timeZone:'Asia\\/Kolkata'/, 'Today must use Asia/Kolkata, not UTC or browser-local date.');
 const buildStart=app.indexOf('async function buildStudentBrainAIRequest(');
 const buildEnd=app.indexOf('async function requestStudentBrainAI(',buildStart);
 const buildSource=app.slice(buildStart,buildEnd);
