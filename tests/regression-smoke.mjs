@@ -370,6 +370,13 @@ assert.ok(app.includes("money:false") && app.includes("if(!privacy.money)selecte
 assert.ok(app.includes('const sourceAllowed=source=>') && app.includes('privacy.documents?context.inlineFile:undefined'), 'Disabled categories must also be excluded from AI source permissions and inline files.');
 assert.ok(app.includes("function exportData()") && app.includes("function restoreData()") && app.includes("function parseBackupPayload"), 'Workspace export and validated restore must remain available.');
 
+// Better Personal Memory: project relationships and grounded AI citations.
+assert.ok(app.includes('function projectRelatedItems(project)'), 'Projects must calculate related saved records.');
+assert.ok(app.includes('function relatedItemsMarkup(items)'), 'Project cards must display related records.');
+assert.ok(app.includes('data-action="open-vault-result"') && app.includes('Related items · '), 'Suggested related records must be directly openable from a project.');
+assert.ok(app.includes('isProjectLinked(item)') && app.includes('relatedProjectId') && app.includes('projectIds'), 'Explicit project links must boost note and document retrieval.');
+assert.ok(app.includes('linked to project '), 'AI document evidence must identify the project relationship in its source label.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
