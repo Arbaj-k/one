@@ -44,6 +44,20 @@ assert.ok(source.includes('Object.assign(record,pending.patch,{updated:Date.now(
 assert.ok(source.includes('await syncQueue'), 'Action confirmation must wait for queued cloud sync');
 assert.ok(source.includes('const actionResult=await chatActionIntent(query)'), 'Chat handler must await async actions');
 
+// Phase 3 smart automation: weekly review, project progress, Udhaar due alerts and natural-language reminders.
+assert.ok(source.includes('function smartWeekSummary()'), 'Weekly review summary is missing');
+assert.ok(source.includes('function smartProjectProgress()'), 'Project progress intelligence is missing');
+assert.ok(source.includes('function upcomingUdhaar()'), 'Upcoming Udhaar summary is missing');
+assert.ok(source.includes('Udhaar due soon'), 'Today dashboard must show upcoming repayments');
+assert.ok(source.includes('Daily briefing'), 'Today dashboard daily briefing is missing');
+assert.ok(source.includes('const reminderIntent='), 'Natural-language reminders are missing');
+assert.ok(source.includes('Reminder saved:'), 'Reminder save confirmation is missing');
+assert.ok(source.includes('reminderTime,notes,priority'), 'Task reminder time extraction is missing');
+assert.ok(source.includes("const loanRows=(data.expenses||[]).filter(e=>['lent','borrowed'].includes(e.kind)"), 'Udhaar notification checks are missing');
+assert.ok(source.includes("const key='loan-'+entry.id"), 'Udhaar notifications need per-record duplicate protection');
+assert.ok(source.includes("'go-udhaar':()=>"), 'Dashboard Udhaar shortcut is missing');
+assert.ok(source.includes("'go-money-reports':()=>"), 'Dashboard weekly report shortcut is missing');
+
 new vm.Script(source, { filename: 'app.js' });
 
 // The static app shell must retain the containers required by app.js.
