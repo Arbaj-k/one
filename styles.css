@@ -1794,3 +1794,13 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 
 /* Reminder actions: compact, touch-friendly controls in the notification centre. */
 .notification-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.notification-actions .btn{min-height:30px;padding:6px 9px;font-size:10px}.notification-item{align-items:flex-start}.notification-item-copy{min-width:0;overflow-wrap:anywhere}@media(max-width:700px){.notification-actions{gap:5px}.notification-actions .btn{min-height:34px;padding:7px 9px}.notification-item{gap:8px}}
+
+/* User-requested compact, slightly lower floating Create button. */
+@media(max-width:760px){
+ .floating-create-button{bottom:calc(4px + env(safe-area-inset-bottom));padding:9px 16px;gap:7px;min-height:44px;font-size:12px;box-shadow:0 5px 16px #0004}
+ .floating-create-button span{font-size:20px}
+}
+@media(min-width:761px){
+ .floating-create-button{bottom:8px;padding:10px 17px;gap:7px;font-size:13px}
+ .floating-create-button span{font-size:20px}
+}
