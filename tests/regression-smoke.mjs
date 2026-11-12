@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+const buildStart=app.indexOf('async function buildStudentBrainAIRequest(');
+const buildEnd=app.indexOf('async function requestStudentBrainAI(',buildStart);
+const buildSource=app.slice(buildStart,buildEnd);
+assert.ok(buildSource.indexOf('const contextProject=')>=0 && buildSource.indexOf('const contextProject=')<buildSource.indexOf('if(!targetDocId&&contextProject)'), 'Project context must be initialized before linked-document retrieval.');
+assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('const asksProjects=')<buildSource.indexOf('const asksTasks='), 'Project intent must be initialized before task intent reads it.');
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
