@@ -958,20 +958,30 @@ function aiAnswer(question){
  const answer=selected.map((hit,index)=>(index+1)+'. '+hit.text).join('\n\n');const completeness=knowledgeAnswerCompleteness(answer,raw);return selected.length?{answer:answer+(completeness.complete?'':'\n\nI could not verify the '+completeness.missing.join(' and ')+'. Open the source extract to check the original page.'),sources:[...new Set(selected.map(hit=>hit.source))]}:{answer:'I could not find matching saved content. Try mentioning a course name, keyword, or phrase from your file. When AI is connected, Brain can explain the relevant content in natural language.',sources:[]};
 }
 function fmtMoney(amount){return '₹'+Number(amount).toLocaleString('en-IN',{maximumFractionDigits:2})}
-function chatActionIntent(question){
+async function chatActionIntent(question){
  const raw=String(question||'').trim(),lower=raw.toLowerCase();
+ const syncResult=async()=>{if(!cloudReady||!cloudUser)return ' Saved on this device; sign in to sync across devices.';if(!navigator.onLine)return ' Saved locally; cloud sync is queued until the device is online.';await syncQueue;return cloudMode==='synced'?' Saved and synced to your account.':' Saved locally, but cloud sync is not confirmed yet. Check the cloud status before relying on another device.'};
  if(pendingChatAction){
   const pending=pendingChatAction;
   if(/^(?:yes|yes confirm|confirm|confirm delete|haan|ha|kar do|delete it|proceed)$/i.test(lower)){
    pendingChatAction=null;
+   if(pending.type==='update-record'){
+    const collection={task:'tasks',note:'notes',project:'projects'}[pending.recordType],record=(data[collection]||[]).find(item=>item.id===pending.id);
+    if(!record)return {answer:'Record ab nahi mila. Kuch update nahi kiya.',sources:[pending.source]};
+    Object.assign(record,pending.patch,{updated:Date.now()});persist();
+    const saved=verify(collection,record);
+    if(!saved)return {answer:'Update verify nahi hua. Koi success confirmation nahi de raha; record manually check karo.',sources:[pending.source]};
+    const sync=await syncResult();page=pending.recordType==='task'?'planner':pending.recordType==='note'?'notes':'projects';render();
+    return {answer:'Updated '+pending.recordType+': "'+pending.title+'". '+Object.keys(pending.patch).join(', ')+' changed.'+sync,sources:[pending.source]};
+   }
    if(pending.type==='delete-task'){
     const target=(data.tasks||[]).find(task=>task.id===pending.id);
     if(!target)return {answer:'Task ab nahi mila. Kuch delete nahi kiya.',sources:['Planner']};
     data.tasks=data.tasks.filter(task=>task.id!==pending.id);persist();
     const verified=!(data.tasks||[]).some(task=>task.id===pending.id);
     if(!verified)return {answer:'Delete verify nahi hua. Planner mein record check karo.',sources:['Planner']};
-    page='planner';render();
-    return {answer:'Confirmed: task "'+pending.title+'" deleted from Planner.',sources:['Planner']};
+    page='planner';const sync=await syncResult();render();
+    return {answer:'Confirmed: task "'+pending.title+'" deleted from Planner.'+sync,sources:['Planner']};
    }
   }
   if(/^(?:no|no cancel|cancel|nahi|mat karo|stop)$/i.test(lower)){
@@ -983,13 +993,21 @@ function chatActionIntent(question){
 
  const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
  const parseDate=()=>{
-  if(/\b(?:tomorrow|kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-  if(/\b(?:today|aaj)\b/i.test(lower))return today();
+  const addDays=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+  if(/\b(?:tomorrow|kal|next day)\b/i.test(lower))return addDays(1);
+  if(/\b(?:today|aaj|abhi)\b/i.test(lower))return today();
+  const relative=lower.match(/\b(?:in|after)\s+(\d{1,2})\s+days?\b|\b(\d{1,2})\s+din\s+(?:baad|mein)\b/i);
+  if(relative)return addDays(Number(relative[1]||relative[2]));
+  if(/\bnext week\b|\bagle hafte\b/i.test(lower))return addDays(7);
+  const numeric=raw.match(/\b(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?\b/);
+  if(numeric){const day=Number(numeric[1]),month=Number(numeric[2])-1,year=Number(numeric[3]?(numeric[3].length===2?'20'+numeric[3]:numeric[3]):new Date().getFullYear()),d=new Date(year,month,day);if(d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day)return year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0')}
+
   const m=raw.match(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/i);
   if(!m)return '';
   const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11},month=months[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);
   return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
  };
+ const fieldDateForMoney=()=>{if(/\b(?:yesterday|kal\s+tha|beete\s+kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}return parseDate()||today()};
  const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const moneyAddIntent=!!moneyAmountMatch&&/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*/i.test(lower)&&/\b(?:diye|diya|gave|lend|lent|udhaar)\b/i.test(lower);
  if(moneyAddIntent){
@@ -1003,8 +1021,8 @@ function chatActionIntent(question){
   const record={id:uid(),description:'Lent to '+person,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind:'lent',updated:Date.now(),created:Date.now()};
   data.expenses.push(record);persist();
   if(!verify('expenses',record))return {answer:'Money record save hone ki verification fail hui. Main ise added nahi bolunga; Money & Udhaar check karo.',sources:[]};
-  page='expenses';window.moneyTab='udhaar';window.expenseMonth=transactionDate.slice(0,7);render();
-  return {answer:'Money & Udhaar mein saved: '+fmtMoney(amount)+' Arbaj ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Saved record verify kar liya hai.',sources:['Money & Udhaar']};
+  const sync=await syncResult();page='expenses';window.moneyTab='udhaar';window.expenseMonth=transactionDate.slice(0,7);render();
+  return {answer:'Money & Udhaar mein saved: '+fmtMoney(amount)+' Arbaj ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Saved record verify kar liya hai.'+sync,sources:['Money & Udhaar']};
  }
  const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar|jod do|likh lo|yaad dilana)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
  if(addTask){
@@ -1017,7 +1035,7 @@ function chatActionIntent(question){
   const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
   data.tasks.push(task);persist();
   if(!verify('tasks',task))return {answer:'Task save verify nahi hua, isliye confirm nahi kar raha. Planner check karo.',sources:[]};
-  page='planner';render();return {answer:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',sources:['Planner']};
+  const sync=await syncResult();page='planner';render();return {answer:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.'+sync,sources:['Planner']};
  }
  const addNote=/\b(?:add|save|create|write|likh|save kar)\b/i.test(lower)&&/\b(?:note|notes|notepad)\b/i.test(lower);
  if(addNote){
@@ -1028,7 +1046,7 @@ function chatActionIntent(question){
   const note={id:uid(),title:'Quick note',content,subject:'Quick note',tags:'chat capture',created:Date.now(),updated:Date.now()};
   data.notes.push(note);persist();
   if(!verify('notes',note))return {answer:'Note save verify nahi hua; main saved nahi bolunga.',sources:[]};
-  page='notes';render();return {answer:'Note Notes & Memory mein save ho gaya: '+content,sources:['Notes & Memory']};
+  const sync=await syncResult();page='notes';render();return {answer:'Note Notes & Memory mein save ho gaya: '+content+'.'+sync,sources:['Notes & Memory']};
  }
  const addProject=/\b(?:add|create|start|banao|bana do)\b/i.test(lower)&&/\bproject\b/i.test(lower);
  if(addProject){
@@ -1039,8 +1057,61 @@ function chatActionIntent(question){
   const project={id:uid(),name,description:'',status:'In progress',targetDate:'',created:Date.now(),updated:Date.now()};
   data.projects.push(project);persist();
   if(!verify('projects',project))return {answer:'Project save verify nahi hua; main saved nahi bolunga.',sources:[]};
-  page='projects';render();return {answer:'Project created: '+name+'. Projects mein saved aur verified hai.',sources:['Projects']};
+  const sync=await syncResult();page='projects';render();return {answer:'Project created: '+name+'. Projects mein saved aur verified hai.'+sync,sources:['Projects']};
  }
+
+ const updateCue=/\b(?:update|edit|change|modify|rename|set|badal(?:o|na)?|change kar|update kar|theek kar)\b/i.test(lower);
+ const entityMatch=lower.match(/\b(task|todo|note|project)\b/i);
+ if(updateCue&&entityMatch){
+  const type=entityMatch[1].toLowerCase()==='todo'?'task':entityMatch[1].toLowerCase(),collection={task:'tasks',note:'notes',project:'projects'}[type],source={task:'Planner',note:'Notes & Memory',project:'Projects'}[type];
+  const records=data[collection]||[],after=raw.slice(entityMatch.index+entityMatch[0].length).trim();
+  const toMatch=after.match(/\b(?:to|as|ko|mein|me)\s+(.+)$/i);
+  const namePart=after.split(/\b(?:due|deadline|priority|status|description|title|name|notes?|target date|date)\b/i)[0].replace(/^[:\s-]+|[\s,]+$/g,'').replace(/\b(?:called|named)\b/i,'').trim();
+  const candidateText=namePart||after.replace(/^[:\s-]+/,'').trim();
+  const ranked=records.map(record=>{const label=type==='task'?record.title:type==='note'?(record.title||record.content):record.name||record.title;const a=String(label||'').toLowerCase(),b=candidateText.toLowerCase();return {record,label,score:a===b?100:a&&b&&(a.includes(b)||b.includes(a))?50:0}}).filter(x=>x.score).sort((a,b)=>b.score-a.score);
+  if(!ranked.length)return {answer:'Matching '+type+' nahi mila. Existing exact title/name ke saath command do.',sources:[source]};
+  if(ranked.length>1&&ranked[0].score===ranked[1].score)return {answer:'Multiple '+type+' records match ho rahe hain. Exact title/name batao.',sources:[source]};
+  const target=ranked[0],patch={},fieldDate=parseDate();
+  if(/\b(?:due|deadline|date)\b/i.test(lower)&&fieldDate){if(type==='task')patch.due=fieldDate;else if(type==='project')patch.targetDate=fieldDate;else return {answer:'Notes ke liye due date field available nahi hai.',sources:[source]}}
+  const priority=lower.match(/\b(low|medium|high)\s+priority\b|\bpriority\s+(low|medium|high)\b/i);
+  if(priority&&type==='task')patch.priority=(priority[1]||priority[2]).replace(/^./,x=>x.toUpperCase());
+  const status=lower.match(/\bstatus\s+(in progress|on hold|completed|complete|done)\b/i);
+  if(status&&type==='project')patch.status=/^(complete|done)$/i.test(status[1])?'Completed':status[1].replace(/^./,x=>x.toUpperCase());
+  const description=raw.match(/\bdescription\s*[:=]\s*(.+)$/i);
+  if(description&&type==='project')patch.description=description[1].trim();
+  const notesField=raw.match(/\bnotes?\s*[:=]\s*(.+)$/i);
+  if(notesField&&type==='task')patch.notes=notesField[1].trim();
+  const rename=raw.match(/\b(?:rename|change|update)\s+(?:the\s+)?(?:title|name)\s+(?:to\s+)?(.+)$/i)||raw.match(/\b(?:to|as)\s+(.+)$/i);
+  if(rename&&type==='task')patch.title=rename[1].trim();
+  if(rename&&type==='note')patch.title=rename[1].trim();
+  if(rename&&type==='project')patch.name=rename[1].trim();
+  if(type==='note'&&/\bcontent\s*[:=]/i.test(raw)){patch.content=raw.match(/\bcontent\s*[:=]\s*([\s\S]+)$/i)[1].trim()}
+  if(!Object.keys(patch).length)return {answer:'Kya change karna hai clear nahi hua. Example: Update task DSA due tomorrow, set priority high. Ya Rename project Hapn to Hapn v2.',sources:[source]};
+  pendingChatAction={type:'update-record',recordType:type,id:target.record.id,title:String(target.label||''),patch,source,requestedAt:Date.now()};
+  return {answer:'Please confirm update for '+type+' "'+String(target.label||'')+'": '+Object.entries(patch).map(([key,value])=>key+' → '+value).join('; ')+'. Reply YES to save or NO to cancel. Abhi koi change nahi hua.',sources:[source]};
+ }
+ const moneyCreateCue=/\b(?:add|save|record|log|track|spent|spend|expense|income|received|earned|kharch|kharcha|kharche|kamaya|mila|payment)\b/i.test(lower);
+ const moneyAmount=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
+ if(moneyCreateCue&&moneyAmount&&!moneyAddIntent){
+  const amount=Number(moneyAmount[1].replace(/,/g,'')),date=fieldDateForMoney();
+  const kind=/\b(?:income|received|earned|salary|refund|kamaya|mila|aaye)\b/i.test(lower)?'income':'expense';
+  let description=raw.replace(/(?:₹|rs\.?\s*)?[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i,' ')
+   .replace(/\b(?:please|add|save|record|log|track|an?\s+)?(?:an?\s+)?(?:expense|income|spending|spent|spend|received|earned|payment|kharch|kharcha|kharche|kamaya|mila|rupees?|rs\.?)\b/ig,' ')
+   .replace(/\b(?:today|aaj|yesterday|kal|tomorrow|on|date|in|for)\b/ig,' ')
+   .replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g,' ')
+   .replace(/\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/ig,' ')
+   .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  if(!Number.isFinite(amount)||amount<=0||!description)return {answer:'Amount aur description dono clear chahiye. Example: Add expense ₹250 for lunch today; income ₹500 from tutoring.',sources:['Money & Udhaar']};
+  const category=/food|lunch|dinner|breakfast|chai|coffee|snack|khana/i.test(description)?'Food':/bus|auto|cab|metro|fuel|petrol|travel/i.test(description)?'Travel':/book|stationery|pen|notebook/i.test(description)?'Books & supplies':/fee|college/i.test(description)?'College fees':/movie|game|entertainment/i.test(description)?'Entertainment':/shopping|clothes/i.test(description)?'Shopping':'Other';
+  const duplicate=(data.expenses||[]).find(e=>(e.kind||'expense')===kind&&Number(e.amount)===amount&&String(e.description||'').toLowerCase()===description.toLowerCase()&&String(e.date||'')===date);
+  if(duplicate)return {answer:'Matching money record already exists: '+fmtMoney(amount)+' for '+description+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
+  const record={id:uid(),description,amount:String(amount),category,date,kind,updated:Date.now(),created:Date.now()};
+  data.expenses.push(record);persist();
+  if(!verify('expenses',record))return {answer:'Money record save verify nahi hua. Money section check karo.',sources:[]};
+  const sync=await syncResult();page='expenses';window.expenseMonth=date.slice(0,7);render();
+  return {answer:(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'.'+sync,sources:['Money & Udhaar']};
+ }
+
  const complete=/\b(?:complete|finish|mark|done|ho gaya|kar diya)\b/i.test(lower)&&/\b(?:task|assignment|todo|kaam|done)\b/i.test(lower);
  if(complete){
   const needle=raw.replace(/\b(?:please|complete|finish|mark|as|done|task|the|my|todo|assignment|kaam|ho gaya|kar diya)\b/ig,' ').trim().toLowerCase();
@@ -1067,7 +1138,7 @@ function chatActionIntent(question){
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
- const actionResult=chatActionIntent(query);
+ const actionResult=await chatActionIntent(query);
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
  if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
   const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
