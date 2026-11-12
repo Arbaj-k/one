@@ -33,7 +33,8 @@ async function sendToUser(userId:string,payload:Record<string,unknown>){
  return {sent,expired};
 }
 Deno.serve(async(req:Request)=>{
- if(req.method==="OPTIONS")return new Response("ok",{headers:cors});if(req.method!=="POST")return json({error:"POST required"},405);
+ activeRequest = req;
+ if(req.method==="OPTIONS")return new Response("ok",{headers:corsFor(req)});if(req.method!=="POST")return json({error:"POST required"},405);
  try{
   const body=await req.json().catch(()=>({}));
   if(body.action==="config"){const config=await getPushConfig();return json({publicKey:config.vapid_public_key,configured:Boolean(config.vapid_public_key&&config.vapid_private_key)});}
