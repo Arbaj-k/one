@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -13,9 +14,10 @@ function corsFor(req: Request) {
 }
 
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...corsFor(req), "Content-Type": "application/json", "Cache-Control": "no-store" } });
+  new Response(JSON.stringify(body), { status, headers: { ...corsFor(activeRequest), "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
 Deno.serve(async (req: Request) => {
+  activeRequest = req;
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsFor(req) });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
 
