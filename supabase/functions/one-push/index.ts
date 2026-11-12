@@ -51,5 +51,5 @@ Deno.serve(async(req:Request)=>{
   if(body.action==="unsubscribe"){const endpoint=String(body.endpoint||"");const {error}=await admin.from("one_push_subscriptions").delete().eq("user_id",userId).eq("endpoint",endpoint);if(error)throw error;return json({ok:true});}
   if(body.action==="test"){const result=await sendToUser(userId,{title:"One notifications are ready",body:"Your Android push notifications are connected.",tag:"one-push-test-"+Date.now(),url:"./?open=notifications"});return json({ok:true,...result});}
   return json({error:"Unknown action"},400);
- }catch(error){console.error("one-push error",error);return json({error:error instanceof Error?error.message:"Push request failed"},500);}
+ }catch(error){console.error("one-push request failed");return json({error:"Push request failed. Check server logs for a redacted diagnostic."},500);}
 });
