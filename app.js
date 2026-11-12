@@ -1084,9 +1084,10 @@ async function chatActionIntent(question){
   pendingChatAction=null;
  }
 
- const rememberMatch=raw.match(/^\s*(?:please\s+)?(?:remember that|remember this|save to memory|yaad rakhna|ise yaad rakhna)\s*[:,-]?\s*(.+)$/i);
+ const rememberMatch=raw.match(/^\s*(?:please\s+)?(?:remember(?:\s+that|\s+this)?|save to memory|yaad rakhna|ise yaad rakhna)\s*[:,-]?\s*(.+)$/i);
  if(rememberMatch){
   const content=rememberMatch[1].trim();
+  if(/\b(password|passcode|otp|one[- ]time password|api key|secret key|private key|upi pin|pin number|cvv|card number)\b/i.test(content))return {answer:'For your safety, One will not save passwords, OTPs, PINs, API keys or payment credentials in Personal Memory.',sources:['Personal Memory']};
   if(content.length<3)return {answer:'Kya yaad rakhna hai? Ek short fact ya preference likho.',sources:['Personal Memory']};
   data.memories=Array.isArray(data.memories)?data.memories:[];
   const duplicate=data.memories.find(m=>String(m.content||'').trim().toLowerCase()===content.toLowerCase());
