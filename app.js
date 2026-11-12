@@ -1317,7 +1317,7 @@ async function chatActionIntent(question){
   if(duplicate)return {answer:'Matching money record already exists: '+fmtMoney(amount)+' for '+description+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
   const record={id:uid(),description,amount:String(amount),category,date,kind,updated:Date.now(),created:Date.now()};
   pendingChatAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',expenseMonth:date.slice(0,7),successMessage:(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'.',requestedAt:Date.now()};
-  return {answer:'Please confirm '+(kind==='income'?'income':'expense')+': '+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'. Reply YES to save or NO to cancel. Abhi money record add nahi hua.',sources:['Money & Udhaar']};
+  return {answer:'Please confirm money record: '+(kind==='income'?'income':'expense')+' of '+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'. Reply YES to save or NO to cancel. Abhi money record add nahi hua.',sources:['Money & Udhaar']};
  }
 
  const complete=/\b(?:complete|finish|mark|done|ho gaya|kar diya)\b/i.test(lower)&&/\b(?:task|assignment|todo|kaam|done)\b/i.test(lower);
