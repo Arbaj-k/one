@@ -1797,7 +1797,7 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 
 /* User-requested compact, slightly lower floating Create button. */
 @media(max-width:760px){
- .floating-create-button{bottom:calc(4px + env(safe-area-inset-bottom));padding:7px 12px;gap:6px;min-height:40px;font-size:12px;background:rgba(238,241,255,.58);box-shadow:0 3px 10px #0003;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ .floating-create-button{bottom:calc(4px + env(safe-area-inset-bottom));padding:5px 10px;gap:5px;min-height:34px;font-size:12px;background:#eef1ff;box-shadow:0 3px 8px #0003}
  .floating-create-button span{font-size:20px}
 }
 @media(min-width:761px){
