@@ -17,7 +17,7 @@ function configurePush(config:{vapid_public_key:string;vapid_private_key:string;
 async function sendToUser(userId:string,payload:Record<string,unknown>){
  const config=await getPushConfig();configurePush(config);
  const {data:rows,error}=await admin.from("one_push_subscriptions").select("id,endpoint,p256dh,auth").eq("user_id",userId);if(error)throw error;
- let sent=0,expired=0;for(const row of rows||[]){try{await webpush.sendNotification({endpoint:row.endpoint,keys:{p256dh:row.p256dh,auth:row.auth}},JSON.stringify(payload));sent++;}catch(error){const status=(error as {statusCode?:number}).statusCode;if(status===404||status===410){await admin.from("one_push_subscriptions").delete().eq("id",row.id);expired++;}else console.error("Push delivery failed",status,String(error));}}
+ let sent=0,expired=0;for(const row of rows||[]){try{await webpush.sendNotification({endpoint:row.endpoint,keys:{p256dh:row.p256dh,auth:row.auth}},JSON.stringify(payload));sent++;}catch(error){const status=(error as {statusCode?:number}).statusCode;if(status===404||status===410){await admin.from("one_push_subscriptions").delete().eq("id",row.id);expired++;}else console.warn("Operation failed; diagnostic details redacted.");}}
  return {sent,expired};
 }
 Deno.serve(async(req:Request)=>{
@@ -51,5 +51,5 @@ Deno.serve(async(req:Request)=>{
   if(body.action==="unsubscribe"){const endpoint=String(body.endpoint||"");const {error}=await admin.from("one_push_subscriptions").delete().eq("user_id",userId).eq("endpoint",endpoint);if(error)throw error;return json({ok:true});}
   if(body.action==="test"){const result=await sendToUser(userId,{title:"One notifications are ready",body:"Your Android push notifications are connected.",tag:"one-push-test-"+Date.now(),url:"./?open=notifications"});return json({ok:true,...result});}
   return json({error:"Unknown action"},400);
- }catch(error){console.error("one-push request failed");return json({error:"Push request failed. Check server logs for a redacted diagnostic."},500);}
+ }catch(error){console.warn("Operation failed; diagnostic details redacted.");return json({error:"Push request failed. Check server logs for a redacted diagnostic."},500);}
 });
