@@ -92,7 +92,7 @@ ${raw}`;
     };
     return json({ json: result, model: MODEL });
   } catch (err) {
-    console.error("Document JSON function failed");
+    console.warn("Operation failed; diagnostic details redacted.");
     return json({ error: "Document conversion failed. Retry." }, 500);
   }
 });
