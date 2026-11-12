@@ -951,7 +951,7 @@ async function requestStudentBrainAI(question,targetDocId=null){
  return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
 function isStructuredWorkspaceQuestion(question){
- return /\b(spend|spent|spending|spending pattern|spending insight|spending trend|category breakdown|compare.*(?:spend|expense)|budget insight|where.*money go|project risk|projects at risk|behind schedule|what should i do|plan my day|plan today|daily plan|prioriti[sz]e my tasks|search|find|look for|where is|locate|workspace|memory|memories|expense|expenses|money|rupees?|rs\.?|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|kitna|diye|diya|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
+ return /\b(spend|spent|spending|spending pattern|spending insight|spending trend|category breakdown|compare.*(?:spend|expense)|budget insight|where.*money go|project risk|projects at risk|behind schedule|what should i do|plan my day|plan today|plan my day|daily plan|prioriti[sz]e my tasks|aaj kya karu|search|find|look for|where is|locate|workspace|memory|memories|expense|expenses|money|rupees?|rs\.?|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|kitna|diye|diya|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
 }
 function knowledgeAnswerCompleteness(answer,question){
  const q=String(question||'').toLowerCase(),a=String(answer||'').toLowerCase();
@@ -998,7 +998,9 @@ function phase4DailyPlan(){
 function phase4SpendingInsights(){
  const now=today(),month=now.slice(0,7),previous=addDaysToDate(month+'-01',-1).slice(0,7);
  const expenses=(data.expenses||[]).filter(e=>(e.kind||'expense')==='expense');
- const current=expenses.filter(e=>String(e.date||'').startsWith(month)),prior=expenses.filter(e=>String(e.date||'').startsWith(previous));
+ const dayOfMonth=Number(now.slice(8,10)),priorMonthEnd=addDaysToDate(addDaysToDate(previous+'-01',32).slice(0,7)+'-01',-1);
+ const comparablePriorEnd=addDaysToDate(previous+'-01',Math.min(dayOfMonth,Number(priorMonthEnd.slice(8,10)))-1);
+ const current=expenses.filter(e=>String(e.date||'').startsWith(month)&&String(e.date)<=now),prior=expenses.filter(e=>String(e.date||'').startsWith(previous)&&String(e.date)<=comparablePriorEnd);
  const total=rows=>rows.reduce((n,e)=>n+Number(e.amount||0),0),currentTotal=total(current),priorTotal=total(prior);
  const byCategory=rows=>{const map=new Map();for(const e of rows){const key=String(e.category||'Uncategorized');map.set(key,(map.get(key)||0)+Number(e.amount||0))}return [...map.entries()].sort((a,b)=>b[1]-a[1])};
  const cats=byCategory(current),priorCats=new Map(byCategory(prior));
