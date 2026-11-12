@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -12,16 +13,17 @@ function corsFor(req: Request) {
 }
 
 
-function json(data: unknown, status = 200, req?: Request) {
+function json(data: unknown, status = 200, _unused?: unknown, req?: Request) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsFor(req || new Request("https://local.invalid")), "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: { ...corsFor(req || activeRequest), "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 }
 const asText = (value: unknown, limit = 4000) => typeof value === "string" ? value.slice(0, limit) : "";
 const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
 Deno.serve(async (req: Request) => {
+  activeRequest = req;
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405, undefined, req);
 
