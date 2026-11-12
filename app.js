@@ -1161,7 +1161,7 @@ async function requestStudentBrainAI(question,targetDocId=null){
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
  const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.money||!['Money & Udhaar','Study sessions'].includes(source))&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
- const body={message:question,workspace:selectedWorkspace,allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
+ const body={message:question,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // AI requests are read-only: retry once on a transient transport/5xx failure.
@@ -1379,9 +1379,9 @@ async function chatActionIntent(question){
   return {answer:'Saved to Personal Memory: '+content+'. You can review or delete it anytime in Personal Memory.'+sync,sources:['Personal Memory']};
  }
  const parseDate=()=>{
-  const addDays=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-  if(/\b(?:tomorrow|kal|next day)\b/i.test(lower))return addDays(1);
-  if(/\b(?:today|aaj|abhi)\b/i.test(lower))return today();
+  const addDays=n=>{const [y,m,d]=today().split('-').map(Number),date=new Date(y,m-1,d+n,12,0,0);return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0')};
+  if(/\b(?:tomorrow|kal|next day|कल)\b/i.test(lower))return addDays(1);
+  if(/\b(?:today|aaj|abhi|आज)\b/i.test(lower))return today();
   const relative=lower.match(/\b(?:in|after)\s+(\d{1,2})\s+days?\b|\b(\d{1,2})\s+din\s+(?:baad|mein)\b/i);
   if(relative)return addDays(Number(relative[1]||relative[2]));
   if(/\bnext week\b|\bagle hafte\b/i.test(lower))return addDays(7);
@@ -1435,17 +1435,17 @@ async function chatActionIntent(question){
   pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Notes & Memory',page:'planner',successMessage:'Saved note “'+(selected.title||'Untitled note')+'” ka reminder set ho gaya: '+dateFmt(due)+' at '+reminderTime+'.',requestedAt:Date.now()};
   return {answer:'Confirm reminder for your existing note “'+(selected.title||'Untitled note')+'” · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel. Main naya note nahi bana raha.',sources:['Notes & Memory','Planner']};
  }
- const briefingIntent=/\\b(?:brief me|briefing|roz|daily|every day|har roz|har din|is date ko|iss date ko|us date ko|batana|bata dena)\\b/i.test(lower)&&/\\b(?:bata|batana|bata dena|remind|yaad|brief|briefing|update)\\b/i.test(lower);
+ const briefingIntent=/\b(?:brief me|briefing|roz|daily|every day|har roz|har din|is date ko|iss date ko|us date ko|batana|bata dena)\b/i.test(lower)&&/\b(?:bata|batana|bata dena|remind|yaad|brief|briefing|update)\b/i.test(lower);
  if(briefingIntent){
-  const daily=/\\b(?:roz|daily|every day|har roz|har din)\\b/i.test(lower);
+  const daily=/\b(?:roz|daily|every day|har roz|har din|रोज़|रोज)\b/i.test(lower);
   let due=daily?today():parseDate();
-  if(!daily&&!due){const dayOnly=lower.match(/\\b(\\d{1,2})\\s*(?:tarikh|tareekh|तारीख)\\b/i);if(dayOnly){const n=Number(dayOnly[1]);if(n>=1&&n<=31){const [yy,mm]=today().split('-').map(Number);let d=new Date(yy,mm-1,n);if(d.getDate()===n&&d.toISOString().slice(0,10)<today())d=new Date(yy,mm,n);if(d.getDate()===n)due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}}}
+  if(!daily&&!due){const dayOnly=lower.match(/\b(\d{1,2})\s*(?:tarikh|tareekh|तारीख)\b/i);if(dayOnly){const n=Number(dayOnly[1]);if(n>=1&&n<=31){const [yy,mm]=today().split('-').map(Number);let d=new Date(yy,mm-1,n);if(d.getDate()===n&&d.toISOString().slice(0,10)<today())d=new Date(yy,mm,n);if(d.getDate()===n)due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}}}
   if(!due)return {answer:'Kis date ko briefing chahiye? Example: 20 November ko mujhe project update batana, ya roz subah 9 baje batana.',sources:['Planner','Ask One']};
-  const timeMatch=raw.match(/\\b(?:at\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)\\b/i),clockMatch=raw.match(/\\b(?:at\\s+)?([01]?\\d|2[0-3]):([0-5]\\d)\\b/i);
+  const timeMatch=raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)\b/i),clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
   let reminderTime='09:00';
   if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
   else if(timeMatch){let hour=Number(timeMatch[1]),minute=Number(timeMatch[2]||0),meridiem=(timeMatch[3]||'').toLowerCase();if(hour<1||hour>12||minute>59)return {answer:'Time valid nahi hai. Example: 9 am ya 7:30 pm.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
-  const title=raw.replace(/^\\s*(?:please\\s+)?/i,'').replace(/\\b(?:mujhe|mere|ko|roz|daily|every day|har roz|har din|subah|morning|shaam|sham|evening|raat|night|is date ko|iss date ko|us date ko|date ko|on|at|bata dena|batana|batao|remind me|yaad dilana|yaad dila dena|brief me|briefing|brief|update|please|around|baje|am|pm)\\b/ig,' ').replace(/\\b\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|baje)?\\b/ig,' ').replace(/\\b(?:today|tomorrow|kal|aaj|next week|agle hafte|\\d{1,2}\\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)|\\d{1,2}[/-]\\d{1,2}(?:[/-]\\d{2,4})?)\\b/ig,' ').replace(/\\s+/g,' ').replace(/^[\\s,.:;-]+|[\\s,.:;-]+$/g,'').trim();
+  const title=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:mujhe|mere|ko|roz|daily|every day|har roz|har din|subah|morning|shaam|sham|evening|raat|night|is date ko|iss date ko|us date ko|date ko|on|at|bata dena|batana|batao|remind me|yaad dilana|yaad dila dena|brief me|briefing|brief|update|please|around|baje|am|pm)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\b(?:today|tomorrow|kal|aaj|next week|agle hafte|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title)return {answer:'Kis cheez ke baare mein batana hai? Example: Roz subah 9 baje project updates batana.',sources:['Ask One','Planner']};
   const duplicate=(data.tasks||[]).find(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&(t.repeatRule||'none')===(daily?'daily':'none'));
   if(duplicate)return {answer:'Ye briefing pehle se scheduled hai: '+title+'. Duplicate nahi banaya.',sources:['Planner']};
