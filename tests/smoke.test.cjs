@@ -25,6 +25,13 @@ assert.ok(source.includes('const expenses=asksMoney?'), 'Unrelated money records
 assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routine records must not be sent to AI');
 
 // Ask One actions must protect against accidental destructive actions and duplicate creation.
+const intentStart=source.indexOf('async function chatActionIntent(question)');
+const intentEnd=source.indexOf('async function sendChat(question',intentStart);
+const intentSource=source.slice(intentStart,intentEnd);
+assert.ok(intentSource.indexOf('const verify=')<intentSource.indexOf('if(pendingChatAction)'), 'Action confirmation must initialize verification before use');
+assert.ok(intentSource.includes("pending.type==='create-record'"), 'Create actions must use the shared confirmation handler');
+assert.ok(intentSource.includes('5*60*1000'), 'Pending confirmations must expire instead of remaining valid indefinitely');
+for (const message of ['Please confirm task:', 'Please confirm note:', 'Please confirm project:', 'Please confirm expense:', 'Please confirm this money record:']) assert.ok(intentSource.includes(message), 'Create confirmation missing: '+message);
 assert.ok(source.includes('let data=loadData(),page=\'overview\',chatBusy=false,pendingChatAction=null;'), 'Ask One confirmation state is missing');
 assert.ok(source.includes('Please confirm: delete task'), 'Task deletion must require explicit confirmation');
 assert.ok(source.includes('A matching open task already exists'), 'Task creation must detect duplicates');
