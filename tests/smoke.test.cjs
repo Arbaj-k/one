@@ -113,7 +113,7 @@ assert.ok(css.includes('.vault-search-card')&&css.includes('.vault-timeline'),'V
 assert.ok(source.includes('function smartWeekSummary()'), 'Weekly review summary is missing');
 assert.ok(source.includes('function smartProjectProgress()'), 'Project progress intelligence is missing');
 assert.ok(source.includes('function upcomingUdhaar()'), 'Upcoming Udhaar summary is missing');
-assert.ok(source.includes('Udhaar due soon'), 'Today dashboard must show upcoming repayments');
+assert.ok(!source.slice(source.indexOf('function overview(){'),source.indexOf('async function summarizeDocument')).includes('upcomingUdhaar()'), 'Home dashboard must keep repayment reminders out of its layout.');
 assert.ok(source.includes('Daily briefing'), 'Today dashboard daily briefing is missing');
 assert.ok(source.includes('const reminderIntent='), 'Natural-language reminders are missing');
 assert.ok(source.includes('Reminder saved:'), 'Reminder save confirmation is missing');
