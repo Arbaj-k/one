@@ -93,7 +93,7 @@ Useful references:
 - [Supabase: Edge Functions](https://supabase.com/docs/guides/functions)
 - [GitHub Pages documentation](https://docs.github.com/en/pages)
 
-## Deploy to GitHub Pages
+## Optional Cloudflare services\n\nCloudflare can be added alongside GitHub Pages and Supabase without replacing either. See [docs/cloudflare-optional-setup.md](docs/cloudflare-optional-setup.md) for the optional Pages deployment, security headers, Web Analytics, Turnstile, and custom-domain steps. Cloudflare account-specific activation requires the relevant hostname and dashboard-generated tokens; no placeholder secrets are used.\n\n## Deploy to GitHub Pages
 
 ### Step-by-step
 
