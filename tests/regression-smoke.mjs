@@ -460,3 +460,10 @@ assert.ok(app.includes("category:'Briefing'"), 'Briefings must be identifiable s
 const overviewForBriefing=app.slice(app.indexOf('function overview(){'),app.indexOf('async function summarizeDocument'));
 assert.ok(overviewForBriefing.indexOf('quick-note-widget') < overviewForBriefing.indexOf('smart-briefing'), 'Task briefing must appear directly after Quick Capture.');
 assert.ok(overviewForBriefing.includes('Set with Ask One'), 'Home task briefing must offer AI setup.');
+
+// Remove the task-and-meetings calendar timeline from the Tasks screen while keeping task lists intact.
+const tasksScreen=app.slice(app.indexOf('function tasks(){'),app.indexOf('function planner(){'));
+assert.ok(!tasksScreen.includes('planner-calendar-wrap'), 'Tasks screen must not show the calendar timeline.');
+assert.ok(!tasksScreen.includes('calendarSection'), 'Tasks screen must not render a calendar integration section.');
+assert.ok(tasksScreen.includes("renderGroup('Open tasks',open,'open')"), 'Open task list must remain available.');
+assert.ok(tasksScreen.includes("renderGroup('Completed',done,'completed')"), 'Completed task list must remain available.');
