@@ -66,7 +66,7 @@ for (const token of [
 }
 assert.ok(source.includes('data.memories.push(memory);persist();'), 'Explicit memory capture must use the existing workspace memory collection');
 assert.ok(source.includes('const duplicate=data.memories.find(m=>String(m.content||\'\').trim().toLowerCase()===content.toLowerCase())'), 'Memory capture must prevent exact duplicates');
-assert.ok(source.includes("const previous=addDaysToDate(month+'-01',-1).slice(0,7)"), 'Spending comparison must use the preceding calendar month');
+assert.ok(source.includes("previous=addDaysToDate(month+'-01',-1).slice(0,7)"), 'Spending comparison must use the preceding calendar month');
 assert.ok(source.includes("String(item.extractedText||'').slice(0,220)"), 'Workspace search should include extracted document text');
 assert.ok(source.includes("(data.expenses||[]).forEach(item=>add("), 'Workspace search should include money records');
 
