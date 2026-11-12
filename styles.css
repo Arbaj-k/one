@@ -1795,12 +1795,13 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 /* Reminder actions: compact, touch-friendly controls in the notification centre. */
 .notification-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.notification-actions .btn{min-height:30px;padding:6px 9px;font-size:10px}.notification-item{align-items:flex-start}.notification-item-copy{min-width:0;overflow-wrap:anywhere}@media(max-width:700px){.notification-actions{gap:5px}.notification-actions .btn{min-height:34px;padding:7px 9px}.notification-item{gap:8px}}
 
-/* User-requested compact, slightly lower floating Create button. */
+/* Floating Create pill: match the centered white capsule from the mobile reference. */
 @media(max-width:760px){
- .floating-create-button{bottom:calc(4px + env(safe-area-inset-bottom));padding:5px 10px;gap:5px;min-height:34px;font-size:12px;background:#eef1ff;box-shadow:0 3px 8px #0003}
- .floating-create-button span{font-size:20px}
+ .floating-create-button{left:50%;right:auto;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));padding:10px 20px;gap:8px;min-height:44px;font-size:14px;background:#fff;color:#111827;border:0;border-radius:999px;box-shadow:0 5px 18px #0004;font-weight:750}
+ .floating-create-button span{font-size:19px;line-height:1}
+ .floating-create-button:active{transform:translateX(-50%) scale(.96)}
 }
 @media(min-width:761px){
- .floating-create-button{bottom:6px;padding:8px 13px;gap:6px;font-size:13px;background:rgba(66,99,235,.72);box-shadow:0 4px 14px #263e8b25;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
- .floating-create-button span{font-size:20px}
+ .floating-create-button{bottom:10px;padding:12px 19px;gap:8px;font-size:14px;background:#fff;color:#111827;box-shadow:0 5px 18px #0003}
+ .floating-create-button span{font-size:19px}
 }
