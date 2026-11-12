@@ -350,7 +350,7 @@ assert.ok(push.includes('one_push_deliveries'), 'Background reminder deliveries 
 assert.ok(app.includes("async function consumeOneShareInbox()") && app.includes("readOneShareInbox()"), 'Shared content must be consumed from the service-worker inbox.');
 assert.ok(app.includes("data.notes.unshift") && app.includes("Shared text saved as a note"), 'Shared text and links must be saved as notes.');
 assert.ok(app.includes("processUploadedDocuments([file])"), 'Shared PDFs and images must enter the existing Document Vault pipeline.');
-assert.ok(app.includes("const receipt=isImage") && app.includes("openForm('expense')"), 'Receipt screenshots must be identified and offered as prefilled expenses.');
+assert.ok(app.includes('const receiptText=ocr||savedDocument?.extractedText') && app.includes("openForm('expense')"), 'Receipt screenshots must be identified and offered as prefilled expenses.');
 assert.ok(app.includes("function quickCaptureVoice()") && app.includes("sendChat(transcript)"), 'Voice capture must route speech into Ask One.');
 assert.ok(app.includes("switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())"), 'Share inbox must retry after account workspace activation.');
 const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
