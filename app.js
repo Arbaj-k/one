@@ -410,6 +410,33 @@ function overview(){
   <section class="card smart-briefing"><div class="row"><div><div class="eyebrow">ONE INTELLIGENCE</div><h2>Daily briefing</h2><p class="muted">Your next actions, deadlines and repayment heads-up.</p></div><span class="tag blue">${overdueTasks.length+loansDue.filter(x=>x.dueDate<today()).length} need attention</span></div><div class="smart-briefing-list">${overdueTasks.length?overdueTasks.map(t=>'<div class="smart-briefing-item"><span class="tag red">Overdue</span><b>'+esc(t.title)+'</b><small>'+dateFmt(t.due)+'</small></div>').join(''):''}${loansDue.length?loansDue.map(e=>'<div class="smart-briefing-item"><span class="tag '+(e.dueDate<today()?'red':'blue')+'">'+(e.dueDate<today()?'Overdue':'Udhaar')+'</span><b>'+esc(e.person||'Unknown')+'</b><small>'+dateFmt(e.dueDate)+'</small></div>').join(''):''}${!overdueTasks.length&&!loansDue.length?'<p class="muted">You are clear for now. Keep your upcoming tasks up to date.</p>':''}</div><div class="row smart-briefing-actions"><button class="btn small" type="button" data-action="enable-reminders">Enable notifications</button><small class="muted">Works when One is open or reopened</small></div></section>
  </div>`;
 }
+async function summarizeDocument(id){
+ const doc=(data.documents||[]).find(x=>x.id===id);if(!doc)return;
+ if(!String(doc.extractedText||'').trim()||/^\[No readable text/.test(doc.extractedText)){toast('No extracted text available. Run OCR first.');return}
+ const button=document.querySelector('[data-action="summarize-document"][data-id="'+CSS.escape(id)+'"]');
+ if(button){button.disabled=true;button.textContent='Summarizing…'}
+ try{
+  const prompt='Create a concise, accurate summary of this uploaded document. Include its purpose, key facts, important dates, deadlines or expiry details, and action items. Use only information in the document. Clearly say when something is not stated. Do not guess. Keep it under 250 words.';
+  const result=await requestStudentBrainAI(prompt,id);
+  doc.summary=result.answer.trim().slice(0,5000);doc.summaryUpdatedAt=Date.now();doc.summarySources=result.sources||[];persist();render();toast('AI summary saved to your document');
+ }catch(error){console.error('Document summary failed',error);toast(error.message||'Could not summarize document')}
+ finally{if(button&&button.isConnected){button.disabled=false;button.textContent='Generate AI summary'}}
+}
+function openVaultResult(id){
+ const doc=(data.documents||[]).find(x=>x.id===id);
+ if(doc){page='vault';window.vaultDocumentQuery='';render();requestAnimationFrame(()=>document.getElementById('vault-document-'+CSS.escape(id))?.scrollIntoView({behavior:'smooth',block:'center'}));return}
+ const note=(data.notes||[]).find(x=>x.id===id);
+ if(note){page='notes';window.noteQuery=note.title||'';render();return}
+ const task=(data.tasks||[]).find(x=>x.id===id);
+ if(task){page='planner';render();requestAnimationFrame(()=>openForm('task',id));return}
+ const project=(data.projects||[]).find(x=>x.id===id);
+ if(project){page='projects';render();return}
+ const memory=(data.memories||[]).find(x=>x.id===id);
+ if(memory){page='memory';render();return}
+ const expense=(data.expenses||[]).find(x=>x.id===id);
+ if(expense){page='expenses';render();return}
+ toast('This record is no longer available');
+}
 function documentRelatedNotes(doc){
  const linked=new Set(Array.isArray(doc.relatedNoteIds)?doc.relatedNoteIds:[]),terms=aiQueryTerms([doc.name,doc.extractedText,doc.summary].join(' ')).slice(0,24);
  return (data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms),linked:linked.has(note.id)})).filter(x=>x.linked||x.score>0).sort((a,b)=>Number(b.linked)-Number(a.linked)||b.score-a.score).slice(0,4);
@@ -1018,7 +1045,7 @@ function phase4SearchWorkspace(question){
  (data.notes||[]).forEach(item=>add(item.title||'Untitled note','Note · Notes',aiTextScore([item.title,item.subject,item.tags,item.content].join(' '),queryTerms),String(item.content||'').slice(0,220)));
  (data.memories||[]).forEach(item=>add(item.title||'Saved memory','Memory · Personal Memory',aiTextScore([item.title,item.category,item.content].join(' '),queryTerms),String(item.content||'').slice(0,220)));
  (data.projects||[]).forEach(item=>add(item.name||item.title||'Untitled project','Project · Projects',aiTextScore([item.name,item.title,item.description,item.status].join(' '),queryTerms),[item.status||'In progress',item.targetDate?'Target '+dateFmt(item.targetDate):'No target date'].join(' · ')));
- (data.documents||[]).forEach(item=>add(item.name||'Uploaded item','File · Uploaded Items',aiTextScore([item.name,item.extractedText].join(' '),queryTerms),String(item.extractedText||'').slice(0,220)));
+ (data.documents||[]).forEach(item=>add(item.name||'Uploaded item','File · Uploaded Items',aiTextScore([item.name,item.extractedText,item.summary,JSON.stringify(item.extractedJson||{})].join(' '),queryTerms),String(item.summary||item.extractedText||'').slice(0,220)));
  (data.expenses||[]).forEach(item=>add(item.description||item.person||'Money record','Money · Money & Udhaar',aiTextScore([item.description,item.category,item.person,item.kind,item.amount,item.date,item.dueDate].join(' '),queryTerms),[item.kind||'expense','₹'+Number(item.amount||0).toLocaleString('en-IN'),item.person||'',item.date||''].filter(Boolean).join(' · ')));
  results.sort((a,b)=>b.score-a.score);
  const selected=results.slice(0,8);
@@ -1485,6 +1512,19 @@ async function checkTaskReminders(){
    try{await notify('One · Task reminder',task.title+' is due today at '+(task.reminderTime||'09:00')+'.','task-'+task.id);shown[task.id]=true}
    catch(err){console.warn('Task notification failed',err)}
   }
+ }
+ const todayDate=today();
+ for(const doc of (data.documents||[])){
+  if(!doc.expiresOn||!/^\d{4}-\d{2}-\d{2}$/.test(doc.expiresOn))continue;
+  const expiryTime=new Date(doc.expiresOn+'T00:00:00').getTime(),days=Math.ceil((expiryTime-new Date(todayDate+'T00:00:00').getTime())/86400000);
+  if(days<0)continue;
+  const thresholds=Array.isArray(doc.expiryReminderDays)?doc.expiryReminderDays:[30,7,1,0];
+  const threshold=thresholds.find(value=>days<=Number(value));
+  if(threshold===undefined)continue;
+  const key='document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate;
+  if(shown[key])continue;
+  try{await notify('One · Document expiry reminder',(doc.name||'A saved document')+(days===0?' expires today.':days===1?' expires tomorrow.':' expires in '+days+' days.')+' Review or renew it if needed.',key);shown[key]=true}
+  catch(error){console.warn('Document expiry reminder failed',error)}
  }
  const loanRows=(data.expenses||[]).filter(e=>['lent','borrowed'].includes(e.kind)&&e.dueDate&&e.dueDate<=today());
  for(const entry of loanRows){
