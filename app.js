@@ -4,12 +4,12 @@ let activeWorkspaceKey=KEY+'-guest';
 const LEGACY_OWNER_KEY=KEY+'-legacy-claimed-by';
 function workspaceStorageKey(){return activeWorkspaceKey;}
 function workspaceIndexedDBKey(){return 'workspace:'+activeWorkspaceKey;}
-const DATA_SCHEMA_VERSION=2;
-const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true}});
+const DATA_SCHEMA_VERSION=3;
+const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true}});
 function migrateData(raw){
  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  const next={...starter(),...source};
- for(const key of ['notes','tasks','projects','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications'])if(!Array.isArray(next[key]))next[key]=[];
+ for(const key of ['notes','tasks','projects','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications'])if(!Array.isArray(next[key]))next[key]=[];
  next.aiPrivacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,...(source.aiPrivacy&&typeof source.aiPrivacy==='object'?source.aiPrivacy:{})};
  next.schemaVersion=DATA_SCHEMA_VERSION;
  return next;
@@ -1617,11 +1617,59 @@ document.addEventListener('submit',e=>{if(e.target.id==='edit-form'&&window.oneA
 document.addEventListener('input',e=>{if(e.target.id==='vault-search'){window.vaultSearchQuery=e.target.value;const old=document.querySelector('.vault-search-results');if(old)old.remove();const box=document.querySelector('.vault-search-card');if(box){const q=window.vaultSearchQuery.trim(),results=q?phase5SearchResults(q):[];if(q){const wrap=document.createElement('div');wrap.className='vault-search-results';wrap.innerHTML=results.length?results.map(x=>'<button class=\"vault-search-result\" type=\"button\" data-action=\"open-vault-result\" data-id=\"'+esc(x.id)+'\" data-type=\"'+esc(x.type)+'\"><span><b>'+esc(x.title)+'</b><small>'+esc(x.type)+' · '+esc(x.detail)+'</small></span><span>Open ↗</span></button>').join(''):'<p class=\"muted\">No matching records found.</p>';box.appendChild(wrap)}}}if(e.target.id==='vault-document-search'){window.vaultDocumentQuery=e.target.value;const el=document.querySelector('#vault-documents');if(el)el.innerHTML=documentsCards()}if(e.target.id==='note-search'){window.noteQuery=e.target.value;const el=document.querySelector('#notes-list');if(el)el.innerHTML=notesCards()}});
 document.addEventListener('change',e=>{if(e.target.matches('[data-ai-share]')){data.aiPrivacy=data.aiPrivacy||{};data.aiPrivacy[e.target.dataset.aiShare]=e.target.checked;persist();toast('AI data sharing preference saved')}if(e.target.id==='restore-file')updateRestorePreview();if(e.target.id==='document-upload')processUploadedDocuments(e.target.files);if(e.target.id==='quick-add-file-upload'){const selected=Array.from(e.target.files||[]);e.target.value='';processUploadedDocuments(selected)}if(e.target.id==='subject-filter'){window.subjectFilter=e.target.value;const el=document.querySelector('#notes-list');if(el)el.innerHTML=notesCards()}if(e.target.id==='task-filter'){window.taskFilter=e.target.value;render()}if(e.target.id==='expense-month'){window.expenseMonth=e.target.value;render()}});
 
+function parseStructuredVoiceCapture(raw){
+ const text=String(raw||'').trim(),lower=text.toLowerCase();
+ const amountMatch=text.match(/(?:₹|rs\\.?\\s*)?([0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?)(?:\\s*(?:rupees?|rs\\.?|रुपये|रुपए))?/i);
+ const amount=amountMatch?Number(amountMatch[1].replace(/,/g,'')):0;
+ if(!amount||!/\\b(?:udhaar|lend|lent|gave|given|diya|diye|loan)\\b/i.test(lower))return null;
+ const personMatch=text.match(/\\b([A-Z][a-z]{2,})\\s+(?:ko|se)\\b/);
+ if(!personMatch)return null;
+ const person=personMatch[1].trim().replace(/^./,c=>c.toUpperCase());
+ const todayValue=today(),[year,month,day]=todayValue.split('-').map(Number);
+ const dateString=(y,m,d)=>y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+ let transactionDate=todayValue;
+ if(/\\bkal\\b/i.test(lower)&&/\\b(?:diya|diye|diye the|diya tha|gave|lent)\\b/i.test(lower))transactionDate=dateString(...(()=>{const d=new Date(year,month-1,day-1);return [d.getFullYear(),d.getMonth()+1,d.getDate()]})());
+ const dayMatch=lower.match(/\\b(\\d{1,2})\\s*(?:tarikh| तारीख|th|date)\\b/i);
+ let dueDate='';
+ if(dayMatch){
+  let dueDay=Number(dayMatch[1]),dueMonth=month,dueYear=year;
+  if(dueDay>=1&&dueDay<=31){
+   let candidate=new Date(dueYear,dueMonth-1,dueDay);
+   if(candidate.getDate()!==dueDay)return null;
+   if(candidate.getTime()<new Date(year,month-1,day).getTime()){dueMonth++;if(dueMonth>12){dueMonth=1;dueYear++}}
+   dueDate=dateString(dueYear,dueMonth,dueDay);
+  }
+ }
+ const followupCue=/\\b(?:baat karni|discuss|talk|follow.?up|milna|call karna)\\b/i.test(lower);
+ const projectCue=/\\bproject\\b/i.test(lower);
+ const taskTitle=followupCue?(projectCue?'Follow up with '+person+' about the project':'Follow up with '+person):'Follow up with '+person;
+ return {text,person,amount,transactionDate,dueDate,taskTitle,hasFollowup:followupCue};
+}
+
 window.handleStudentBrainVoiceCommand = function(raw) {
  const text=String(raw||'').trim(), lower=text.toLowerCase();
  if(!text)return false;
  const m=text.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const amount=m?Number(m[1].replace(/,/g,'')):null;
+ const structuredCapture=parseStructuredVoiceCapture(text);
+ if(structuredCapture){
+  const existingPerson=(data.people||[]).find(p=>String(p.name||'').toLowerCase()===structuredCapture.person.toLowerCase());
+  const personId=existingPerson?.id||uid(),now=Date.now();
+  const expense={id:uid(),description:'Udhaar to '+structuredCapture.person,amount:String(structuredCapture.amount),category:'Udhaar',date:structuredCapture.transactionDate,dueDate:structuredCapture.dueDate,kind:'lent',person:structuredCapture.person,personId,updated:now,created:now,source:'voice-structured-capture'};
+  const task=structuredCapture.hasFollowup?{id:uid(),title:structuredCapture.taskTitle,category:'Follow-up',priority:'Medium',due:'',done:false,person:structuredCapture.person,personId,notes:'Captured from voice: '+structuredCapture.text,updated:now,created:now,source:'voice-structured-capture'}:null;
+  const note={id:uid(),title:'Voice capture · '+structuredCapture.person,content:structuredCapture.text,subject:'Conversation',tags:'voice,structured capture,people',personIds:[personId],created:now,updated:now,source:'voice-structured-capture'};
+  const preview=['Save structured voice capture?','', 'Person: '+structuredCapture.person,'Udhaar: ₹'+structuredCapture.amount.toLocaleString('en-IN')+' · '+dateFmt(structuredCapture.transactionDate),'Return due: '+(structuredCapture.dueDate?dateFmt(structuredCapture.dueDate):'Not detected'),task?'Follow-up: '+task.title:'Follow-up: Not detected','Note: Save original conversation'].join('\\n');
+  if(!confirm(preview)){toast('Capture cancelled. Nothing was saved.');const s=document.querySelector('#voice-status');if(s)s.textContent='Cancelled. No records were saved.';speakVoiceConfirmation('Cancelled. Nothing was saved.');return true}
+  data.people=Array.isArray(data.people)?data.people:[];
+  let person=existingPerson;
+  if(!person){person={id:personId,name:structuredCapture.person,created:now,updated:now,interactions:[]};data.people.push(person)}
+  person.updated=now;person.lastInteractionAt=now;person.interactions=Array.isArray(person.interactions)?person.interactions:[];
+  person.interactions.push({id:uid(),date:structuredCapture.transactionDate,summary:structuredCapture.text,source:'voice'});
+  data.expenses.push(expense);if(task)data.tasks.push(task);data.notes.push(note);
+  persist();page='expenses';window.moneyTab='udhaar';render();
+  const done='Saved structured capture: ₹'+structuredCapture.amount.toLocaleString('en-IN')+' udhaar for '+structuredCapture.person+(structuredCapture.dueDate?', return due '+dateFmt(structuredCapture.dueDate):'')+(task?'; follow-up task and note saved.':'; note saved.');
+  toast('Voice capture saved to One');const s=document.querySelector('#voice-status');if(s)s.textContent=done;speakVoiceConfirmation(done);return true;
+ }
  const localDateString=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
  const months={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sep:8,sept:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
  let due='';
