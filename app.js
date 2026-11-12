@@ -1736,8 +1736,6 @@ function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRep
 if(!history.state||!history.state.sbPage)history.replaceState({sbPage:'overview'},'',location.href);
 window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render();});
 render();
-consumeOneShareInbox();
-window.addEventListener('one:auth-changed',()=>consumeOneShareInbox());
 (function handlePwaShortcut(){
  const params=new URLSearchParams(location.search);
  if(params.get('quick-note')==='1'){
@@ -1790,7 +1788,7 @@ function switchAccountWorkspace(user){
  });
  return workspaceSwitchQueue;
 }
-window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null)});
+window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())});
 initCloud();
 migrateWorkspaceToIndexedDB();
 requestWorkspaceStoragePersistence();
