@@ -357,7 +357,7 @@ const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta
 assert.ok(manifest.share_target?.action === './share/' && manifest.share_target.method === 'POST', 'PWA must register an Android Web Share Target.');
 assert.ok(manifest.share_target.params?.files?.some(file => file.name === 'shared_files'), 'Share target must accept PDFs and images.');
 const worker = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
-assert.ok(worker.includes('one-share-inbox') && worker.includes('request.formData()'), 'Service worker must persist incoming shares before opening the app.');
+assert.ok(worker.includes('one-share-inbox') && worker.includes('r.formData()'), 'Service worker must persist incoming shares before opening the app.');
 assert.ok(worker.includes('u.pathname.endsWith("/share/")'), 'Service worker must intercept the PWA share endpoint.');
 
 // Planner summary navigation and completion timestamp regressions.
