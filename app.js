@@ -1519,7 +1519,7 @@ async function checkTaskReminders(){
   const expiryTime=new Date(doc.expiresOn+'T00:00:00').getTime(),days=Math.ceil((expiryTime-new Date(todayDate+'T00:00:00').getTime())/86400000);
   if(days<0)continue;
   const thresholds=Array.isArray(doc.expiryReminderDays)?doc.expiryReminderDays:[30,7,1,0];
-  const threshold=thresholds.find(value=>days<=Number(value));
+  const threshold=thresholds.find(value=>days===Number(value));
   if(threshold===undefined)continue;
   const key='document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate;
   if(shown[key])continue;
