@@ -1018,7 +1018,7 @@ function phase4ProjectRisks(){
 }
 function aiAnswer(question){
  const raw=String(question||''),terms=aiQueryTerms(raw);
- if(/\b(?:search|find|look for|where is|locate)\b/i.test(raw)&&/\b(?:my|in one|workspace|task|note|memory|project|file|document|expense|record|hapn|one)\b/i.test(raw))return phase4SearchWorkspace(raw);
+ if(/^\s*(?:search|find|look for|locate)\b/i.test(raw)||(/\bwhere is\b/i.test(raw)&&/\b(?:my|workspace|one|task|note|memory|project|file|document|expense|record)\b/i.test(raw)))return phase4SearchWorkspace(raw);
  if(/\b(?:what should i do|plan my day|plan today|daily plan|prioriti[sz]e my tasks|suggest.*(?:priority|plan)|aaj kya karu)\b/i.test(raw))return phase4DailyPlan();
  if(/\b(?:spending pattern|spending insight|spending trend|category breakdown|compare.*(?:spend|expense)|budget insight|where.*money go|kharcha.*(?:compare|pattern))\b/i.test(raw))return phase4SpendingInsights();
  if(/\b(?:project risk|projects at risk|which project.*(?:risk|delay)|project.*behind|risk check)\b/i.test(raw))return phase4ProjectRisks();
