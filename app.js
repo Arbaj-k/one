@@ -1450,7 +1450,9 @@ async function chatActionIntent(question){
   pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:(daily?'Daily briefing':'Scheduled briefing')+' saved: '+title+' · '+(daily?'every day':dateFmt(due))+' at '+reminderTime+'. Enable notifications for alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(daily?'daily':'one-time')+' briefing: '+title+' · '+(daily?'Every day':dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Task briefing','Planner']};
  }
- const reminderIntent=/\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do|yaad dilana|yaad dila dena|yaad dila do|mujhe yaad(?:\s+dilana|\s+dila dena|\s+dila do))\b/i.test(lower);
+ const explicitTaskAdd=/\\b(?:add|create|make)\\s+(?:a\\s+)?(?:new\\s+)?(?:task|todo)\\b|\\b(?:task|todo)\\s+(?:add|bana|create|make)\\b|\\b(?:task|todo)\\s+(?:mein|me)\\s+(?:add|jod)\\s+(?:kar|karo|kar do)\\b|\\b(?:task bana do|task create karo|task add kar do|todo bana do)\\b/i.test(lower);
+ const naturalReminder=/\\b(?:yaad\\s+(?:dila|dilana|dila dena|dila do|dila dijiyega|dilaa dena)|remind\\s+me|reminder\\s+(?:laga|set)|mat\\s+bhoolna|bhoolna\\s+mat|yaad\\s+rakhna|remind\\s+karna)\\b/i.test(lower);
+ const reminderIntent=!explicitTaskAdd&&naturalReminder||/\\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do)\\b/i.test(lower);
  if(reminderIntent){
   const due=parseDate();
   if(!due)return {answer:'Reminder ki date batao. Example: Remind me to pay electricity bill tomorrow at 7 pm.',sources:['Planner']};
@@ -1467,7 +1469,7 @@ async function chatActionIntent(question){
   pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:'Briefing saved: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Enable notifications in One to receive a browser alert when One is open or reopened.',requestedAt:Date.now()};
   return {answer:'Confirm Task Briefing: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel. It will appear under Task Briefing on Home.',sources:['Task Briefing','Planner']};
  }
- const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar|jod do|likh lo|yaad dilana)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
+ const addTask=explicitTaskAdd&&!naturalReminder||!naturalReminder&&/\\b(?:schedule|bana do|banao|add kar|jod do|likh lo)\\b/i.test(lower)&&/\\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\\b/i.test(lower);
  if(addTask){
   const noteMatch=raw.match(/\b(?:notes?|details?)\s*[:\-]\s*(.+)$/i),notes=noteMatch?noteMatch[1].trim():'';
   let title=raw.replace(/\b(?:notes?|details?)\s*[:\-]\s*.+$/i,'').replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|jod do|likh lo|yaad dilana|a|an|the|task|todo|assignment|deadline|homework|exam|submit|kaam|due|today|tomorrow|kal|aaj|on|by)\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s:,-]+|[\s:,-]+$/g,'').trim();
