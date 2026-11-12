@@ -485,3 +485,10 @@ assert.ok(!dailyPlanner.includes('planner-calendar-wrap'), 'Daily planner must n
 assert.ok(!dailyPlanner.includes('MONTH AT A GLANCE'), 'Monthly calendar heading must be removed.');
 assert.ok(dailyPlanner.includes("'Tomorrow'"), 'Tomorrow task filter must remain available.');
 assert.ok(dailyPlanner.includes("'Upcoming'"), 'Upcoming task filter must remain available.');
+
+// Natural-language reminders (e.g. "kal subah assignment likhna hai yaad dila dena") must be shown in Home Task Briefing.
+const naturalReminder=app.slice(app.indexOf('const reminderIntent='),app.indexOf('const addTask=',app.indexOf('const reminderIntent=')));
+assert.ok(naturalReminder.includes("category:'Briefing'"), 'Natural-language reminders must be stored as Briefing, not ordinary tasks.');
+assert.ok(naturalReminder.includes("source:'Task briefing',page:'overview'"), 'Natural-language reminders must return to the Home Task Briefing section.');
+assert.ok(naturalReminder.includes("'19:00':'09:00'"), 'Morning reminders default to 09:00 and evening reminders to 19:00.');
+assert.ok(naturalReminder.includes('Confirm Task Briefing:'), 'Ask One must confirm natural-language reminders as briefings.');
