@@ -1619,17 +1619,17 @@ document.addEventListener('change',e=>{if(e.target.matches('[data-ai-share]')){d
 
 function parseStructuredVoiceCapture(raw){
  const text=String(raw||'').trim(),lower=text.toLowerCase();
- const amountMatch=text.match(/(?:₹|rs\\.?\\s*)?([0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?)(?:\\s*(?:rupees?|rs\\.?|रुपये|रुपए))?/i);
+ const amountMatch=text.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const amount=amountMatch?Number(amountMatch[1].replace(/,/g,'')):0;
- if(!amount||!/\\b(?:udhaar|lend|lent|gave|given|diya|diye|loan)\\b/i.test(lower))return null;
- const personMatch=text.match(/\\b([A-Z][a-z]{2,})\\s+(?:ko|se)\\b/);
+ if(!amount||!/\b(?:udhaar|lend|lent|gave|given|diya|diye|loan)\b/i.test(lower))return null;
+ const personMatch=text.match(/\b([A-Z][a-z]{2,})\s+(?:ko|se)\b/);
  if(!personMatch)return null;
  const person=personMatch[1].trim().replace(/^./,c=>c.toUpperCase());
  const todayValue=today(),[year,month,day]=todayValue.split('-').map(Number);
  const dateString=(y,m,d)=>y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
  let transactionDate=todayValue;
- if(/\\bkal\\b/i.test(lower)&&/\\b(?:diya|diye|diye the|diya tha|gave|lent)\\b/i.test(lower))transactionDate=dateString(...(()=>{const d=new Date(year,month-1,day-1);return [d.getFullYear(),d.getMonth()+1,d.getDate()]})());
- const dayMatch=lower.match(/\\b(\\d{1,2})\\s*(?:tarikh| तारीख|th|date)\\b/i);
+ if(/\bkal\b/i.test(lower)&&/\b(?:diya|diye|diye the|diya tha|gave|lent)\b/i.test(lower))transactionDate=dateString(...(()=>{const d=new Date(year,month-1,day-1);return [d.getFullYear(),d.getMonth()+1,d.getDate()]})());
+ const dayMatch=lower.match(/\b(\d{1,2})\s*(?:tarikh| तारीख|th|date)\b/i);
  let dueDate='';
  if(dayMatch){
   let dueDay=Number(dayMatch[1]),dueMonth=month,dueYear=year;
@@ -1640,8 +1640,8 @@ function parseStructuredVoiceCapture(raw){
    dueDate=dateString(dueYear,dueMonth,dueDay);
   }
  }
- const followupCue=/\\b(?:baat karni|discuss|talk|follow.?up|milna|call karna)\\b/i.test(lower);
- const projectCue=/\\bproject\\b/i.test(lower);
+ const followupCue=/\b(?:baat karni|discuss|talk|follow.?up|milna|call karna)\b/i.test(lower);
+ const projectCue=/\bproject\b/i.test(lower);
  const taskTitle=followupCue?(projectCue?'Follow up with '+person+' about the project':'Follow up with '+person):'Follow up with '+person;
  return {text,person,amount,transactionDate,dueDate,taskTitle,hasFollowup:followupCue};
 }
