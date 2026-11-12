@@ -346,6 +346,20 @@ assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') &&
 assert.ok(push.includes('relatedNoteId') && push.includes('relatedDocumentId'), 'Background push messages must include linked note/document context.');
 assert.ok(push.includes('one_push_deliveries'), 'Background reminder deliveries must remain idempotent.');
 
+// Android Universal Quick Capture share-target and voice entry points.
+assert.ok(app.includes("async function consumeOneShareInbox()") && app.includes("readOneShareInbox()"), 'Shared content must be consumed from the service-worker inbox.');
+assert.ok(app.includes("data.notes.unshift") && app.includes("Shared text saved as a note"), 'Shared text and links must be saved as notes.');
+assert.ok(app.includes("processUploadedDocuments([file])"), 'Shared PDFs and images must enter the existing Document Vault pipeline.');
+assert.ok(app.includes("const receipt=isImage") && app.includes("openForm('expense')"), 'Receipt screenshots must be identified and offered as prefilled expenses.');
+assert.ok(app.includes("function quickCaptureVoice()") && app.includes("sendChat(transcript)"), 'Voice capture must route speech into Ask One.');
+assert.ok(app.includes("window.addEventListener('one:auth-changed',()=>consumeOneShareInbox())"), 'Share inbox must retry after account workspace activation.');
+const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+assert.ok(manifest.share_target?.action === './share/' && manifest.share_target.method === 'POST', 'PWA must register an Android Web Share Target.');
+assert.ok(manifest.share_target.params?.files?.some(file => file.name === 'shared_files'), 'Share target must accept PDFs and images.');
+const worker = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
+assert.ok(worker.includes('one-share-inbox') && worker.includes('request.formData()'), 'Service worker must persist incoming shares before opening the app.');
+assert.ok(worker.includes('u.pathname.endsWith("/share/")'), 'Service worker must intercept the PWA share endpoint.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
