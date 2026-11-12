@@ -24,6 +24,14 @@ assert.ok(source.includes('const asksMoney=overviewIntent||'), 'Ask One money co
 assert.ok(source.includes('const expenses=asksMoney?'), 'Unrelated money records must not be sent to AI');
 assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routine records must not be sent to AI');
 
+// Ask One actions must protect against accidental destructive actions and duplicate creation.
+assert.ok(source.includes('let data=loadData(),page=\'overview\',chatBusy=false,pendingChatAction=null;'), 'Ask One confirmation state is missing');
+assert.ok(source.includes('Please confirm: delete task'), 'Task deletion must require explicit confirmation');
+assert.ok(source.includes('A matching open task already exists'), 'Task creation must detect duplicates');
+assert.ok(source.includes('This exact note was already saved recently'), 'Note creation must detect recent duplicates');
+assert.ok(source.includes('A project with this name already exists'), 'Project creation must detect duplicates');
+assert.ok(source.includes('The action was cancelled. No data was changed.'), 'Action cancellation must be supported');
+
 new vm.Script(source, { filename: 'app.js' });
 
 // The static app shell must retain the containers required by app.js.
