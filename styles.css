@@ -1630,3 +1630,32 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 .smart-briefing-item b{flex:1;min-width:100px}
 .smart-briefing-item small{color:var(--muted,#888)}
 .smart-briefing-actions{justify-content:space-between;flex-wrap:wrap}
+
+
+/* Phase 5 · Personal Knowledge & Document Vault */
+.vault-search-card{margin:18px 0}
+.vault-search-card h2{margin:6px 0 12px}
+.vault-search-card>.search{width:100%;margin:8px 0}
+.vault-search-results{display:grid;gap:7px;margin-top:14px}
+.vault-search-result{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,rgba(127,127,127,.06));color:inherit;text-align:left;cursor:pointer}
+.vault-search-result span:first-child{display:grid;gap:4px;min-width:0}
+.vault-search-result small{color:var(--muted);overflow-wrap:anywhere}
+.vault-section-heading{margin:22px 0 10px;align-items:center}
+#vault-document-search{width:100%;margin-bottom:14px}
+.document-pinned{border-color:var(--accent,#668cff);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent,#668cff) 25%,transparent)}
+.document-card-top{flex-wrap:wrap;align-items:center}
+.document-vault-expiry,.document-summary,.document-related{margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:12px}
+.document-vault-expiry label{display:block;font-size:12px;font-weight:650;margin-bottom:7px}
+.document-vault-expiry input,.document-related select{min-width:0;flex:1}
+.document-summary p{white-space:pre-wrap;line-height:1.65;margin:8px 0}
+.document-related ul{margin:8px 0;padding-left:20px}
+.document-related li{margin:5px 0}
+.document-related select{width:100%;padding:9px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:inherit}
+.vault-timeline{margin-top:22px}
+.vault-timeline ol{list-style:none;margin:18px 0 0;padding:0 0 0 10px}
+.vault-timeline li{position:relative;display:flex;gap:14px;padding:0 0 20px 18px;border-left:1px solid var(--border)}
+.vault-timeline li:last-child{border-left-color:transparent;padding-bottom:0}
+.vault-timeline li>div{display:grid;gap:4px;min-width:0}
+.vault-timeline li>div span,.vault-timeline li>div b{overflow-wrap:anywhere}
+.timeline-dot{position:absolute;left:-5px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--accent,#668cff);box-shadow:0 0 0 4px var(--surface)}
+@media(max-width:640px){.document-card-top .btn{font-size:11px;padding:7px 9px}.vault-search-result{align-items:flex-start}.document-vault-expiry .row{align-items:stretch;flex-wrap:wrap}.document-vault-expiry input{width:100%}}
