@@ -1621,7 +1621,8 @@ async function checkTaskReminders(){
   const snoozed=task.snoozedUntil?Date.parse(task.snoozedUntil):NaN;
   const base=taskReminderDayTime({...task,due:currentDate});
   const lead=Math.max(0,Number(task.notifyBeforeMinutes)||0)*60000;
-  const when=Number.isFinite(snoozed)&&new Date(snoozed).toLocaleDateString('en-CA')===currentDate?snoozed:base-lead;
+  if(Number.isFinite(snoozed)&&snoozed>now)continue;
+  const when=Number.isFinite(snoozed)?snoozed:base-lead;
   const key='task-'+task.id+'-'+currentDate+'-'+String(task.reminderTime||'09:00')+'-'+lead;
   if(!shown[key]&&when!==null&&now>=when&&now<when+24*60*60*1000){
    const linkedNote=(data.notes||[]).find(n=>n.id===task.relatedNoteId),linkedDoc=(data.documents||[]).find(d=>d.id===task.relatedDocumentId);
