@@ -1067,7 +1067,7 @@ async function chatActionIntent(question){
   const records=data[collection]||[],after=raw.slice(entityMatch.index+entityMatch[0].length).trim();
   const toMatch=after.match(/\b(?:to|as|ko|mein|me)\s+(.+)$/i);
   const namePart=after.split(/\b(?:due|deadline|priority|status|description|title|name|notes?|target date|date)\b/i)[0].replace(/^[:\s-]+|[\s,]+$/g,'').replace(/\b(?:called|named)\b/i,'').trim();
-  const candidateText=namePart||after.replace(/^[:\s-]+/,'').trim();
+  const candidateText=(namePart||after.replace(/^[:\s-]+/,'').trim()).replace(/\s+\b(?:to|as)\s+.+$/i,'').trim();
   const ranked=records.map(record=>{const label=type==='task'?record.title:type==='note'?(record.title||record.content):record.name||record.title;const a=String(label||'').toLowerCase(),b=candidateText.toLowerCase();return {record,label,score:a===b?100:a&&b&&(a.includes(b)||b.includes(a))?50:0}}).filter(x=>x.score).sort((a,b)=>b.score-a.score);
   if(!ranked.length)return {answer:'Matching '+type+' nahi mila. Existing exact title/name ke saath command do.',sources:[source]};
   if(ranked.length>1&&ranked[0].score===ranked[1].score)return {answer:'Multiple '+type+' records match ho rahe hain. Exact title/name batao.',sources:[source]};
