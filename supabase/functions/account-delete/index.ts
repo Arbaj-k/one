@@ -1,0 +1,66 @@
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json({ error: "Use POST." }, 405);
+
+  const url = Deno.env.get("SUPABASE_URL");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY");
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !anon || !service) return json({ error: "Account deletion is not configured." }, 503);
+
+  const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) return json({ error: "Sign in again before deleting your account." }, 401);
+
+  try {
+    const authClient = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: authData, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !authData.user) return json({ error: "Your session is invalid. Sign in again." }, 401);
+
+    const body = await req.json().catch(() => ({}));
+    if (body?.confirmation !== "DELETE") return json({ error: "Explicit deletion confirmation is required." }, 400);
+
+    const userId = authData.user.id;
+    const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+
+    // Remove private document objects before deleting their metadata and auth owner.
+    const bucket = "one-user-documents";
+    for (let offset = 0; ; offset += 100) {
+      const { data: objects, error } = await admin.from("objects" as never)
+        .select("name").eq("bucket_id", bucket).like("name", userId + "/%")
+        .range(offset, offset + 99);
+      if (error) throw error;
+      const names = (objects || []).map((item: { name: string }) => item.name);
+      if (!names.length) break;
+      const { error: storageError } = await admin.storage.from(bucket).remove(names);
+      if (storageError) throw storageError;
+      if (names.length < 100) break;
+    }
+
+    // This legacy table has a non-cascading auth.users FK; delete it explicitly.
+    const { error: historyError } = await admin.from("whatsapp_processed_messages").delete().eq("user_id", userId);
+    if (historyError) throw historyError;
+
+    // Remove legacy profile tables if present; auth.users cascades the owner-bound records.
+    for (const table of ["user_profiles", "profiles"]) {
+      const { error } = await admin.from(table).delete().eq("id", userId);
+      if (error && !/does not exist|schema cache/i.test(error.message || "")) throw error;
+    }
+
+    const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+    if (deleteError) throw deleteError;
+
+    return json({ ok: true });
+  } catch (_error) {
+    console.error("Account deletion failed; server details redacted.");
+    return json({ error: "Account deletion could not be completed. Retry or contact support." }, 500);
+  }
+});
