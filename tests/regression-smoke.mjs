@@ -82,6 +82,10 @@ assert.ok(app.includes('const AI_FILES_DB='), 'Original file browser storage is 
 assert.ok(!app.includes('dataBase64:await fileToBase64(saved.blob)'), 'Ask My Brain should use extracted text only, not send original PDF/image for multimodal analysis.');
 assert.ok(app.includes('async function sendChat('), 'Ask My Brain must use the asynchronous AI response flow.');
 assert.ok(app.includes('function chatActionIntent('), 'Quick task and money actions must remain available.');
+assert.ok(app.includes('reminder laga do|set karo|set kar do'), 'Ask One must understand natural Hindi/Hinglish reminder phrases.');
+assert.ok(app.includes('shaam|sham|evening|raat|night'), 'Ask One must interpret evening/night reminder times.');
+assert.ok(app.includes('clockMatch=raw.match'), 'Ask One must accept 24-hour reminder times.');
+assert.ok(app.includes('pendingChatAction={type:\'create-record\',collection:\'tasks\''), 'Chat reminders must use the confirmed, duplicate-safe Planner task save flow.');
 assert.ok(!app.includes('GEMINI_API_KEY'), 'Gemini API secret must never be present in browser code.');
 assert.ok(app.includes("const label='File: '+hit.doc.name"), 'Document citation labels should remain in the query-aware evidence builder.');
 assert.ok(app.includes('async function retryDocumentOCR('), 'Uploaded documents must support a retry/re-upload path.');
