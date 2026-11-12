@@ -1761,3 +1761,6 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
   .item-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(hover:none){button,.btn,.nav-item{touch-action:manipulation}}
+
+/* Keep secondary information links in the sidebar instead of a full-width footer. */
+.site-footer{display:none!important}.sidebar-bottom{align-items:flex-start}.sidebar-bottom-copy{min-width:0;flex:1}.sidebar-legal{display:flex;gap:12px;margin-top:9px}.sidebar-legal a{color:var(--muted);font-size:10px;font-weight:600;text-decoration:none}.sidebar-legal a:hover{color:var(--blue);text-decoration:underline}
