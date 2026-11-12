@@ -21,11 +21,11 @@ The One Web Push backend is configured in Supabase. VAPID public/private keys an
 
 ## Current delivery scope
 
-The scheduled dispatcher checks cloud workspace tasks due today and sends at the task's saved `reminderTime` (Asia/Kolkata). Document-expiry and Udhaar reminders are currently supported by the in-app/local reminder experience while One is running; server-side push scheduling for those types is not yet enabled.
+The scheduled dispatcher checks cloud workspace tasks at their saved `reminderTime` (Asia/Kolkata). At 09:00 Asia/Kolkata it sends one daily digest per account with all unfinished dated tasks, Assignment/Reminder/Briefing items, document expiries due within 7 days (including overdue), and outstanding Udhaar due within 7 days (including overdue). Completed tasks and fully repaid Udhaar are excluded; newly added pending items appear in the next digest.
 
 ## Verification
 
-The scheduler job is active and its latest HTTP call returned HTTP 200 with `ok: true`. A real phone delivery still requires at least one Android device to subscribe. Device subscription count was zero at the last server check, so no actual phone notification has been received yet.
+The scheduler job is active and its latest HTTP call returned HTTP 200 with `ok: true`. At the latest check, one Android device subscription is registered. The scheduled HTTP dispatcher is returning HTTP 200; delivery to the user's device still depends on Chrome/Android notification permission and device power/network settings.
 
 ## Troubleshooting
 
