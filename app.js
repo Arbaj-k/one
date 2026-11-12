@@ -1456,16 +1456,16 @@ async function chatActionIntent(question){
   if(!due)return {answer:'Reminder ki date batao. Example: Remind me to pay electricity bill tomorrow at 7 pm.',sources:['Planner']};
   const timeMatch=raw.match(/\b(?:at\s+(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm|baje))?|(?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)))\b/i);
   const clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
-  let reminderTime='09:00';
+  let reminderTime=/\\b(?:shaam|sham|evening|raat|night)\\b/i.test(lower)?'19:00':'09:00';
   if(clockMatch){reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2]}
   else if(timeMatch){let hour=Number(timeMatch[1]||timeMatch[4]),minute=Number(timeMatch[2]||timeMatch[5]||0),meridiem=(timeMatch[3]||timeMatch[6]||'').toLowerCase();if(hour>23||hour<1||minute>59||(meridiem&&hour>12))return {answer:'Reminder time valid nahi hai. Example: 7:30 pm ya 19:30.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(!meridiem&&/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)&&hour<12)hour+=12;reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
   const title=raw.replace(/^\s*(?:please\s+)?(?:remind me(?: to| about)?|set (?:a )?reminder(?: for)?|reminder (?:for|laga do|set karo|set kar do)|yaad dilana|yaad dila dena|yaad dila do|mujhe yaad(?:\s+dilana|\s+dila dena|\s+dila do))\s*/i,'').replace(/\b(?:today|tomorrow|kal|aaj|next day|next week|agle hafte|in\s+\d+\s+days?|after\s+\d+\s+days?|\d+\s+din\s+(?:baad|mein)|shaam|sham|evening|raat|night|subah|morning)\b/ig,'').replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g,'').replace(/\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/ig,'').replace(/\b(?:at\s+)?(?:[01]?\d|2[0-3])(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,'').replace(/\b(?:remind me|set a reminder|reminder|laga do|set karo|set kar do|yaad dilana|yaad dila dena|yaad dila do|mujhe|please|on|at|by)\b/ig,'').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title)return {answer:'Kis cheez ka reminder chahiye? Example: Remind me to call home tomorrow at 7 pm.',sources:['Planner']};
   const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due);
   if(duplicate)return {answer:'Reminder already exists for '+title+' on '+dateFmt(due)+'. Duplicate nahi banaya.',sources:['Planner']};
-  const task={id:uid(),title,category:'Reminder',due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Reminder saved: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Enable notifications in One to receive a browser alert when One is open or reopened.',requestedAt:Date.now()};
-  return {answer:'Please confirm reminder: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Planner']};
+  const task={id:uid(),title,category:'Briefing',due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created from a natural-language Ask One reminder.'};
+  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:'Briefing saved: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Enable notifications in One to receive a browser alert when One is open or reopened.',requestedAt:Date.now()};
+  return {answer:'Confirm Task Briefing: '+title+' · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel. It will appear under Task Briefing on Home.',sources:['Task Briefing','Planner']};
  }
  const addTask=/\b(?:add|create|make|remind me|schedule|bana do|banao|add kar|jod do|likh lo|yaad dilana)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
  if(addTask){
