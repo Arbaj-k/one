@@ -1818,3 +1818,7 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
  .floating-create-button span{font-size:17px!important;line-height:1!important}
  .floating-create-button:active{transform:translateX(-50%) scale(.96)!important}
 }
+
+
+/* Calendar, follow-up and knowledge panels */
+.one-intel{margin-top:16px}.one-intel h2{margin-bottom:10px}.one-import{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.one-import small{font-size:11px;color:var(--muted)}.one-conflicts{display:grid;gap:4px;padding:11px;border-radius:10px;background:#fff5e8;border:1px solid #f1dcb8;color:#88520d;margin:10px 0}.one-conflicts small{line-height:1.5}.one-follow-form{display:grid;gap:8px;margin:12px 0}.one-follow-form input,.one-follow-form select{min-width:0;width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fff;color:var(--ink)}.one-follow-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}@media(max-width:700px){.one-follow-row{grid-template-columns:1fr 1fr}.one-follow-row .btn{grid-column:1/-1}.one-import{align-items:flex-start;flex-direction:column}}
