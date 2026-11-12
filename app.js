@@ -1051,6 +1051,9 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
  const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
 
+ const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
+ const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
+ const isProjectLinked=item=>!!contextProject&&(item.projectId===contextProject.id||item.relatedProjectId===contextProject.id||(Array.isArray(item.projectIds)&&item.projectIds.includes(contextProject.id)));
  const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:6,maxChunks:targetDocId?24:24,maxChars:39000});
  if(!targetDocId&&contextProject){
   const linkedDocs=allDocs.filter(doc=>isProjectLinked(doc)&&!retrieval.evidence.some(hit=>hit.doc.id===doc.id)).slice(0,3);
@@ -1096,9 +1099,6 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    }catch(fileError){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
- const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
- const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
- const isProjectLinked=item=>!!contextProject&&(item.projectId===contextProject.id||item.relatedProjectId===contextProject.id||(Array.isArray(item.projectIds)&&item.projectIds.includes(contextProject.id)));
  const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  // Avoid flooding general questions with unrelated personal notes.
  const notes=rankedNotes
@@ -1112,8 +1112,8 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    content:String(note.content||'').slice(0,2400)
   }));
  const overviewIntent=/\b(?:summari[sz]e|daily briefing|my day|overview|what should i do|today'?s priorities)\b/i.test(question);
- const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework)\b/i.test(question);
  const asksProjects=overviewIntent||/\b(?:project|projects|milestone|progress)\b/i.test(question);
+ const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework)\b/i.test(question);
  const asksMoney=overviewIntent||/\b(?:money|expense|expenses|spent|spending|udhaar|owe|lent|borrowed|budget|rupees?|rs\.?|₹|payment|paid)\b/i.test(question);
  const asksMemories=/\b(?:remember|memory|memories|preference|previously|before|last time|what did i tell)\b/i.test(question);
  const asksRoutines=overviewIntent||/\b(?:habit|habits|routine|routines|study session|focus session)\b/i.test(question);
