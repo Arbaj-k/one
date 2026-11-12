@@ -92,7 +92,7 @@ ${raw}`;
     };
     return json({ json: result, model: MODEL });
   } catch (err) {
-    console.error("Document JSON function failed", err);
-    return json({ error: err instanceof Error ? err.message : "Document conversion failed. Retry." }, 500);
+    console.error("Document JSON function failed");
+    return json({ error: "Document conversion failed. Retry." }, 500);
   }
 });
