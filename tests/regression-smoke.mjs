@@ -452,3 +452,11 @@ assert.ok(!homeOverview.includes('Project progress'), 'Project progress panel mu
 assert.ok(!homeOverview.includes('PAYMENTS & REPAYMENTS'), 'Payments and repayments panel must be removed from the home dashboard.');
 assert.ok(!homeOverview.includes('loansDue'), 'Home dashboard must not surface repayment reminders.');
 assert.ok(homeOverview.includes('home-coming-up'), 'Upcoming tasks should remain on the home dashboard.');
+
+// Ask One can schedule one-time and daily task briefings, and the briefing card sits immediately below Quick Capture.
+assert.ok(app.includes('const briefingIntent='), 'Ask One must understand briefing instructions.');
+assert.ok(app.includes("repeatRule:daily?'daily':'none'"), 'Daily briefing must use the recurring reminder scheduler.');
+assert.ok(app.includes("category:'Briefing'"), 'Briefings must be identifiable separately from ordinary tasks.');
+const overviewForBriefing=app.slice(app.indexOf('function overview(){'),app.indexOf('async function summarizeDocument'));
+assert.ok(overviewForBriefing.indexOf('quick-note-widget') < overviewForBriefing.indexOf('smart-briefing'), 'Task briefing must appear directly after Quick Capture.');
+assert.ok(overviewForBriefing.includes('Set with Ask One'), 'Home task briefing must offer AI setup.');
