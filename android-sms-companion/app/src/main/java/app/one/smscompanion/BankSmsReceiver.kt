@@ -20,7 +20,7 @@ class BankSmsReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try { OneApi.sync(context, parsed) }
-            catch (error: Exception) { android.util.Log.w("OneSmsSync", "Sync failed: " + (error.message ?: "unknown")) }
+            catch (error: Exception) { android.util.Log.w("OneSmsSync", "Transaction sync failed; personal message content omitted.") }
             finally { pending.finish() }
         }
     }
