@@ -65,6 +65,30 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await page.waitForSelector('#page-content');
   assert.ok(await page.locator('#page-content').count());
   await page.context().setOffline(false);
+
+  // Mobile layout: the full navigation remains reachable in a fixed thumb-friendly bar,
+  // and common workspace pages must not create horizontal viewport overflow.
+  const mobile=await context.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+  const mobileErrors=[];mobile.on('pageerror',e=>mobileErrors.push(e.message));
+  await mobile.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await mobile.waitForSelector('#page-content');
+  const mobileLayout=await mobile.evaluate(()=>({
+    viewport:document.documentElement.clientWidth,
+    documentWidth:document.documentElement.scrollWidth,
+    navVisible:getComputedStyle(document.querySelector('.sidebar')).display!=='none'&&document.querySelector('#nav').getBoundingClientRect().bottom>innerHeight-100,
+    navItems:[...document.querySelectorAll('#nav .nav-item')].filter(x=>getComputedStyle(x).display!=='none').length
+  }));
+  assert.ok(mobileLayout.navVisible,'Mobile bottom navigation must be visible');
+  assert.ok(mobileLayout.navItems>=8,'Mobile navigation must keep workspace sections reachable');
+  assert.ok(mobileLayout.documentWidth<=mobileLayout.viewport+1,'Mobile layout must not overflow horizontally');
+  for(const section of ['vault','planner','expenses','knowledge','projects','ask']){
+    await mobile.locator('#nav [data-page="'+section+'"]').click();
+    await mobile.waitForTimeout(60);
+    const widths=await mobile.evaluate(()=>({viewport:document.documentElement.clientWidth,document:document.documentElement.scrollWidth}));
+    assert.ok(widths.document<=widths.viewport+1,'Mobile '+section+' page must not overflow horizontally');
+  }
+  assert.deepEqual(mobileErrors,[]);
+  await mobile.close();
   assert.deepEqual(errors,[]);
   console.log('Playwright browser regression passed: app boot, task create, expense create, knowledge note create, reload persistence and offline shell navigation.');
  }catch(err){console.error(err);process.exitCode=1}
