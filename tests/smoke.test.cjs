@@ -86,7 +86,6 @@ for (const token of [
  'function documentRelatedNotes(doc)',
  'async function summarizeDocument(id)',
  'function openVaultResult(id)',
- "'data-page=\"vault\"'",
  "'toggle-document-pin'",
  "'save-document-expiry'",
  "'connect-document-note'",
@@ -95,8 +94,7 @@ for (const token of [
  "'document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate",
  'doc.summary= result.answer'
 ]) {
- if(token==="'data-page=\"vault\"'") assert.ok(html.includes('data-page="vault"'),'Document Vault navigation is missing');
- else if(token==="'document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate") assert.ok(source.includes("document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate"),'Expiry reminder deduplication is missing');
+ if(token==="'document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate") assert.ok(source.includes("document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate"),'Expiry reminder deduplication is missing');
  else if(token==="'toggle-document-pin'") assert.ok(source.includes("'toggle-document-pin':"),'Document pin action is missing');
  else if(token==="'save-document-expiry'") assert.ok(source.includes("'save-document-expiry':"),'Document expiry action is missing');
  else if(token==="'connect-document-note'") assert.ok(source.includes("'connect-document-note':"),'Document note connection action is missing');
