@@ -4,11 +4,19 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-one-cron-secret","Access-Control-Allow-Methods":"POST, OPTIONS"};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
 const url=Deno.env.get("SUPABASE_URL")!,anon=Deno.env.get("SUPABASE_ANON_KEY")!,service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const publicKey=Deno.env.get("VAPID_PUBLIC_KEY")||"",privateKey=Deno.env.get("VAPID_PRIVATE_KEY")||"",subject=Deno.env.get("VAPID_SUBJECT")||"mailto:notifications@one.app";
 const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
-function configurePush(){if(!publicKey||!privateKey)throw new Error("Push server is not configured. Add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY Edge Function secrets.");webpush.setVapidDetails(subject,publicKey,privateKey);}
+async function getPushConfig(){
+ const {data,error}=await admin.from("one_push_server_config").select("vapid_public_key,vapid_private_key,vapid_subject,cron_secret").eq("id",true).maybeSingle();
+ if(error)throw error;if(!data)throw new Error("Push server configuration is missing.");
+ return data;
+}
+function configurePush(config:{vapid_public_key:string;vapid_private_key:string;vapid_subject:string;cron_secret:string}){
+ if(!config.vapid_public_key||!config.vapid_private_key)throw new Error("VAPID keys are missing from the private server configuration.");
+ webpush.setVapidDetails(config.vapid_subject,config.vapid_public_key,config.vapid_private_key);
+}
 async function sendToUser(userId:string,payload:Record<string,unknown>){
- configurePush();const {data:rows,error}=await admin.from("one_push_subscriptions").select("id,endpoint,p256dh,auth").eq("user_id",userId);if(error)throw error;
+ const config=await getPushConfig();configurePush(config);
+ const {data:rows,error}=await admin.from("one_push_subscriptions").select("id,endpoint,p256dh,auth").eq("user_id",userId);if(error)throw error;
  let sent=0,expired=0;for(const row of rows||[]){try{await webpush.sendNotification({endpoint:row.endpoint,keys:{p256dh:row.p256dh,auth:row.auth}},JSON.stringify(payload));sent++;}catch(error){const status=(error as {statusCode?:number}).statusCode;if(status===404||status===410){await admin.from("one_push_subscriptions").delete().eq("id",row.id);expired++;}else console.error("Push delivery failed",status,String(error));}}
  return {sent,expired};
 }
@@ -16,9 +24,9 @@ Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});if(req.method!=="POST")return json({error:"POST required"},405);
  try{
   const body=await req.json().catch(()=>({}));
-  if(body.action==="config")return json({publicKey:publicKey||null,configured:Boolean(publicKey&&privateKey)});
+  if(body.action==="config"){const config=await getPushConfig();return json({publicKey:config.vapid_public_key,configured:Boolean(config.vapid_public_key&&config.vapid_private_key)});}
   if(body.action==="dispatch"){
-   const expected=Deno.env.get("ONE_PUSH_CRON_SECRET");if(!expected||req.headers.get("x-one-cron-secret")!==expected)return json({error:"Unauthorized dispatcher"},401);configurePush();
+   const config=await getPushConfig();if(!config.cron_secret||req.headers.get("x-one-cron-secret")!==config.cron_secret)return json({error:"Unauthorized dispatcher"},401);configurePush(config);
    const {data:workspaces,error}=await admin.from("user_workspaces").select("user_id,workspace_data");if(error)throw error;
    const now=new Date(),date=now.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"}),hhmm=now.toLocaleTimeString("en-GB",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:false});let checked=0,sent=0;
    for(const workspace of workspaces||[]){const tasks=Array.isArray(workspace.workspace_data?.tasks)?workspace.workspace_data.tasks:[];for(const task of tasks){if(task.done||task.due!==date||!task.id||!task.title)continue;const dueTime=String(task.reminderTime||"09:00").slice(0,5);if(dueTime>hhmm)continue;checked++;const key="task:"+task.id+":"+date+":"+dueTime;
