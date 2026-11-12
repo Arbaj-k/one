@@ -55,22 +55,22 @@ Deno.serve(async(req:Request)=>{
     const note=(workspace.workspace_data?.notes||[]).find((n:any)=>n.id===task.relatedNoteId),doc=(workspace.workspace_data?.documents||[]).find((d:any)=>d.id===task.relatedDocumentId),linked=note?" · Note: "+(note.title||"Saved note"):doc?" · Document: "+(doc.name||"Saved document"):"";
     const result=await sendToUser(workspace.user_id,{title:"One · Task reminder",body:task.title+" · Due "+occurrence+" at "+dueTime+linked,tag:key,url:"./?open=task&id="+encodeURIComponent(task.id)});sent+=result.sent;if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
    }}
-   // One daily digest at 09:00 Asia/Kolkata: include every unfinished dated task
-   // plus explicit Reminder/Briefing items, so users don't have to ask Ask One again.
+   // One daily 09:00 Asia/Kolkata summary across every pending reminder type.
    if(hhmm>="09:00"){
     for(const workspace of workspaces||[]){
-     const tasks=Array.isArray(workspace.workspace_data?.tasks)?workspace.workspace_data.tasks:[];
-     const pending=tasks.filter((task:any)=>!task.done&&task.id&&task.title&&(
-      Boolean(task.due)||["assignment","reminder","briefing"].includes(String(task.category||"").toLowerCase())
-     ));
-     if(!pending.length)continue;
+     const wd=workspace.workspace_data||{},tasks=Array.isArray(wd.tasks)?wd.tasks:[],documents=Array.isArray(wd.documents)?wd.documents:[],expenses=Array.isArray(wd.expenses)?wd.expenses:[];
+     const summaryItems:string[]=[];
+     for(const task of tasks){if(task.done||!task.id||!task.title)continue;const category=String(task.category||"").toLowerCase();if(task.due||["assignment","reminder","briefing"].includes(category))summaryItems.push(String(task.title).trim()+(task.due?" ("+task.due+")":""));}
+     for(const doc of documents){if(!doc.expiresOn||!doc.name)continue;if(doc.expiresOn<=addLocalDays(date,7))summaryItems.push("Document expiry: "+String(doc.name).trim()+" ("+doc.expiresOn+")");}
+     const loans=expenses.filter((entry:any)=>["lent","borrowed"].includes(entry.kind)&&entry.dueDate&&entry.dueDate<=addLocalDays(date,7));
+     for(const loan of loans){const same=expenses.filter((entry:any)=>entry.person===loan.person&&((loan.kind==="lent"&&["lent","lent_repayment"].includes(entry.kind))||(loan.kind==="borrowed"&&["borrowed","borrowed_repayment"].includes(entry.kind)));const original=same.filter((entry:any)=>entry.kind===loan.kind).reduce((sum:number,entry:any)=>sum+Number(entry.amount||0),0);const repaid=same.filter((entry:any)=>entry.kind===(loan.kind==="lent"?"lent_repayment":"borrowed_repayment")).reduce((sum:number,entry:any)=>sum+Number(entry.amount||0),0);if(original-repaid>0)summaryItems.push((loan.kind==="lent"?"Collect from ":"Repay ")+String(loan.person||"contact")+" · ₹"+(original-repaid).toLocaleString("en-IN")+" ("+loan.dueDate+")");}
+     if(!summaryItems.length)continue;
      const digestKey="daily-pending-summary:"+date;
      const {data:claim,error:claimError}=await admin.from("one_push_deliveries").insert({user_id:workspace.user_id,delivery_key:digestKey,notification_type:"daily_digest"}).select("id").maybeSingle();
      if(claimError?.code==="23505")continue;if(claimError)throw claimError;if(!claim)continue;
-     const sorted=pending.sort((a:any,b:any)=>String(a.due||"9999").localeCompare(String(b.due||"9999")));
-     const preview=sorted.slice(0,5).map((task:any)=>String(task.title).trim()+(task.due?" ("+task.due+")":"")).join(" · ");
-     const more=sorted.length>5?" · +"+(sorted.length-5)+" more":"";
-     const result=await sendToUser(workspace.user_id,{title:"One · Your pending reminders",body:sorted.length+" pending item(s): "+preview+more,tag:digestKey,url:"./?open=tasks"});sent+=result.sent;if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
+     const preview=summaryItems.slice(0,5).join(" · "),more=summaryItems.length>5?" · +"+(summaryItems.length-5)+" more":"";
+     const result=await sendToUser(workspace.user_id,{title:"One · Your pending reminders",body:summaryItems.length+" pending reminder(s): "+preview+more,tag:digestKey,url:"./?open=tasks"});sent+=result.sent;
+     if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
     }
    }
    return json({ok:true,checked,sent});
