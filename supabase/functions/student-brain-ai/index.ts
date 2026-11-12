@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
     if (!supabaseUrl || !supabaseAnonKey || !geminiKey) {
-      console.error("Missing Edge Function environment configuration.");
+      console.warn("Operation failed; diagnostic details redacted.");
       return json({ error: "AI server configuration is incomplete. Check the Supabase function secret GEMINI_API_KEY." }, 500);
     }
 
@@ -123,7 +123,7 @@ ${message}`;
       });
     } catch (upstreamError) {
       const reason = upstreamError instanceof Error ? upstreamError.name : "unknown";
-      console.error("Gemini transport failure:", reason);
+      console.warn("Operation failed; diagnostic details redacted.");
       if (reason === "TimeoutError" || reason === "AbortError") {
         return json({ error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504);
       }
@@ -138,7 +138,7 @@ ${message}`;
       const status = aiResponse.status;
       const providerMessage = typeof aiResult?.error?.message === "string" ? aiResult.error.message.slice(0, 500) : "No provider detail";
       // Keep the provider diagnostic in Supabase logs only; never log or return the API key.
-      console.error("Gemini API rejected request:", { status, message: providerMessage });
+      console.warn("Operation failed; diagnostic details redacted.");
       if (status === 400) {
         return json({ error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502);
       }
@@ -167,7 +167,7 @@ ${message}`;
       : [];
     return json({ answer, sources: sourceList.slice(0, 10), model: "gemini-3.5-flash-lite" });
   } catch (error) {
-    console.error("Student Brain AI function error:", error);
+    console.warn("Operation failed; diagnostic details redacted.");
     return json({ error: "Something went wrong while answering. Please retry." }, 500);
   }
 });
