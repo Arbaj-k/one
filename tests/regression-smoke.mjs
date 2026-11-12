@@ -322,6 +322,13 @@ assert.ok(app.includes('if(!verify(pending.collection,record))'), 'Ask One must 
 assert.ok(app.includes('Please confirm task:') && app.includes('Please confirm note:') && app.includes('Please confirm project:'), 'Ask One must show a clear confirmation before creating personal records.');
 assert.ok(app.includes('5*60*1000'), 'Ask One pending actions must expire after five minutes.');
 
+// Existing saved notes can be turned into reminders from Ask One.
+assert.ok(app.includes('const noteReminderIntent='), 'Ask One must detect requests to set reminders for existing notes.');
+assert.ok(app.includes('const ranked=notes.map(note=>'), 'Ask One must match an existing note by its title/content before creating a reminder.');
+assert.ok(app.includes('Related saved note ID: '+''), 'Note reminders must retain a link to the original saved note.');
+assert.ok(app.includes("Confirm reminder for your existing note"), 'Ask One must confirm the selected saved note and reminder schedule before saving.');
+assert.ok(app.includes("page:'planner',successMessage:'Saved note"), 'Confirmed note reminders must be saved in Planner.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
