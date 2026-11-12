@@ -374,7 +374,7 @@ assert.ok(app.includes("function exportData()") && app.includes("function restor
 assert.ok(app.includes('function projectRelatedItems(project)'), 'Projects must calculate related saved records.');
 assert.ok(app.includes('function relatedItemsMarkup(items)'), 'Project cards must display related records.');
 assert.ok(app.includes('data-action="open-vault-result"') && app.includes('Related items · '), 'Suggested related records must be directly openable from a project.');
-assert.ok(app.includes('isProjectLinked(item)') && app.includes('relatedProjectId') && app.includes('projectIds'), 'Explicit project links must boost note and document retrieval.');
+assert.ok(app.includes('const isProjectLinked=item=>') && app.includes('relatedProjectId') && app.includes('projectIds'), 'Explicit project links must boost note and document retrieval.');
 assert.ok(app.includes('linked to project '), 'AI document evidence must identify the project relationship in its source label.');
 
 // Planner summary navigation and completion timestamp regressions.
