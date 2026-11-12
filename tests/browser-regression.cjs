@@ -34,6 +34,8 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.tasks.some(t=>t.title==='Browser regression task'),'Task UI save must persist to workspace storage.');
 
+  // Return home before using the dashboard shortcut for Money & Udhaar.
+  await page.locator('.back-home-icon').click();
   // Exercise Money & Udhaar create form and verify the amount/category record.
   await page.locator('.stat-card[data-page="expenses"]').first().click();
   await page.locator('[data-action="new-expense"]').first().click();
@@ -46,6 +48,8 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.expenses.some(e=>e.description==='Browser regression expense'&&Number(e.amount)===125),'Expense UI save must persist its description and amount.');
 
+  // Return home before opening the Notes dashboard shortcut.
+  await page.locator('.back-home-icon').click();
   // Exercise Knowledge note creation and ensure saved text survives a reload.
   await page.locator('.stat-card[data-page="notes"]').first().click();
   await page.locator('[data-action="new-note"]').first().click();
