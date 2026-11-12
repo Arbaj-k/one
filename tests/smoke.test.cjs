@@ -44,6 +44,32 @@ assert.ok(source.includes('Object.assign(record,pending.patch,{updated:Date.now(
 assert.ok(source.includes('await syncQueue'), 'Action confirmation must wait for queued cloud sync');
 assert.ok(source.includes('const actionResult=await chatActionIntent(query)'), 'Chat handler must await async actions');
 
+// Phase 4 personal intelligence: explicit memory, workspace search,
+// deadline-based planning, expense-only category comparisons and project risk checks.
+for (const token of [
+  'function phase4SearchWorkspace(question)',
+  'function phase4DailyPlan()',
+  'function phase4SpendingInsights()',
+  'function phase4ProjectRisks()',
+  'const rememberMatch=raw.match(',
+  'Saved to Personal Memory:',
+  'return phase4SearchWorkspace(raw)',
+  'return phase4DailyPlan()',
+  'return phase4SpendingInsights()',
+  'return phase4ProjectRisks()',
+  "const expenses=(data.expenses||[]).filter(e=>(e.kind||'expense')==='expense')",
+  'const overdue=open.filter(t=>t.due&&t.due<todayDate)',
+  'This is a suggested order, not an automatic change to your tasks.',
+  'spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined'
+]) {
+  assert.ok(source.includes(token), 'Phase 4 intelligence feature missing: ' + token);
+}
+assert.ok(source.includes('data.memories.push(memory);persist();'), 'Explicit memory capture must use the existing workspace memory collection');
+assert.ok(source.includes('const duplicate=data.memories.find(m=>String(m.content||\'\').trim().toLowerCase()===content.toLowerCase())'), 'Memory capture must prevent exact duplicates');
+assert.ok(source.includes("const previous=addDaysToDate(month+'-01',-1).slice(0,7)"), 'Spending comparison must use the preceding calendar month');
+assert.ok(source.includes("String(item.extractedText||'').slice(0,220)"), 'Workspace search should include extracted document text');
+assert.ok(source.includes("(data.expenses||[]).forEach(item=>add("), 'Workspace search should include money records');
+
 // Phase 3 smart automation: weekly review, project progress, Udhaar due alerts and natural-language reminders.
 assert.ok(source.includes('function smartWeekSummary()'), 'Weekly review summary is missing');
 assert.ok(source.includes('function smartProjectProgress()'), 'Project progress intelligence is missing');
