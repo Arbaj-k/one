@@ -14,7 +14,7 @@ function migrateData(raw){
  next.schemaVersion=DATA_SCHEMA_VERSION;
  return next;
 }
-try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn('Could not prepare guest workspace migration',error)}
+try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
 let data=loadData(),page='overview',chatBusy=false,pendingChatAction=null;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
@@ -58,7 +58,7 @@ async function purgeUserLocalData(userId){
    tx.objectStore('workspace').delete('workspace:'+key);
    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
   });db.close();
- }catch(error){console.warn('Local account cleanup incomplete; remove local One site data after account deletion.');throw error}
+ }catch(error){console.warn("Operation failed; diagnostic details redacted.");throw error}
  for(const suffix of ['', '-last-good','-pending-cloud','-idb-migrated-at','-sync-meta','-sync-meta-'+userId]){try{localStorage.removeItem(key+suffix)}catch(_){}}
  return true;
 }
@@ -90,7 +90,7 @@ async function getOriginalDocument(id){
  });
 }
 async function removeOriginalDocument(id){
- try{const db=await openAIFileDB();await new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}catch(err){console.warn('Could not remove local original file',err)}
+ try{const db=await openAIFileDB();await new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}catch(err){console.warn("Operation failed; diagnostic details redacted.")}
 }
 async function fileToBase64(blob){
  return new Promise((resolve,reject)=>{
@@ -136,7 +136,7 @@ async function migrateWorkspaceToIndexedDB(){
   localStorage.setItem(workspaceStorageKey()+'-idb-migrated-at',String(Date.now()));
   window.studentBrainStorageHealth={state:'ready',message:'IndexedDB safety copy active'};
  }catch(err){
-  console.warn('IndexedDB migration unavailable; localStorage remains active',err);
+  console.warn("Operation failed; diagnostic details redacted.");
   window.studentBrainStorageHealth={state:'warning',message:err.message||'IndexedDB unavailable'};
  }
 }
@@ -144,20 +144,20 @@ async function requestWorkspaceStoragePersistence(){
  try{
   if(navigator.storage?.persist)window.studentBrainStoragePersistent=await navigator.storage.persist();
   if(navigator.storage?.estimate)window.studentBrainStorageEstimate=await navigator.storage.estimate();
- }catch(err){console.info('Storage persistence/estimate not available',err)}
+ }catch(err){console.warn("Operation failed; diagnostic details redacted.")}
 }
 function loadData(){
  try{return migrateData(JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}'))}
  catch(primaryError){
-  try{const lastGood=localStorage.getItem(workspaceStorageKey()+'-last-good');if(lastGood){console.warn('Primary workspace data was unreadable; recovered the last-good local snapshot.');return migrateData(JSON.parse(lastGood))}}
-  catch(recoveryError){console.error('Last-good workspace recovery failed',recoveryError)}
-  console.error('Workspace data could not be loaded',primaryError);return starter();
+  try{const lastGood=localStorage.getItem(workspaceStorageKey()+'-last-good');if(lastGood){console.warn("Operation failed; diagnostic details redacted.");return migrateData(JSON.parse(lastGood))}}
+  catch(recoveryError){console.warn("Operation failed; diagnostic details redacted.")}
+  console.warn("Operation failed; diagnostic details redacted.");return starter();
  }
 }
 let syncQueue=Promise.resolve();
 let cloudRetryTimer=null,cloudRetryDelay=1500,lastSyncedAt=null,cloudMode='offline',cloudLastError='';
 function syncMetaKey(ownerId=cloudUser?.id){return workspaceStorageKey()+'-sync-meta'+(ownerId?'-'+ownerId:'')}
-function saveSyncMeta(){try{localStorage.setItem(syncMetaKey(),JSON.stringify({lastSyncedAt,pending:!!(cloudReady&&cloudUser&&cloudMode!=='synced'),updatedAt:Date.now()}))}catch(error){console.warn('Could not persist sync status',error)}}
+function saveSyncMeta(){try{localStorage.setItem(syncMetaKey(),JSON.stringify({lastSyncedAt,pending:!!(cloudReady&&cloudUser&&cloudMode!=='synced'),updatedAt:Date.now()}))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}}
 function restoreSyncMeta(ownerId=cloudUser?.id){try{const meta=JSON.parse(localStorage.getItem(syncMetaKey(ownerId))||'{}');lastSyncedAt=meta.lastSyncedAt||null}catch{lastSyncedAt=null}}
 function cloudStatus(message){
  const el=document.querySelector('#cloud-status');
@@ -207,12 +207,12 @@ function persist(){
   if(cloudReady&&cloudUser)setCloudMode(navigator.onLine?'syncing':'offline');
   else setCloudMode('offline','Guest data is saved on this device. Sign in to sync across devices.');
  }catch(err){
-  console.error('Local save failed',err);
+  console.warn("Operation failed; diagnostic details redacted.");
   setCloudMode('error',err.message);
   toast('Local save failed. Export a backup and free storage.');
  }
  saveWorkspaceSnapshot(data).catch(err=>{
-  console.warn('IndexedDB workspace safety copy failed',err);
+  console.warn("Operation failed; diagnostic details redacted.");
   window.studentBrainStorageHealth={state:'warning',message:err.message||'IndexedDB copy failed'};
  });
  if(cloudReady&&cloudUser)queueCloudSave();
@@ -220,7 +220,7 @@ function persist(){
 function queueCloudSave(){
  if(!cloudReady||!cloudUser||!cloudClient)return Promise.resolve();
  const ownerId=cloudUser.id,snapshot=JSON.parse(JSON.stringify(data));
- try{localStorage.setItem(workspaceStorageKey()+'-pending-cloud',JSON.stringify({ownerId,snapshot,queuedAt:Date.now()}))}catch(error){console.warn('Could not persist offline sync queue',error)}
+ try{localStorage.setItem(workspaceStorageKey()+'-pending-cloud',JSON.stringify({ownerId,snapshot,queuedAt:Date.now()}))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
  setCloudMode(navigator.onLine?'syncing':'offline');
  syncQueue=syncQueue.catch(()=>{}).then(()=>saveCloudSnapshot(snapshot,ownerId));
  return syncQueue;
@@ -238,7 +238,7 @@ async function saveCloudSnapshot(snapshot,ownerId=cloudUser?.id){
   try{localStorage.removeItem(workspaceStorageKey()+'-pending-cloud')}catch{}
   setCloudMode('synced');
  }catch(err){
-  console.error('Cloud sync failed',err);
+  console.warn("Operation failed; diagnostic details redacted.");
   if(ownerId!==cloudUser?.id)return;
   setCloudMode(navigator.onLine?'error':'offline',err.message);
   if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
@@ -262,7 +262,7 @@ async function refreshCloudWorkspace(ownerId=cloudUser?.id){
   if(mergedText!==remoteText)await saveCloudSnapshot(merged,ownerId);
   else{lastSyncedAt=row.updated_at||new Date().toISOString();setCloudMode('synced')}
  })().catch(error=>{
-  console.error('Could not refresh cloud workspace',error);
+  console.warn("Operation failed; diagnostic details redacted.");
   if(ownerId===cloudUser?.id)setCloudMode('error',error.message||'Could not restore cloud data.');
  }).finally(()=>{cloudRefreshInFlight=null});
  return cloudRefreshInFlight;
@@ -276,11 +276,11 @@ function subscribeWorkspaceRealtime(ownerId){
    const remote=payload.new.workspace_data,merged=mergeWorkspaceSnapshots(data,remote);
    const remoteText=JSON.stringify(migrateData(remote));
    data=merged;
-   writeLocalWorkspace(data).then(()=>render()).catch(error=>console.warn('Could not store remote workspace locally',error));
+   writeLocalWorkspace(data).then(()=>render()).catch(error=>console.warn("Operation failed; diagnostic details redacted."));
    if(JSON.stringify(merged)!==remoteText)queueCloudSave();
    else{lastSyncedAt=payload.new.updated_at||new Date().toISOString();setCloudMode('synced')}
   }).subscribe(status=>{
-   if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Live workspace updates unavailable; refresh-on-focus remains enabled.');
+   if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn("Operation failed; diagnostic details redacted.");
   });
 }
 async function activateCloudWorkspace(userId){
@@ -298,7 +298,7 @@ function initCloud(){
   if(!window.supabase?.createClient)throw new Error('Supabase client did not load.');
   cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'one-auth-session-v1'}});
   setCloudMode('offline','Guest workspaces are device-only. Sign in to enable secure cloud sync.');
- }catch(error){console.error('Cloud sync initialization failed',error);setCloudMode('error',error.message)}
+ }catch(error){console.warn("Operation failed; diagnostic details redacted.");setCloudMode('error',error.message)}
 }
 window.addEventListener('online',()=>{if(cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
 window.addEventListener('focus',()=>{if(cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
@@ -334,7 +334,7 @@ async function handleOneSharedCapture(capture){
    const file=new File([item.blob],item.name||'Shared file',{type:item.type||item.blob.type||'application/octet-stream'});
    const isImage=file.type.startsWith('image/')||/\.(png|jpe?g|webp|gif|bmp|tiff?)$/i.test(file.name);
    let ocr='';
-   if(isImage&&window.Tesseract){try{ocr=await runImageOCR(file)}catch(error){console.warn('Shared image OCR failed',error)}}
+   if(isImage&&window.Tesseract){try{ocr=await runImageOCR(file)}catch(error){console.warn("Operation failed; diagnostic details redacted.")}}
    await processUploadedDocuments([file]);
    const savedDocument=[...(data.documents||[])].reverse().find(doc=>doc.name===file.name);
    const receiptText=ocr||savedDocument?.extractedText||'';
@@ -364,7 +364,7 @@ async function consumeOneShareInbox(){
   const captures=await readOneShareInbox();
   for(const capture of captures){await handleOneSharedCapture(capture);await removeOneSharedCapture(capture.id)}
   if(!captures.length)toast('No shared item was found. Please share it again.');
- }catch(error){console.error('One share inbox failed',error);toast('Could not open the shared item. Try sharing again.')}
+ }catch(error){console.warn("Operation failed; diagnostic details redacted.");toast('Could not open the shared item. Try sharing again.')}
 }
 function formatChatText(value=''){
  let text=String(value??'').replace(/\\n/g,'\n').replace(/\/n/g,'\n').replace(/\r\n?/g,'\n');
@@ -442,7 +442,7 @@ function projectCard(p){
  return '<div class="card"><div class="row"><span class="stat-icon">▣</span><span class="tag '+(p.status==='Completed'?'green':'blue')+'">'+esc(p.status||'In progress')+'</span></div><h3 style="margin-top:17px">'+esc(p.name)+'</h3><p class="muted" style="font-size:12px;line-height:1.6;min-height:38px">'+esc(p.description||'No description yet.')+'</p><div class="row"><small class="muted">'+tasks.length+' tasks · '+dateFmt(p.targetDate)+'</small><button class="btn small" data-action="edit-project" data-id="'+p.id+'">Edit</button></div>'+(tasks.length?'<div class="progress"><span style="width:'+Math.round(done/tasks.length*100)+'%"></span></div>':'')+'<details class="project-related"><summary>Related items · '+related.length+'</summary>'+relatedItemsMarkup(related)+'</details></div>';
 }
 function scrollChatToBottom(){const chat=document.querySelector('#chat-messages');if(!chat)return;const scroll=()=>{chat.scrollTop=chat.scrollHeight;const last=chat.lastElementChild;if(last)last.scrollIntoView({block:'end',behavior:'auto'});};scroll();requestAnimationFrame(()=>requestAnimationFrame(scroll));}
-function render(){try{document.body.classList.toggle('home-page',page==='overview');document.body.classList.toggle('has-page-back',page!=='overview'&&page!=='ask');let c=document.querySelector('#page-content');if(!c)throw Error('Main page container is missing');const pages={overview,ask,knowledge,vault:documentVault,uploads:uploadedItems,notes:notesOnly,planner,tasks,study:studyPlanner,backup:backupRestore,projects,expenses,loans:()=>{window.moneyTab='udhaar';return expenses()},settings,memory:personalMemory,analytics:()=>window.OneAnalytics?.dashboardHTML()||'<section class="card">Analytics is loading…</section>'};c.innerHTML=(pages[page]||overview)();updateNotificationBell();if(window.OneAnalytics)window.OneAnalytics.trackPage(page);if(page!=='overview'&&page!=='ask')c.insertAdjacentHTML('afterbegin',backHomeButton());if(page==='ask')scrollChatToBottom();document.querySelector('.mobile-nav')?.remove();document.querySelector('.floating-create-button')?.remove();if(page==='overview'){const fab=document.createElement('button');fab.className='floating-create-button';fab.type='button';fab.dataset.action='open-quick-add';fab.setAttribute('aria-label','Create new item');fab.innerHTML='<span aria-hidden="true">＋</span> Create';document.body.appendChild(fab)}}catch(err){console.error('Student Brain render failed',err);const c=document.querySelector('#page-content');if(c)c.innerHTML='<section class="card"><h2>Workspace could not load</h2><p>Refresh the page. If this continues, export your backup before clearing browser data, then share the browser console error.</p><small></small></section>';const msg=document.querySelector('#page-content small');if(msg)msg.textContent=String(err?.message||err)}}
+function render(){try{document.body.classList.toggle('home-page',page==='overview');document.body.classList.toggle('has-page-back',page!=='overview'&&page!=='ask');let c=document.querySelector('#page-content');if(!c)throw Error('Main page container is missing');const pages={overview,ask,knowledge,vault:documentVault,uploads:uploadedItems,notes:notesOnly,planner,tasks,study:studyPlanner,backup:backupRestore,projects,expenses,loans:()=>{window.moneyTab='udhaar';return expenses()},settings,memory:personalMemory,analytics:()=>window.OneAnalytics?.dashboardHTML()||'<section class="card">Analytics is loading…</section>'};c.innerHTML=(pages[page]||overview)();updateNotificationBell();if(window.OneAnalytics)window.OneAnalytics.trackPage(page);if(page!=='overview'&&page!=='ask')c.insertAdjacentHTML('afterbegin',backHomeButton());if(page==='ask')scrollChatToBottom();document.querySelector('.mobile-nav')?.remove();document.querySelector('.floating-create-button')?.remove();if(page==='overview'){const fab=document.createElement('button');fab.className='floating-create-button';fab.type='button';fab.dataset.action='open-quick-add';fab.setAttribute('aria-label','Create new item');fab.innerHTML='<span aria-hidden="true">＋</span> Create';document.body.appendChild(fab)}}catch(err){console.warn("Operation failed; diagnostic details redacted.");const c=document.querySelector('#page-content');if(c)c.innerHTML='<section class="card"><h2>Workspace could not load</h2><p>Refresh the page. If this continues, export your backup before clearing browser data, then share the browser console error.</p><small></small></section>';const msg=document.querySelector('#page-content small');if(msg)msg.textContent=String(err?.message||err)}}
 function closeQuickAddMenu(){
  const root=document.querySelector('#modal-root');
  root?.querySelector('.create-radial-backdrop')?.remove();
@@ -558,7 +558,7 @@ async function summarizeDocument(id){
   const prompt='Create a concise, accurate summary of this uploaded document. Include its purpose, key facts, important dates, deadlines or expiry details, and action items. Use only information in the document. Clearly say when something is not stated. Do not guess. Keep it under 250 words.';
   const result=await requestStudentBrainAI(prompt,id);
   doc.summary=result.answer.trim().slice(0,5000);doc.summaryUpdatedAt=Date.now();doc.summarySources=result.sources||[];persist();render();toast('AI summary saved to your document');
- }catch(error){console.error('Document summary failed',error);toast(error.message||'Could not summarize document')}
+ }catch(error){console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'Could not summarize document')}
  finally{if(button&&button.isConnected){button.disabled=false;button.textContent='Generate AI summary'}}
 }
 function openVaultResult(id){
@@ -737,19 +737,19 @@ async function retryDocumentOCR(id){
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pg.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
        const ocr=await runImageOCR(canvas);if(ocr.trim())pageText='[OCR]\n'+ocr.trim();
-      }catch(ocrError){console.warn('Scanned PDF OCR failed',p,ocrError)}
+      }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No readable text found.]')+'\n';
      pg.cleanup?.();
     }
    }else{
-    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('OCR could not read image; preserving it for Gemini vision.',ocrError)}}
+    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}}
    }
    await saveOriginalDocument(id,file);
    doc.extractedText=extracted.trim()||'[No readable text detected. Original file is available for AI analysis.]';
    doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.mimeType=file.type||'';doc.size=file.size;doc.fileStored=true;doc.created=Date.now();
    persist();render();toast('Original file and extracted text refreshed');
-  }catch(err){console.error(err);toast(err.message||'OCR retry failed')}
+  }catch(err){console.warn("Operation failed; diagnostic details redacted.");toast(err.message||'OCR retry failed')}
  };
  picker.click();
 }
@@ -794,7 +794,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
   try{
    let extracted='';
    if(isPdf){
-    if(!window.pdfjsLib){console.warn('PDF.js unavailable; preserving the original PDF for AI analysis.');}else{
+    if(!window.pdfjsLib){console.warn("Operation failed; diagnostic details redacted.");}else{
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     if(pdf.numPages>100){extracted='[This PDF has '+pdf.numPages+' pages. The original file is saved; split it into smaller files for text extraction.]';}
@@ -809,23 +809,23 @@ async function processUploadedDocuments(files,sourceNoteId=null){
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
        const ocr=await runImageOCR(canvas);if(ocr.trim())pageText='[OCR]\n'+ocr.trim();
-      }catch(ocrError){console.warn('Scanned PDF OCR failed',p,ocrError)}
+      }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
     }
     }
    }else{
     setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
-    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn('Image OCR failed. The original image will still be saved for AI visual analysis.',ocrError)}}
+    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}}
    }
    setProgress(88,'Saving '+file.name);const id=uid();let fileStored=false;
-   try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file could not be saved; keeping extracted text only.',storageError)}
+   try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}
    const extractedText=extracted.trim()||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
    data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted'});
    persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded');render();setProgress(92,'Extracting structured JSON for '+file.name);toast('File uploaded. Structuring and saving to Knowledge…');await convertDocumentToJSON(id);
-  }catch(err){console.error('Document extraction failed',err);setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
+  }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
 
@@ -847,7 +847,7 @@ async function convertDocumentToJSON(id){
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
   doc.extractedJson=payload.json;doc.jsonStatus='saved_to_knowledge';doc.jsonSavedToKnowledge=true;doc.jsonConvertedAt=Date.now();doc.jsonSavedAt=Date.now();doc.structuredSearchText=JSON.stringify(payload.json);persist();render();toast('Structured JSON saved to My Knowledge');
- }catch(error){doc.jsonStatus='error';doc.jsonError=String(error.message||'Conversion failed');persist();render();console.error('Convert to JSON failed',error);toast(error.message||'Could not convert document');}
+ }catch(error){doc.jsonStatus='error';doc.jsonError=String(error.message||'Conversion failed');persist();render();console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'Could not convert document');}
 }
 function downloadDocumentJSON(id){
  const doc=(data.documents||[]).find(item=>item.id===id);if(!doc?.extractedJson){toast('Convert to JSON first');return}
@@ -862,7 +862,7 @@ async function copyDocumentJSON(id){
 function documentTextToJSON(name,text){
  const extractor=window.StudentBrainDocumentExtractor;
  if(!extractor||typeof extractor.extract!=='function'){
-  console.error('Document JSON extractor module is unavailable.');
+  console.warn("Operation failed; diagnostic details redacted.");
   return {document_name:String(name||'Untitled document'),schema_version:3,extraction_status:'extractor_unavailable',pages:[],structured_data:{key_value:[],tables:[],timetable:[],line_records:[]},extraction_notes:['The JSON extractor module did not load. Original extracted text is retained separately.']};
  }
  return extractor.extract(name,text);
@@ -1093,7 +1093,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
      inlineFile={name:matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
      if(!sources.includes(label))sources.push(label);
     }
-   }catch(fileError){console.warn('Could not attach matched original image; using extracted text instead.',fileError)}
+   }catch(fileError){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
@@ -1574,7 +1574,7 @@ async function sendChat(question,targetDocId=null){
  chatBusy=true;render();scrollChatToBottom();
  try{const result=await requestStudentBrainAI(query,targetDocId);data.messages.push({role:'assistant',content:result.answer,sources:result.sources})}
  catch(error){
-  console.error('Ask My Brain AI request failed',error);
+  console.warn("Operation failed; diagnostic details redacted.");
   const fallback=aiAnswer(query),hasFallback=Array.isArray(fallback.sources)&&fallback.sources.length>0;
   data.messages.push({role:'assistant',content:(hasFallback?fallback.answer+'\n\n':'')+'AI connection: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing the local search fallback above.':'\nYour saved data is still stored locally. Retry after the AI setup issue is fixed.'),sources:hasFallback?fallback.sources:[]});
  }finally{chatBusy=false;persist();render();scrollChatToBottom()}
@@ -1583,7 +1583,7 @@ async function sendChat(question,targetDocId=null){
 function action(name,id,extra){if(name!=='open-quick-add'&&name!=='quick-add-upload'&&name!=='close-quick-add')closeQuickAddMenu();const modalRoot=document.querySelector('#modal-root');if(name!=='open-quick-add'&&name!=='quick-add-upload'&&modalRoot?.querySelector('.quick-add-modal'))modalRoot.innerHTML='';const map={ 'open-quick-add':()=>openQuickAdd(),'extract-document-actions':()=>reviewOneExtractedActions('document',id),'extract-note-actions':()=>reviewOneExtractedActions('note',id),'new-knowledge-entry':()=>openForm('note'),'quick-add-upload':()=>openUploadForm(),'close-quick-add':()=>closeQuickAddMenu(),'new-note':()=>openForm('note'),'new-memory':()=>openMemoryForm(),'edit-memory':()=>openMemoryForm(id),'delete-memory':()=>{if(confirm('Delete this saved memory?')){data.memories=(data.memories||[]).filter(m=>m.id!==id);persist();render();toast('Memory deleted')}},'go-memory':()=>{page='memory';render()},'voice-quick-command':()=>{if(window.startStudentBrainListening)window.startStudentBrainListening();else toast('Voice assistant is loading. Try again.');},'edit-note':()=>openForm('note',id),'delete-note':()=>confirmDelete('notes',id),'delete-document':()=>{removeOriginalDocument(id);data.documents=(data.documents||[]).filter(d=>d.id!==id);persist();render();toast('Document deleted')},'toggle-document-pin':()=>{const doc=(data.documents||[]).find(d=>d.id===id);if(doc){doc.pinned=!doc.pinned;doc.pinnedAt=doc.pinned?Date.now():null;persist();render();toast(doc.pinned?'Document pinned':'Document unpinned')}},'save-document-expiry':()=>{const doc=(data.documents||[]).find(d=>d.id===id),value=document.querySelector('#document-expiry-'+CSS.escape(id))?.value||'';if(!doc)return;if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){toast('Choose a valid expiry date');return}doc.expiresOn=value||null;doc.expiryReminderDays=Array.isArray(doc.expiryReminderDays)?doc.expiryReminderDays:[30,7,1,0];persist();render();toast(value?'Document expiry saved':'Expiry date cleared')},'connect-document-note':()=>{const doc=(data.documents||[]).find(d=>d.id===id),noteId=document.querySelector('[data-document-note-select="'+CSS.escape(id)+'"]')?.value;if(!doc||!noteId){toast('Choose a note first');return}doc.relatedNoteIds=Array.isArray(doc.relatedNoteIds)?doc.relatedNoteIds:[];if(!doc.relatedNoteIds.includes(noteId))doc.relatedNoteIds.push(noteId);persist();render();toast('Related note connected')},'summarize-document':()=>summarizeDocument(id),'open-vault-result':()=>openVaultResult(id),'retry-document-ocr':()=>retryDocumentOCR(id),'convert-document-json':()=>convertDocumentToJSON(id),'copy-document-json':()=>copyDocumentJSON(id),'download-document-json':()=>downloadDocumentJSON(id),'save-document-json':()=>{const doc=(data.documents||[]).find(d=>d.id===id);if(doc?.extractedJson){doc.jsonSavedToKnowledge=true;doc.jsonSavedAt=Date.now();doc.jsonStatus='saved_to_knowledge';persist();render();toast('JSON saved to My Knowledge')}else toast('Convert to JSON first')},'ask-document':()=>askDocument(id),'new-task':()=>{openForm('task');if(window.plannerSelectedDate){const dueField=document.querySelector('#edit-form [name=due]');if(dueField)dueField.value=window.plannerSelectedDate}},'enable-reminders':()=>enableTaskReminders(),'open-notifications':()=>notificationCentre(),'snooze-task-10':()=>snoozeTaskReminder(id,10),'snooze-task-60':()=>snoozeTaskReminder(id,60),'snooze-task-1440':()=>snoozeTaskReminder(id,1440),'reschedule-notification-task':()=>openForm('task',id),'complete-notification-task':()=>{const task=(data.tasks||[]).find(t=>t.id===id);if(task&&!task.done){task.done=true;task.completedAt=Date.now();task.updated=Date.now();(data.notifications||[]).filter(n=>n.taskId===id).forEach(n=>n.read=true);persist();notificationCentre();toast('Reminder marked complete')}},'open-notification-note':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item?.relatedId){const note=(data.notes||[]).find(n=>n.id===item.relatedId);if(note){document.querySelector('#modal-root').innerHTML='';page='notes';window.noteQuery=note.title||'';render();requestAnimationFrame(()=>document.querySelector('.note-card')?.scrollIntoView({behavior:'smooth',block:'center'}));}}},'open-notification-document':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item?.relatedId){document.querySelector('#modal-root').innerHTML='';page='vault';render();requestAnimationFrame(()=>document.querySelector('#vault-document-'+CSS.escape(item.relatedId))?.scrollIntoView({behavior:'smooth',block:'center'}));}},'mark-notification-read':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item){item.read=true;persist();notificationCentre();}},'mark-all-notifications-read':()=>{(data.notifications||[]).forEach(item=>item.read=true);persist();notificationCentre();},'open-notification-task':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item?.taskId){const task=data.tasks.find(t=>t.id===item.taskId);if(task){document.querySelector('#modal-root').innerHTML='';page='planner';window.plannerView='All';render();requestAnimationFrame(()=>document.querySelector('[data-action="edit-task"][data-id="'+CSS.escape(task.id)+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));}}},'share-task-whatsapp':()=>shareTaskReminder(id,'whatsapp'),'share-task-telegram':()=>shareTaskReminder(id,'telegram'),'save-money-budget':()=>{const amount=Number(document.querySelector('#money-budget-amount')?.value||0),month=window.expenseMonth||today().slice(0,7);if(!Number.isFinite(amount)||amount<=0){toast('Enter a valid monthly budget');return}data.moneyBudgets=Array.isArray(data.moneyBudgets)?data.moneyBudgets:[];const existing=data.moneyBudgets.find(x=>x.month===month);if(existing)existing.amount=amount;else data.moneyBudgets.push({month,amount,updated:Date.now()});persist();render();toast('Monthly budget saved')},'new-study':()=>openForm('study'),'edit-task':()=>openForm('task',id),'delete-task':()=>confirmDelete('tasks',id),'new-project':()=>openForm('project'),'edit-project':()=>openForm('project',id),'new-expense':()=>{openForm('expense');if(id&&['lent','borrowed'].includes(id)){const kindField=document.querySelector('#edit-form [name=kind]');if(kindField)kindField.value=id;const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField)categoryField.value='Udhaar'}},'loan-repayment':()=>{const person=id,hasLent=data.expenses.some(e=>e.person===person&&e.kind==='lent');openForm('expense');const kindField=document.querySelector('#edit-form [name=kind]');if(kindField)kindField.value=hasLent?'lent_repayment':'borrowed_repayment';const personField=document.querySelector('#edit-form [name=person]');if(personField)personField.value=person;const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField)categoryField.value='Repayment';const descriptionField=document.querySelector('#edit-form [name=description]');if(descriptionField)descriptionField.value=(hasLent?'Received from ':'Repaid to ')+person},'loan-person-history':()=>{window.loanPersonFilter=id;page='loans';render();document.querySelector('.loan-history-title')?.scrollIntoView({behavior:'smooth'})},'loan-clear-filter':()=>{window.loanPersonFilter='';render()},'expense-quick-action':()=>{if(id==='all'){window.expenseMonth='';render();return}openForm('expense');const typeField=document.querySelector('#edit-form [name=kind]');if(typeField){typeField.value=id;typeField.dispatchEvent(new Event('change',{bubbles:true}))}const descriptionField=document.querySelector('#edit-form [name=description]');if(descriptionField){descriptionField.focus();descriptionField.setSelectionRange?.(0,descriptionField.value.length)}const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField&&id.includes('repayment'))categoryField.value='Repayment';const personField=document.querySelector('#edit-form [name=person]');if(personField&&id!=='expense')personField.placeholder='Who was the money for/from?'},'edit-expense':()=>openForm('expense',id),'delete-expense':()=>confirmDelete('expenses',id),'delete-study':()=>{data.studySessions=(data.studySessions||[]).filter(x=>x.id!==id);persist();render();toast('Study session removed')},'planner-view':()=>{window.plannerView=id;render();requestAnimationFrame(()=>document.querySelector('.planner-view-heading')?.scrollIntoView({behavior:'smooth',block:'start'}))},'planner-date':()=>{window.plannerSelectedDate=id;render();document.querySelector('.planner-selected-date')?.scrollIntoView({behavior:'smooth',block:'nearest'})},'planner-month':()=>{const base=window.plannerMonth||today().slice(0,7);if(id==='today')window.plannerMonth=today().slice(0,7);else{const [year,month]=base.split('-').map(Number),next=new Date(year,month-1+(id==='next'?1:-1),1);window.plannerMonth=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')}window.plannerSelectedDate=null;render()},'go-ask':()=>{page='ask';render()},'toggle-task-section':()=>{window.taskSectionExpanded=(window.taskSectionExpanded||'open')===id?'':id;render();},'go-planner':()=>{page='planner';window.plannerView='All';render()},'go-udhaar':()=>{page='expenses';window.moneyTab='udhaar';render()},'go-money-reports':()=>{page='expenses';window.moneyTab='reports';window.expenseMonth=today().slice(0,7);render()},'go-knowledge':()=>{page='knowledge';render()},'toggle-task':()=>{let t=data.tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;if(t.done)t.completedAt=Date.now();else delete t.completedAt;persist();render();toast(t.done?'Task marked complete':'Task moved back to open tasks')},'all-expenses':()=>{window.expenseMonth='';render()},'export-data':()=>exportData(),'restore-data':()=>restoreData(),'clear-data':()=>clearData(),'close-modal':()=>{window.oneActionReview=null;document.querySelector('#modal-root').innerHTML='';closeQuickAddMenu();document.querySelector('.floating-create-button')?.classList.remove('is-hidden')}};map[name]?.()}
 function confirmDelete(key,id){const item=data[key].find(x=>x.id===id);if(!item)return;if(confirm(`Delete "${item.title||item.name||item.description}"? This cannot be undone.`)){data[key]=data[key].filter(x=>x.id!==id);persist();render();toast('Deleted')}}
 function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid backup');if(!confirm('Restore this backup and replace current workspace data?'))return;data={...starter(),...parsed};persist();page='overview';render();toast('Backup restored')}catch(e){toast('Invalid Student Brain backup file')}};reader.readAsText(f)}
-function exportData(){try{const payload={app:'Student Brain',backupVersion:1,exportedAt:new Date().toISOString(),data:migrateData(data)},blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='student-brain-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup downloaded')}catch(err){console.error('Backup export failed',err);toast('Could not create backup. Check browser storage and try again.')}}
+function exportData(){try{const payload={app:'Student Brain',backupVersion:1,exportedAt:new Date().toISOString(),data:migrateData(data)},blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='student-brain-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup downloaded')}catch(err){console.warn("Operation failed; diagnostic details redacted.");toast('Could not create backup. Check browser storage and try again.')}}
 function parseBackupPayload(parsed){
  const payload=parsed?.app==='Student Brain'&&parsed?.data?parsed.data:parsed;
  if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.notes)||!Array.isArray(payload.tasks))throw Error('This file is not a valid Student Brain backup.');
@@ -1607,7 +1607,7 @@ function restoreData(){
   const exportedAt=parsed?.exportedAt&&Number.isFinite(Date.parse(parsed.exportedAt))?new Date(parsed.exportedAt).toLocaleString():null;
   if(!confirm('Restore '+(exportedAt?'backup from '+exportedAt:'this backup')+' and replace current workspace data? A recovery snapshot of the current workspace will be saved first.'))return;
   localStorage.setItem(workspaceStorageKey()+'-pre-restore',JSON.stringify(migrateData(data)));data=next;persist();page='overview';render();toast('Backup restored. Previous data is saved as a recovery snapshot.');
- }catch(err){console.error('Restore failed',err);toast(err.message||'Invalid backup file')}};
+ }catch(err){console.warn("Operation failed; diagnostic details redacted.");toast(err.message||'Invalid backup file')}};
  reader.onerror=()=>toast('Could not read backup file. Try selecting it again.');reader.readAsText(f);
 }
 function clearData(){if(confirm('Delete all Student Brain data saved in this browser? Export first if you need a backup.')){data=starter();persist();render();toast('Local data cleared')}}
@@ -1709,7 +1709,7 @@ window.submitStudentBrainVoiceText = function(raw) {
   speakVoiceConfirmation('Saved to Knowledge.');
   return true;
  } catch(err) {
-  console.error('Voice command failed',err);
+  console.warn("Operation failed; diagnostic details redacted.");
   toast('Could not save that voice command. Please try again.');
   return false;
  }
@@ -1734,7 +1734,7 @@ async function enableTaskReminders(){
   await checkTaskReminders();
   if(cloudReady&&cloudUser?.id&&'PushManager' in window&&navigator.serviceWorker){
    try{await enableAndroidPush();toast('Android push notifications connected')}
-   catch(error){console.warn('Android push setup unavailable',error);toast('In-app reminders enabled. Push setup needs server configuration.')}
+   catch(error){console.warn("Operation failed; diagnostic details redacted.");toast('In-app reminders enabled. Push setup needs server configuration.')}
   }else toast('In-app reminders enabled. Sign in to connect Android push.');
  }catch(err){toast('Could not enable notifications')}
 }
@@ -1756,7 +1756,7 @@ async function enableAndroidPush(){
  const {error}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
  if(error)throw error;
  const test=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
- if(test.error)console.warn('Push test notification could not be sent',test.error);
+ if(test.error)console.warn("Operation failed; diagnostic details redacted.");
  return subscription;
 }
 async function checkTaskReminders(){
@@ -1789,7 +1789,7 @@ async function checkTaskReminders(){
    try{addAppNotification({title:'One · Task reminder',body:task.title+' · Due '+dateFmt(occurrence)+' at '+(task.reminderTime||'09:00')+linkText,type:'task',taskId:task.id,tag:key,relatedType:linkedNote?'note':linkedDoc?'document':null,relatedId:linkedNote?.id||linkedDoc?.id||null});
     if('Notification' in window&&Notification.permission==='granted'){const reg=await navigator.serviceWorker?.ready,url='./?open=task&id='+encodeURIComponent(task.id);if(reg?.showNotification)await reg.showNotification('One · Task reminder',{body:task.title+' is due '+(lead?'soon':'today')+'.'+linkText,icon:'./icons/student-brain.svg',tag:key,data:{url}});else new Notification('One · Task reminder',{body:task.title+' is due today.'})}
     shown[key]=true;
-   }catch(err){console.warn('Task notification failed',err)}
+   }catch(err){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
  const todayDate=today();
@@ -1803,7 +1803,7 @@ async function checkTaskReminders(){
   const key='document-expiry-'+doc.id+'-'+doc.expiresOn+'-'+todayDate;
   if(shown[key])continue;
   try{await notify('One · Document expiry reminder',(doc.name||'A saved document')+(days===0?' expires today.':days===1?' expires tomorrow.':' expires in '+days+' days.')+' Review or renew it if needed.',key,null,'document');shown[key]=true}
-  catch(error){console.warn('Document expiry reminder failed',error)}
+  catch(error){console.warn("Operation failed; diagnostic details redacted.")}
  }
  const loanRows=(data.expenses||[]).filter(e=>['lent','borrowed'].includes(e.kind)&&e.dueDate&&e.dueDate<=today());
  for(const entry of loanRows){
@@ -1814,14 +1814,14 @@ async function checkTaskReminders(){
   const key='loan-'+entry.id,last=Number(shown[key]||0),when=new Date(entry.dueDate+'T09:00:00').getTime();
   if(now<when||now-last<24*60*60*1000)continue;
   try{await notify('One · Udhaar repayment reminder',(entry.kind==='lent'?'Expected repayment from ':'Repayment due to ')+(entry.person||'Unknown')+' · '+money(entry.amount)+' · '+(entry.dueDate<today()?'Overdue since ':'Due today: ')+dateFmt(entry.dueDate),key,null,'money');shown[key]=now}
-  catch(err){console.warn('Udhaar notification failed',err)}
+  catch(err){console.warn("Operation failed; diagnostic details redacted.")}
  }
- try{localStorage.setItem(taskReminderStorageKey(),JSON.stringify(shown))}catch(err){console.warn('Could not save reminder history',err)}
+ try{localStorage.setItem(taskReminderStorageKey(),JSON.stringify(shown))}catch(err){console.warn("Operation failed; diagnostic details redacted.")}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>checkTaskReminders());
 else checkTaskReminders();
 setInterval(checkTaskReminders,60000);window.addEventListener('focus',checkTaskReminders);
-window.addEventListener('online',()=>{if(cloudReady&&cloudUser){if(cloudRetryTimer)clearTimeout(cloudRetryTimer);cloudRetryDelay=1500;queueCloudSave().then(()=>refreshCloudWorkspace(cloudUser?.id)).catch(error=>console.warn('Online sync retry failed',error))}});
+window.addEventListener('online',()=>{if(cloudReady&&cloudUser){if(cloudRetryTimer)clearTimeout(cloudRetryTimer);cloudRetryDelay=1500;queueCloudSave().then(()=>refreshCloudWorkspace(cloudUser?.id)).catch(error=>console.warn("Operation failed; diagnostic details redacted."))}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&cloudReady&&cloudUser&&cloudMode!=='synced')queueCloudSave()});document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkTaskReminders()});
 
 function speakVoiceConfirmation(message){if(typeof window.isStudentBrainVoiceRepliesOn!=='function'||!window.isStudentBrainVoiceRepliesOn()||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(message);u.lang='en-IN';window.speechSynthesis.speak(u)}
@@ -1872,13 +1872,13 @@ function switchAccountWorkspace(user){
    }
   }
   if(saved){
-   try{data=migrateData(JSON.parse(saved))}catch(error){console.error('Account workspace could not be read; preserving its raw backup.',error);data=starter()}
+   try{data=migrateData(JSON.parse(saved))}catch(error){console.warn("Operation failed; diagnostic details redacted.");data=starter()}
   }else{data=starter();localStorage.setItem(activeWorkspaceKey,JSON.stringify(data))}
   await migrateWorkspaceToIndexedDB();
   render();
   if(nextUserId){
    try{await activateCloudWorkspace(nextUserId)}
-   catch(error){console.error('Cloud workspace activation failed',error);cloudReady=false;cloudUser=null;setCloudMode('error','Saved locally. Cloud sync could not start: '+(error.message||'Unknown error'))}
+   catch(error){console.warn("Operation failed; diagnostic details redacted.");cloudReady=false;cloudUser=null;setCloudMode('error','Saved locally. Cloud sync could not start: '+(error.message||'Unknown error'))}
   }else setCloudMode('offline','Guest data is saved only on this device. Sign in to sync across devices.');
   render();
  });
