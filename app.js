@@ -1149,20 +1149,20 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    const nextWeek=new Date(today()+'T00:00:00');nextWeek.setDate(nextWeek.getDate()+7);
    const weekKey=nextWeek.getFullYear()+'-'+String(nextWeek.getMonth()+1).padStart(2,'0')+'-'+String(nextWeek.getDate()).padStart(2,'0');
    selectedTasks=taskPool.filter(task=>!task.done&&(!task.due||task.due<=weekKey)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,25);
-  }else selectedTasks=(matches.length?matches.map(item=>item.task):taskPool.slice().sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999')))).slice(0,40);
+  }else selectedTasks=matches.map(item=>item.task).slice(0,40);
  }
  const tasks=selectedTasks.map(task=>{const source='Task: '+String(task.title||'Untitled task');sources.push(source);return {source,title:task.title||'',category:task.category||'',due:task.due||null,priority:task.priority||'Medium',completed:!!task.done,notes:String(task.notes||'').slice(0,500)}});
  let selectedProjects=[];
  if(asksProjects){
   const ranked=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.title,project.description,project.status].join(' '),terms)}));
   const matches=ranked.filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
-  selectedProjects=(matches.length?matches.map(item=>item.project):ranked.map(item=>item.project)).slice(0,15);
+  selectedProjects=matches.map(item=>item.project).slice(0,15);
  }
  const projects=selectedProjects.map(project=>{const source='Project: '+String(project.name||project.title||'Untitled project');sources.push(source);return {source,name:project.name||project.title||'',description:String(project.description||'').slice(0,700),status:project.status||'In progress',targetDate:project.targetDate||null}});
  let selectedMemories=[];
  if(asksMemories){
   const ranked=(data.memories||[]).map(memory=>({memory,score:aiTextScore([memory.title,memory.category,memory.content].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
-  selectedMemories=(ranked.length?ranked.map(item=>item.memory):(data.memories||[])).slice(0,15);
+  selectedMemories=ranked.map(item=>item.memory).slice(0,15);
  }
  const memories=selectedMemories.map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
  const studySessions=asksRoutines?(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined))):[];
