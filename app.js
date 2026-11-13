@@ -863,8 +863,8 @@ async function processUploadedDocuments(files,sourceNoteId=null){
     if(!window.pdfjsLib)throw new Error('PDF reader did not load. Check your internet connection, refresh One, and retry.');else{
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    if(pdf.numPages>100){extracted='[This PDF has '+pdf.numPages+' pages. The original file is saved; split it into smaller files for text extraction.]';}
-    for(let p=1;p<=pdf.numPages;p++){
+     const pageLimit=Math.min(pdf.numPages,100);
+     for(let p=1;p<=pageLimit;p++){
      setProgress((p-1)/pdf.numPages*85,'Reading page '+p+' of '+pdf.numPages+' · '+file.name);
      const pdfPage=await pdf.getPage(p),content=await pdfPage.getTextContent();
      let pageText=content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
@@ -878,6 +878,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
+     if(pdf.numPages>pageLimit)extracted+='\n[Extraction limited to first '+pageLimit+' of '+pdf.numPages+' pages. Split the remaining pages into another file.]';
     }
     }
    }else{
