@@ -739,12 +739,12 @@ async function retryDocumentOCR(id){
     for(let p=1;p<=pdf.numPages;p++){
      const pg=await pdf.getPage(p),ct=await pg.getTextContent();
      let pageText=ct.items.filter(x=>String(x.str||'').trim()).map(x=>x.str).join(' ');
-     if(pageText.trim().length<24&&window.Tesseract){
+     if(shouldRunDocumentOCR(pageText)&&window.Tesseract){
       try{
-       const base=pg.getViewport({scale:1}),viewport=pg.getViewport({scale:Math.min(1.8,1800/base.width)});
+       const base=pg.getViewport({scale:1}),viewport=pg.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pg.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-       const ocr=await runImageOCR(canvas);if(ocr.trim())pageText='[OCR]\n'+ocr.trim();
+       const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No readable text found.]')+'\n';
@@ -762,31 +762,61 @@ async function retryDocumentOCR(id){
  picker.click();
 }
 
+function documentTextQuality(value){
+ const text=String(value||'').replace(/\[Page\s+\d+\]|\[OCR\]/gi,' ').trim();
+ if(!text)return 0;
+ const chars=[...text].filter(ch=>/[\p{L}\p{N}]/u.test(ch)).length;
+ const visible=[...text].filter(ch=>!/\s/u.test(ch)).length||1;
+ const words=text.split(/\s+/).filter(Boolean);
+ const usefulWords=words.filter(word=>/[\p{L}\p{N}]{2,}/u.test(word)).length;
+ const repeated=(text.match(/(.)\1{4,}/gu)||[]).join('').length;
+ return Math.max(0,Math.min(1,(chars/visible)*.55+(usefulWords/Math.max(1,words.length))*.45-(repeated/visible)*.5));
+}
+function shouldRunDocumentOCR(value){
+ const text=String(value||'').replace(/\[Page\s+\d+\]|\[OCR\]|\[No selectable text detected[^\]]*\]/gi,' ').trim();
+ return text.length<48||documentTextQuality(text)<.48;
+}
 async function runImageOCR(file){
- const recognize=async source=>{let out;try{out=await window.Tesseract.recognize(source,'eng+hin')}catch(_){out=await window.Tesseract.recognize(source,'eng')}return out.data.text||''};
- const cleanText=value=>String(value||'').replace(/[\\t\\f\\v]+/g,' ').split(/\\r?\\n/).map(line=>line.replace(/\s+/g,' ').trim()).filter(line=>line&&!/^[|_~•·.\\-]{2,}$/.test(line)&&!/^([A-Z])\\1{3,}$/.test(line)).join('\\n').trim();
- let best=cleanText(await recognize(file));
- // If OCR is sparse, try enlarged grayscale and thresholded versions. These passes
- // improve legibility without sending visual artwork to the AI as an input.
- if(window.createImageBitmap){
-  const bitmap=await createImageBitmap(file);
+ if(!window.Tesseract?.recognize)throw new Error('OCR engine unavailable. Refresh the page and try again.');
+ const cleanText=value=>String(value||'').replace(/[\t\f\v]+/g,' ').split(/\r?\n/).map(line=>line.replace(/\s+/g,' ').trim()).filter(line=>line&&!/^[|_~•·.\-]{2,}$/.test(line)&&!/^([A-Z])\1{3,}$/.test(line)).join('\n').trim();
+ const quality=value=>documentTextQuality(value);
+ const recognize=async source=>{
+  const languages=['eng+hin','eng','hin'];let best={text:'',score:0,confidence:0,language:''};
+  for(let index=0;index<languages.length;index++){
+   try{
+    const result=await window.Tesseract.recognize(source,languages[index]);
+    const text=cleanText(result?.data?.text||''),confidence=Number(result?.data?.confidence||0);
+    const score=quality(text)*.72+Math.min(100,Math.max(0,confidence))*.0028+Math.min(text.length,1800)/18000;
+    if(score>best.score)best={text,score,confidence,language:languages[index]};
+    if(index===0&&score>.78)break;
+   }catch(error){if(index===languages.length-1&&!best.text)throw error}
+  }
+  return best;
+ };
+ let best=await recognize(file);
+ if(best.text.length<40||quality(best.text)<.55){
+  let bitmap;
   try{
-   const scale=Math.min(2.5,2400/Math.max(bitmap.width,bitmap.height));
-   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-   const pixels=ctx.getImageData(0,0,canvas.width,canvas.height),d=pixels.data;
-   for(let i=0;i<d.length;i+=4){const gray=.299*d[i]+.587*d[i+1]+.114*d[i+2];d[i]=d[i+1]=d[i+2]=gray; }
-   ctx.putImageData(pixels,0,0);
-   const grayText=cleanText(await recognize(canvas));if(grayText.length>best.length)best=grayText;
-   if(best.length<80){
-    const threshold=ctx.getImageData(0,0,canvas.width,canvas.height),td=threshold.data;
-    for(let i=0;i<td.length;i+=4){const v=td[i]>160?255:0;td[i]=td[i+1]=td[i+2]=v}
-    ctx.putImageData(threshold,0,0);
-    const highContrast=cleanText(await recognize(canvas));if(highContrast.length>best.length)best=highContrast;
+   bitmap=await createImageBitmap(file);
+   const scale=Math.min(3,2800/Math.max(bitmap.width,bitmap.height));
+   const canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   if(!ctx)throw new Error('Could not prepare image for OCR.');
+   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+   const gray=ctx.getImageData(0,0,canvas.width,canvas.height),pixels=gray.data;
+   for(let i=0;i<pixels.length;i+=4){const value=.299*pixels[i]+.587*pixels[i+1]+.114*pixels[i+2];pixels[i]=pixels[i+1]=pixels[i+2]=value}
+   ctx.putImageData(gray,0,0);
+   const grayResult=await recognize(canvas);if(grayResult.score>best.score)best=grayResult;
+   if(quality(best.text)<.62){
+    const contrast=ctx.getImageData(0,0,canvas.width,canvas.height),data=contrast.data;
+    for(let i=0;i<data.length;i+=4){const value=data[i]>168?255:0;data[i]=data[i+1]=data[i+2]=value}
+    ctx.putImageData(contrast,0,0);
+    const thresholdResult=await recognize(canvas);if(thresholdResult.score>best.score)best=thresholdResult;
    }
-  }finally{bitmap.close?.()}
+  }finally{bitmap?.close?.()}
  }
- return best;
+ return best.text;
 }
 
 async function processUploadedDocuments(files,sourceNoteId=null){
@@ -802,7 +832,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
   try{
    let extracted='';
    if(isPdf){
-    if(!window.pdfjsLib){console.warn("Operation failed; diagnostic details redacted.");}else{
+    if(!window.pdfjsLib)throw new Error('PDF reader did not load. Check your internet connection, refresh One, and retry.');else{
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     if(pdf.numPages>100){extracted='[This PDF has '+pdf.numPages+' pages. The original file is saved; split it into smaller files for text extraction.]';}
@@ -816,7 +846,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
        const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(1.8,1800/base.width)});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-       const ocr=await runImageOCR(canvas);if(ocr.trim())pageText='[OCR]\n'+ocr.trim();
+       const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
@@ -828,7 +858,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    }
    setProgress(88,'Saving '+file.name);const id=uid();let fileStored=false;
    try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}
-   const readableText=extracted.trim(),usableText=readableText.replace(/\[Page \d+\]|\[No selectable text detected on this page\.\]|\[OCR\]/g,'').trim(),ocrFailed=usableText.replace(/\s/g,'').length<12||/^\[This PDF has/.test(readableText);
+   const readableText=extracted.trim(),usableText=readableText.replace(/\[Page \d+\]|\[No selectable text detected on this page\.\]|\[OCR\]|\[Extraction limited[^\]]*\]/g,'').trim(),ocrFailed=usableText.replace(/\s/g,'').length<12;
    const extractedText=readableText||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
