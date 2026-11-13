@@ -14,6 +14,12 @@ assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+const authSource = readFileSync(new URL('../auth.js', import.meta.url), 'utf8');
+assert.ok(!authSource.includes('one-guest'), 'Guest mode must be removed from authentication.');
+assert.ok(authSource.includes("open('login')"), 'Signed-out users must be forced to the login screen.');
+assert.ok(authSource.includes("document.body.classList.add('one-auth-required')"), 'Workspace must remain hidden until authentication succeeds.');
+assert.ok(!authSource.includes('continue using One as a guest'), 'Login screen must not advertise guest access.');
+
 
 // Syntax validation catches startup-breaking parse errors.
 execFileSync(process.execPath, [
@@ -83,7 +89,7 @@ assert.ok(css.includes('@keyframes create-orb-pop'), 'Radial Quick Add pop-out a
 
 assert.ok(app.includes('async function requestStudentBrainAI('), 'Ask My Brain must call the secure AI function.');
 assert.ok(app.includes('/functions/v1/student-brain-ai'), 'Ask My Brain AI endpoint is missing.');
-assert.ok(app.includes('signInAnonymously()'), 'Ask My Brain must create an anonymous Supabase session without email login.');
+assert.ok(!app.includes('signInAnonymously()'), 'One must not create anonymous sessions; login is compulsory.');
 assert.ok(app.includes('const AI_FILES_DB='), 'Original file browser storage is missing.');
 assert.ok(!app.includes('dataBase64:await fileToBase64(saved.blob)'), 'Ask My Brain should use extracted text only, not send original PDF/image for multimodal analysis.');
 assert.ok(app.includes('async function sendChat('), 'Ask My Brain must use the asynchronous AI response flow.');
