@@ -763,7 +763,7 @@ async function retryDocumentOCR(id){
     if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and retry.');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    if(pdf.numPages>100)throw new Error('PDF exceeds 100 pages.');
+    if(pdf.numPages>100)throw new Error('This PDF has '+pdf.numPages+' pages. One currently extracts up to 100 pages; split the file and retry each part.');
     for(let p=1;p<=pdf.numPages;p++){
      const pg=await pdf.getPage(p),ct=await pg.getTextContent();
      let pageText=ct.items.filter(x=>String(x.str||'').trim()).map(x=>x.str).join(' ');
@@ -868,7 +868,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
      setProgress((p-1)/pdf.numPages*85,'Reading page '+p+' of '+pdf.numPages+' · '+file.name);
      const pdfPage=await pdf.getPage(p),content=await pdfPage.getTextContent();
      let pageText=content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
-     if(pageText.trim().length<24&&window.Tesseract){
+     if(shouldRunDocumentOCR(pageText)&&window.Tesseract){
       try{
        setProgress((p-1)/pdf.numPages*85,'OCR scanning page '+p+' of '+pdf.numPages+' · '+file.name);
        const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(1.8,1800/base.width)});
