@@ -526,11 +526,21 @@ function upcomingUdhaar(){
   return original-repaid>0;
  }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,4);
 }
+function oneWelcomeGreeting(){
+ const account=activeWorkspaceUserId||'guest';
+ const key='one-last-visit-'+account,sessionKey='one-session-welcomed-'+account;
+ let lastVisit='';try{lastVisit=localStorage.getItem(key)||''}catch(_){}
+ let first=!lastVisit;
+ try{if(sessionStorage.getItem(sessionKey))first=false;else sessionStorage.setItem(sessionKey,'1')}catch(_){}
+ try{localStorage.setItem(key,new Date().toISOString())}catch(_){}
+ const name=cloudUser?.user_metadata?.full_name||cloudUser?.user_metadata?.name||cloudUser?.email?.split('@')[0]||'';
+ return {heading:first?'Welcome to One':'Good to see you again',name};
+}
 function overview(){
   const open=data.tasks.filter(t=>!t.done),due=open.filter(t=>t.due&&t.due>today()).sort((a,b)=>a.due.localeCompare(b.due)).slice(0,3),month=today().slice(0,7),spend=data.expenses.filter(e=>(e.kind||'expense')==='expense'&&e.date?.startsWith(month)).reduce((s,e)=>s+Number(e.amount||0),0);
   const week=smartWeekSummary(),overdueTasks=open.filter(t=>t.due&&t.due<today()).sort((a,b)=>a.due.localeCompare(b.due)).slice(0,3);
  return `<div class="home-dashboard">
-  <div class="home-greeting"><div class="eyebrow">YOUR PERSONAL WORKSPACE</div><h1>Good to see you again</h1><p class="subtitle">Your life, work, and goals—organized in one place.</p></div>
+  <div class="home-greeting"><div class="eyebrow">YOUR PERSONAL WORKSPACE</div><h1>${oneWelcomeGreeting().heading}${oneWelcomeGreeting().name?', '+esc(oneWelcomeGreeting().name):''}</h1><p class="subtitle">Your life, work, and goals—organized in one place.</p></div>
   <section class="home-hero">
    <div class="home-hero-meta"><span class="eyebrow">✦ ASK ONE</span><span class="home-hero-powered">Your personal AI assistant</span></div>
    <h2>What can I help you with?</h2>
