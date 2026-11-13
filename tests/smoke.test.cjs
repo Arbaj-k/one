@@ -153,7 +153,7 @@ for (const token of [
   'function render()', 'function aiAnswer(question)', 'function processUploadedDocuments',
   'const structuredDocuments=rankedJson.map(({doc})=>',
   'item.score>0||isDocumentContentQuestion(question)',
-  '(targetDocId||isDocumentContentQuestion(question))&&!matching.length',
+  '(targetDocId||documentQuestion)&&!matching.length',
   'if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id)',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
   'function exportData()', 'function studyPlanner()', 'function projects()',
