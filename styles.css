@@ -1822,3 +1822,16 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 
 /* Calendar, follow-up and knowledge panels */
 .one-intel{margin-top:16px}.one-intel h2{margin-bottom:10px}.one-import{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.one-import small{font-size:11px;color:var(--muted)}.one-conflicts{display:grid;gap:4px;padding:11px;border-radius:10px;background:#fff5e8;border:1px solid #f1dcb8;color:#88520d;margin:10px 0}.one-conflicts small{line-height:1.5}.one-follow-form{display:grid;gap:8px;margin:12px 0}.one-follow-form input,.one-follow-form select{min-width:0;width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fff;color:var(--ink)}.one-follow-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}@media(max-width:700px){.one-follow-row{grid-template-columns:1fr 1fr}.one-follow-row .btn{grid-column:1/-1}.one-import{align-items:flex-start;flex-direction:column}}
+
+/* One compact header and account-aware greeting */
+.topbar{height:64px;padding:0 28px}
+.topbar-right{gap:12px}
+.demo-pill{width:10px;height:10px;min-width:10px;padding:0;border:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#25a56e;position:relative;overflow:visible}
+.demo-pill i{width:8px;height:8px;margin:0;background:#25a56e;box-shadow:0 0 0 3px #25a56e22}
+#cloud-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.demo-pill:has(#cloud-status[data-state="offline"]),.demo-pill:has(#cloud-status[data-state="error"]){background:#d97706}
+.demo-pill:has(#cloud-status[data-state="offline"]) i,.demo-pill:has(#cloud-status[data-state="error"]) i{background:#d97706;box-shadow:0 0 0 3px #d9770622}
+.demo-pill:has(#cloud-status[data-state="syncing"]),.demo-pill:has(#cloud-status[data-state="loading"]){background:#3978df}
+.demo-pill:has(#cloud-status[data-state="syncing"]) i,.demo-pill:has(#cloud-status[data-state="loading"]) i{background:#3978df;box-shadow:0 0 0 3px #3978df22}
+.topbar .avatar{display:none}
+@media(max-width:700px){.topbar{height:56px;padding:0 14px}.topbar-right{gap:10px}.mobile-brand{font-size:15px}.content{padding-top:22px}}
