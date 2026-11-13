@@ -846,7 +846,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    const extractedText=readableText||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
-   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete'});
+   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete'});
    persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded');render();setProgress(92,'Processing '+file.name);toast('File uploaded. Preparing its summary and key dates…');await convertDocumentToJSON(id);await autoProcessDocumentInsights(id);
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
