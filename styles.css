@@ -1837,3 +1837,8 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 @media(max-width:700px){.topbar{height:56px;padding:0 14px}.topbar-right{gap:10px}.mobile-brand{font-size:15px}.content{padding-top:22px}}
 
 .note-link-list{display:grid;gap:7px;margin:12px 0}.note-link-list a{display:block;max-width:100%;overflow-wrap:anywhere;color:var(--blue);font-size:12px;font-weight:700;text-decoration:none;padding:9px 11px;border-radius:10px;background:var(--surface,#f3f6fb)}.note-link-list a:hover{text-decoration:underline}
+
+
+/* Mandatory account gate: workspace UI is inaccessible until authentication succeeds. */
+body.one-auth-required .app{visibility:hidden!important;pointer-events:none!important;user-select:none!important}
+body.one-auth-required{overflow:hidden!important}
