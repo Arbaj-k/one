@@ -1373,10 +1373,12 @@ async function deleteFile(id){
 }
 async function openUploadedFile(id,download=false){
  const record=(data.documents||[]).find(item=>item.id===id);if(!record)return;
- const stored=await getOriginalDocument(id);if(!stored?.blob){toast('Original file is not available on this device.');return}
+ const previewWindow=download?null:window.open('about:blank','_blank');
+ const stored=await getOriginalDocument(id);if(!stored?.blob){previewWindow?.close();toast('Original file is not available on this device.');return}
  const url=URL.createObjectURL(stored.blob);
  if(download){const link=document.createElement('a');link.href=url;link.download=record.originalName||record.name||'file';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);return}
- const win=window.open(url,'_blank','noopener');if(!win){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.click()}setTimeout(()=>URL.revokeObjectURL(url),60000);
+ if(previewWindow)previewWindow.location.href=url;else{const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.click()}
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 function openFileMetadataDialog(file){
  if(!file)return;
