@@ -1075,7 +1075,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   const tokenHits=qTokens.reduce((sum,token)=>sum+(searchable.includes(token)?1:0),0);
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?2:0;
   return {doc,score:tokenHits+phraseHit};
- }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
+ }).filter(item=>targetDocId||item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
  const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
