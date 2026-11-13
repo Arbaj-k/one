@@ -783,7 +783,7 @@ async function retryDocumentOCR(id){
    }
    await saveOriginalDocument(id,file);
    const readable=extracted.trim();doc.extractedText=readable||'[No readable text detected. Original file is available for AI analysis.]';
-   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.mimeType=file.type||'';doc.size=file.size;doc.fileStored=true;doc.created=Date.now();doc.ocrStatus=readable?'complete':'failed';
+   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.originalName=file.name;doc.mimeType=file.type||'';doc.size=file.size;doc.fileStored=true;doc.created=Date.now();doc.ocrQuality=Math.round(documentTextQuality(readable)*100);doc.ocrEngine=window.Tesseract?'tesseract-eng+hin':'pdf-text-layer';doc.ocrCompletedAt=Date.now();doc.ocrStatus=readable?'complete':'failed';doc.extractedJson=documentTextToJSON(doc.name,doc.extractedText);
    persist();render();if(readable){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else toast('No readable text found. You can retry OCR from Advanced options.');
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");toast(err.message||'OCR retry failed')}
  };
