@@ -1407,7 +1407,7 @@ async function chatActionIntent(question){
   return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
  };
  const fieldDateForMoney=()=>{if(/\b(?:yesterday|kal\s+tha|beete\s+kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}return parseDate()||today()};
- const dateKeyword=/\b(?:today|aaj|aaj\s+ka|aaj\s+ki|aaj\s+ke|tomorrow|kal|kal\s+ka|kal\s+ki|kal\s+ke|yesterday|parso|parson|day\s+after\s+tomorrow|next\s+day|आज|आज\s+का|आज\s+की|आज\s+के|कल|कल\s+का|कल\s+की|कल\s+के|परसों)\b/i.test(lower);
+ const dateKeyword=/\b(?:today|today'?s|this\s+day|current\s+day|aaj|aaj\s+ka|aaj\s+ki|aaj\s+ke|tomorrow|kal|kal\s+ka|kal\s+ki|kal\s+ke|yesterday|kal\s+tha|beete\s+kal|parso|parson|day\s+after\s+tomorrow|next\s+day|आज|आज\s+का|आज\s+की|आज\s+के|कल|कल\s+का|कल\s+की|कल\s+के|परसों)\b|\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(lower);
  const dateQueryIntent=dateKeyword&&(/\b(?:task|tasks|todo|to-do|kaam|assignment|planner|money|expense|expenses|spending|kharcha|kharch|income|payment|udhaar|lent|borrowed|repayment|transaction|transactions|schedule|plan|kya|what|show|dikhao|batao|bata|hai|hain|list|details|activity|records?)\b/i.test(lower)||/^\s*(?:today|aaj|kal|tomorrow|yesterday|parso|parson|आज|कल|परसों)\s*[?.!]*$/i.test(lower));
  if(!pendingChatAction&&dateQueryIntent){
   let selectedDate=parseDate();
