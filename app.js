@@ -551,6 +551,17 @@ function overview(){
 
  </div>`;
 }
+async function autoProcessDocumentInsights(id){
+ const doc=(data.documents||[]).find(x=>x.id===id);if(!doc||doc.ocrStatus==='failed'||!String(doc.extractedText||'').trim()||/^\[No readable text/.test(doc.extractedText))return;
+ try{if(!doc.summary)await summarizeDocument(id)}catch(error){console.warn("Automatic document summary unavailable.")}
+ const current=(data.documents||[]).find(x=>x.id===id);if(!current)return;
+ const suggestions=oneExtractActionCandidates(current.extractedText,current.name||'Uploaded document');
+ if(suggestions.length){
+  current.detectedActionItems=suggestions.map(item=>({...item}));
+  current.actionItemsDetectedAt=Date.now();persist();
+  if(page==='vault'){window.oneActionReview={kind:'document',id,suggestions};const rows=suggestions.map((x,i)=>'<label class="field full" style="display:flex;align-items:flex-start;gap:10px"><input type="checkbox" name="oneActionPick" value="'+i+'" checked style="width:auto;margin-top:4px"><span><b>'+esc(x.title)+'</b><small class="muted" style="display:block">'+(x.due?'Suggested due date · '+dateFmt(x.due):'No clear date detected')+'</small></span></label>').join('');modal('Review detected tasks & dates','<p class="muted">One found '+suggestions.length+' possible task(s) or important date(s) in '+esc(current.name)+'. Confirm before adding anything to your planner.</p>'+rows,'Create selected tasks')}
+ }
+}
 async function summarizeDocument(id){
  const doc=(data.documents||[]).find(x=>x.id===id);if(!doc)return;
  if(!String(doc.extractedText||'').trim()||/^\[No readable text/.test(doc.extractedText)){toast('No extracted text available. Run OCR first.');return}
@@ -561,7 +572,7 @@ async function summarizeDocument(id){
   const result=await requestStudentBrainAI(prompt,id);
   doc.summary=result.answer.trim().slice(0,5000);doc.summaryUpdatedAt=Date.now();doc.summarySources=result.sources||[];persist();render();toast('AI summary saved to your document');
  }catch(error){console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'Could not summarize document')}
- finally{if(button&&button.isConnected){button.disabled=false;button.textContent='Generate AI summary'}}
+ finally{if(button&&button.isConnected){button.disabled=false;button.textContent='Refresh AI summary'}}
 }
 function openVaultResult(id){
  const doc=(data.documents||[]).find(x=>x.id===id);
@@ -588,9 +599,9 @@ function documentsCards(){
   const related=documentRelatedNotes(d),noteOptions=(data.notes||[]).map(n=>'<option value="'+esc(n.id)+'" '+(Array.isArray(d.relatedNoteIds)&&d.relatedNoteIds.includes(n.id)?'selected':'')+'>'+esc(n.title||'Untitled note')+'</option>').join('');
   return '<article class="card document-card '+(d.pinned?'document-pinned':'')+'" id="vault-document-'+esc(d.id)+'">'+
    '<div class="row document-card-top"><span class="tag blue">'+(d.type==='pdf'?'PDF':'Image')+'</span><span class="muted">'+(d.pinned?'★ Pinned':'')+'</span><div class="spacer"></div><button class="btn small '+(d.pinned?'primary':'')+'" data-action="toggle-document-pin" data-id="'+esc(d.id)+'">'+(d.pinned?'Unpin':'Pin')+'</button><button class="btn small" data-action="ask-document" data-id="'+esc(d.id)+'">Ask AI</button><button class="btn small danger" data-action="delete-document" data-id="'+esc(d.id)+'">Delete</button></div>'+
-   '<h3>'+esc(d.name)+'</h3><p class="muted">'+esc(d.originalName||'')+' · '+(d.size?Math.ceil(d.size/1024)+' KB':'')+' · '+(d.createdAt||d.created?new Date(d.createdAt||d.created).toLocaleDateString('en-IN'):'Date unavailable')+'</p>'+(d.tags?.length?'<p class="muted">'+d.tags.map(tag=>'#'+esc(tag)).join(' ')+'</p>':'')+(d.note?'<p>'+esc(d.note)+'</p>':'')+'<div class="actions"><button class="btn small" data-action="open-uploaded-file" data-id="'+esc(d.id)+'">View</button><button class="btn small" data-action="download-uploaded-file" data-id="'+esc(d.id)+'">Download</button><button class="btn small" data-action="rename-uploaded-file" data-id="'+esc(d.id)+'">Rename</button></div>'+
+   '<h3>'+esc(d.name)+'</h3><p class="muted">'+esc(d.originalName||'')+' · '+(d.size?Math.ceil(d.size/1024)+' KB':'')+' · '+(d.createdAt||d.created?new Date(d.createdAt||d.created).toLocaleDateString('en-IN'):'Date unavailable')+'</p>'+(d.tags?.length?'<p class="muted">'+d.tags.map(tag=>'#'+esc(tag)).join(' ')+'</p>':'')+(d.note?'<p>'+esc(d.note)+'</p>':'')+'<div class="actions"><button class="btn small primary" data-action="open-uploaded-file" data-id="'+esc(d.id)+'">View</button><details class="document-more-menu"><summary aria-label="More file options">⋯</summary><div class="document-more-options"><button class="btn small" data-action="download-uploaded-file" data-id="'+esc(d.id)+'">Download</button><button class="btn small" data-action="rename-uploaded-file" data-id="'+esc(d.id)+'">Rename</button><button class="btn small" data-action="toggle-document-pin" data-id="'+esc(d.id)+'">'+(d.pinned?'Unpin':'Pin')+'</button><button class="btn small danger" data-action="delete-document" data-id="'+esc(d.id)+'">Delete</button></div></details></div>'+
    '<div class="document-vault-expiry"><label for="document-expiry-'+esc(d.id)+'">Expiry / renewal date</label><div class="row"><input type="date" id="document-expiry-'+esc(d.id)+'" value="'+esc(d.expiresOn||'')+'" aria-label="Expiry date for '+esc(d.name)+'"><button class="btn small" data-action="save-document-expiry" data-id="'+esc(d.id)+'">Save date</button></div><small class="muted">'+(d.expiresOn?'Reminder enabled · '+dateFmt(d.expiresOn):'Add a date to receive expiry reminders')+'</small></div>'+
-   '<div class="actions"><button class="btn small" data-action="extract-document-actions" data-id="'+esc(d.id)+'">Find action items & dates</button><button class="btn small primary" data-action="summarize-document" data-id="'+esc(d.id)+'">'+(d.summary?'Refresh AI summary':'Generate AI summary')+'</button><button class="btn small" data-action="convert-document-json" data-id="'+esc(d.id)+'">Extract structured data</button><button class="btn small" data-action="retry-document-ocr" data-id="'+esc(d.id)+'">Re-upload / OCR</button></div>'+
+   '<details class="document-advanced-menu"><summary>Advanced options</summary><div class="actions"><button class="btn small" data-action="summarize-document" data-id="'+esc(d.id)+'">Refresh AI summary</button>'+(d.ocrStatus==='failed'?'<button class="btn small" data-action="retry-document-ocr" data-id="'+esc(d.id)+'">Retry OCR / Re-upload</button>':'')+'</div></details>'+
    (d.summary?'<section class="document-summary"><b>AI summary</b><p>'+esc(d.summary)+'</p><small class="muted">'+(d.summaryUpdatedAt?'Updated '+new Date(d.summaryUpdatedAt).toLocaleString('en-IN'):'')+'</small></section>':'')+
    '<section class="document-related"><b>Related notes</b>'+(related.length?'<ul>'+related.map(x=>'<li>'+esc(x.note.title||'Untitled note')+(x.linked?' · Connected':' · Suggested')+'</li>').join('')+'</ul>':'<p class="muted">No related notes found yet.</p>')+(data.notes.length?'<div class="row"><select data-document-note-select="'+esc(d.id)+'" aria-label="Choose a note to connect"><option value="">Connect a note…</option>'+noteOptions+'</select><button class="btn small" data-action="connect-document-note" data-id="'+esc(d.id)+'">Connect</button></div>':'')+'</section>'+
    '<small class="muted">'+esc(d.jsonStatus==='saved_to_knowledge'?'Structured data ready':d.jsonStatus==='processing'?'Extracting structured data…':d.jsonStatus==='error'?'Extraction issue: '+(d.jsonError||'Try again'):d.jsonStatus||'Text extracted')+'</small>'+(d.extractedJson?'<details><summary>Structured data · '+esc(d.extractedJson.document_type||'document')+'</summary><pre class="json-preview">'+esc(JSON.stringify(d.extractedJson,null,2).slice(0,12000))+'</pre></details>':'')+'<details><summary>Read extracted text</summary><p class="document-extract">'+esc((d.extractedText||'').slice(0,12000))+((d.extractedText||'').length>12000?'…':'')+'</p></details></article>';
@@ -757,9 +768,9 @@ async function retryDocumentOCR(id){
     if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}}
    }
    await saveOriginalDocument(id,file);
-   doc.extractedText=extracted.trim()||'[No readable text detected. Original file is available for AI analysis.]';
-   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.mimeType=file.type||'';doc.size=file.size;doc.fileStored=true;doc.created=Date.now();
-   persist();render();toast('Original file and extracted text refreshed');
+   const readable=extracted.trim();doc.extractedText=readable||'[No readable text detected. Original file is available for AI analysis.]';
+   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.mimeType=file.type||'';doc.size=file.size;doc.fileStored=true;doc.created=Date.now();doc.ocrStatus=readable?'complete':'failed';doc.summary='';doc.summaryUpdatedAt=null;
+   persist();render();if(readable){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else toast('No readable text found. You can retry OCR from Advanced options.');
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");toast(err.message||'OCR retry failed')}
  };
  picker.click();
@@ -831,11 +842,12 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    }
    setProgress(88,'Saving '+file.name);const id=uid();let fileStored=false;
    try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}
-   const extractedText=extracted.trim()||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
+   const readableText=extracted.trim(),ocrFailed=!readableText||/^\[No readable text/.test(readableText)||/^\[This PDF has/.test(readableText);
+   const extractedText=readableText||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
-   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted'});
-   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded');render();setProgress(92,'Extracting structured JSON for '+file.name);toast('File uploaded. Structuring and saving to Knowledge…');await convertDocumentToJSON(id);
+   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),created:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete'});
+   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded');render();setProgress(92,'Processing '+file.name);toast('File uploaded. Preparing its summary and key dates…');await convertDocumentToJSON(id);await autoProcessDocumentInsights(id);
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
@@ -1811,6 +1823,12 @@ async function sendChat(question,targetDocId=null){
  const actionResult=await chatActionIntent(query);
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
  if(!targetDocId){
+  const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
+  if(structuredRequest&&/\b(file|document|pdf|image|upload|bill|receipt|invoice|iska|is document|iss document)\b/i.test(query)){
+   const candidates=phase5SearchResults(query).filter(item=>item.type==='Document');
+   const doc=candidates.length?(data.documents||[]).find(item=>item.id===candidates[0].id):(data.documents||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
+   if(doc){await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
+  }
   const detected=detectIntent(query);
   if(detected.ambiguous){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
   if(!detected.intent){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
