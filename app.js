@@ -601,7 +601,7 @@ function documentsCards(){
    '<div class="row document-card-top"><span class="tag blue">'+(d.type==='pdf'?'PDF':'Image')+'</span><span class="muted">'+(d.pinned?'★ Pinned':'')+'</span><div class="spacer"></div><button class="btn small '+(d.pinned?'primary':'')+'" data-action="toggle-document-pin" data-id="'+esc(d.id)+'">'+(d.pinned?'Unpin':'Pin')+'</button><button class="btn small" data-action="ask-document" data-id="'+esc(d.id)+'">Ask AI</button><button class="btn small danger" data-action="delete-document" data-id="'+esc(d.id)+'">Delete</button></div>'+
    '<h3>'+esc(d.name)+'</h3><p class="muted">'+esc(d.originalName||'')+' · '+(d.size?Math.ceil(d.size/1024)+' KB':'')+' · '+(d.createdAt||d.created?new Date(d.createdAt||d.created).toLocaleDateString('en-IN'):'Date unavailable')+'</p>'+(d.tags?.length?'<p class="muted">'+d.tags.map(tag=>'#'+esc(tag)).join(' ')+'</p>':'')+(d.note?'<p>'+esc(d.note)+'</p>':'')+'<div class="actions"><button class="btn small primary" data-action="open-uploaded-file" data-id="'+esc(d.id)+'">View</button><details class="document-more-menu"><summary aria-label="More file options">⋯</summary><div class="document-more-options"><button class="btn small" data-action="download-uploaded-file" data-id="'+esc(d.id)+'">Download</button><button class="btn small" data-action="rename-uploaded-file" data-id="'+esc(d.id)+'">Rename</button><button class="btn small" data-action="toggle-document-pin" data-id="'+esc(d.id)+'">'+(d.pinned?'Unpin':'Pin')+'</button><button class="btn small danger" data-action="delete-document" data-id="'+esc(d.id)+'">Delete</button></div></details></div>'+
    '<div class="document-vault-expiry"><label for="document-expiry-'+esc(d.id)+'">Expiry / renewal date</label><div class="row"><input type="date" id="document-expiry-'+esc(d.id)+'" value="'+esc(d.expiresOn||'')+'" aria-label="Expiry date for '+esc(d.name)+'"><button class="btn small" data-action="save-document-expiry" data-id="'+esc(d.id)+'">Save date</button></div><small class="muted">'+(d.expiresOn?'Reminder enabled · '+dateFmt(d.expiresOn):'Add a date to receive expiry reminders')+'</small></div>'+
-   '<details class="document-advanced-menu"><summary>Advanced options</summary><div class="actions"><button class="btn small" data-action="summarize-document" data-id="'+esc(d.id)+'">Refresh AI summary</button>'+(d.ocrStatus==='failed'?'<button class="btn small" data-action="retry-document-ocr" data-id="'+esc(d.id)+'">Retry OCR / Re-upload</button>':'')+'</div></details>'+
+   '<details class="document-advanced-menu"><summary>Advanced options</summary><div class="actions"><button class="btn small" data-action="summarize-document" data-id="'+esc(d.id)+'">Refresh AI summary</button>'+(d.ocrStatus==='failed'?'<p class="muted">Text extraction failed. Retry OCR with a clearer file.</p>':'')+'<button class="btn small" data-action="retry-document-ocr" data-id="'+esc(d.id)+'">Retry OCR / Re-upload</button></div></details>'+
    (d.summary?'<section class="document-summary"><b>AI summary</b><p>'+esc(d.summary)+'</p><small class="muted">'+(d.summaryUpdatedAt?'Updated '+new Date(d.summaryUpdatedAt).toLocaleString('en-IN'):'')+'</small></section>':'')+
    '<section class="document-related"><b>Related notes</b>'+(related.length?'<ul>'+related.map(x=>'<li>'+esc(x.note.title||'Untitled note')+(x.linked?' · Connected':' · Suggested')+'</li>').join('')+'</ul>':'<p class="muted">No related notes found yet.</p>')+(data.notes.length?'<div class="row"><select data-document-note-select="'+esc(d.id)+'" aria-label="Choose a note to connect"><option value="">Connect a note…</option>'+noteOptions+'</select><button class="btn small" data-action="connect-document-note" data-id="'+esc(d.id)+'">Connect</button></div>':'')+'</section>'+
    '<small class="muted">'+esc(d.jsonStatus==='saved_to_knowledge'?'Structured data ready':d.jsonStatus==='processing'?'Extracting structured data…':d.jsonStatus==='error'?'Extraction issue: '+(d.jsonError||'Try again'):d.jsonStatus||'Text extracted')+'</small>'+(d.extractedJson?'<details><summary>Structured data · '+esc(d.extractedJson.document_type||'document')+'</summary><pre class="json-preview">'+esc(JSON.stringify(d.extractedJson,null,2).slice(0,12000))+'</pre></details>':'')+'<details><summary>Read extracted text</summary><p class="document-extract">'+esc((d.extractedText||'').slice(0,12000))+((d.extractedText||'').length>12000?'…':'')+'</p></details></article>';
@@ -811,7 +811,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
   if(!file||file.size===0){setStatus((file?.name||'Selected file')+' is empty.');toast('Empty file cannot be processed');continue}
   if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB.');toast('File is over 12 MB');continue}
   const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
-  if(!isPdf&&!['image/jpeg','image/png'].includes(file.type)&&!/\.(jpe?g|png)$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
+  if(!isPdf&&!['image/jpeg','image/png','image/webp'].includes(file.type)&&!/\.(jpe?g|png|webp)$/i.test(file.name)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
   setProgress(0,'Starting '+file.name);
   try{
    let extracted='';
@@ -1369,10 +1369,14 @@ async function saveFile(file,metadata){
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const validImage=['image/jpeg','image/png','image/webp'].includes(file.type)||/\.(jpe?g|png|webp)$/i.test(file.name);
  if(!isPdf&&!validImage)throw new Error('Only PDF, JPG, PNG and WEBP files are supported.');
- const id=uid();
- await saveOriginalDocument(id,file);
- const record={id,name:String(metadata.name||'').trim(),tags:String(metadata.tags||'').split(',').map(x=>x.trim()).filter(Boolean),note:String(metadata.note||'').trim(),type:isPdf?'pdf':'image',mimeType:file.type|| (isPdf?'application/pdf':'image/'+(file.name.split('.').pop()||'jpeg')),size:file.size,originalName:file.name,createdAt:Date.now(),created:Date.now(),data:{storage:'indexeddb',key:id},fileStored:true,extractedText:'',extractedJson:null,chunks:[]};
- data.documents=data.documents||[];data.documents.push(record);persist();return record;
+ const previous=new Set((data.documents||[]).map(item=>item.id));
+ await processUploadedDocuments([file]);
+ const record=(data.documents||[]).find(item=>!previous.has(item.id));
+ if(!record)throw new Error('The file could not be saved. Please try again.');
+ record.name=String(metadata.name||'').trim();record.originalName=file.name;
+ record.tags=String(metadata.tags||'').split(',').map(x=>x.trim()).filter(Boolean);
+ record.note=String(metadata.note||'').trim();record.createdAt=record.created||Date.now();
+ record.data={storage:'indexeddb',key:record.id};persist();return record;
 }
 function renameFile(id,metadata){
  const record=(data.documents||[]).find(item=>item.id===id);if(!record)return false;
