@@ -1039,6 +1039,10 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const candidates=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId)).map(doc=>{
   const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
+  if(targetDocId&&!matching.length){
+   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,12));
+   return {doc,matching:fallback,docScore:1};
+  }
   return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
  }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
  const picked=[],seen=new Set();
@@ -1071,7 +1075,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   const tokenHits=qTokens.reduce((sum,token)=>sum+(searchable.includes(token)?1:0),0);
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?2:0;
   return {doc,score:tokenHits+phraseHit};
- }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
+ }).filter(item=>targetDocId||item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
  const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
@@ -1105,7 +1109,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  // OCR can miss menu labels, mixed Hindi/English text, and table/column relationships.
  // Only send the best-matching image, and only when it is already stored locally.
  const queryLooksLikeMealMenu=/(mess|menu|meal|dinner|lunch|breakfast|thursday|thrusday|khana|raat ka|रात|खाना|मेस)/i.test(String(question||''));
- const originalCandidate=allDocs.find(doc=>doc.id===retrieval.documents[0])||
+ const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||allDocs.find(doc=>doc.id===retrieval.documents[0])||
   (queryLooksLikeMealMenu?allDocs.filter(doc=>doc.type==='image'&&doc.fileStored).sort((a,b)=>Number(b.created||0)-Number(a.created||0))[0]:null);
  if(originalCandidate){
   const matchedDoc=originalCandidate;
@@ -1114,7 +1118,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
     const original=await getOriginalDocument(matchedDoc.id);
     const blob=original?.blob;
     const mimeType=String(original?.type||matchedDoc.mimeType||'').toLowerCase();
-    if(blob&&/^image\/(jpeg|png|webp)$/.test(mimeType)&&blob.size<=3*1024*1024){
+    if(blob&&(/^image\/(jpeg|png|webp)$/.test(mimeType)||mimeType==='application/pdf')&&blob.size<=3*1024*1024){
      const label='File: '+matchedDoc.name+' · original file';
      inlineFile={name:matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
      if(!sources.includes(label))sources.push(label);
@@ -1338,6 +1342,24 @@ function askOneLevenshtein(a,b){
   if(rowMin>1)return 2;previous=current;
  }
  return previous[b.length];
+}
+function isDocumentContentQuestion(question){
+ const q=String(question||'').toLowerCase();
+ const mentionsFile=/\b(?:pdf|image|photo|picture|document|uploaded file|file|scan|receipt|bill|invoice|notice|date sheet)\b|\b(?:is file|iss file|is pdf|iss pdf|is image|iss image|yeh document|ye document)\b/i.test(q);
+ const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|summary|describe|read|tell|show|find|extract|according|contains?|inside|says?|written|mentioned|answer|details|content|meaning|iska|isme|issme|batao|samjhao|likha|kya)\b/i.test(q);
+ const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
+ return mentionsFile&&asksContent&&!isFileLookup;
+}
+function resolveAskDocumentId(question,targetDocId){
+ if(targetDocId)return targetDocId;
+ const docs=(data.documents||[]).filter(doc=>doc&&doc.id);
+ if(!docs.length||!isDocumentContentQuestion(question))return null;
+ const q=askOneNormalize(question),ranked=docs.map(doc=>{
+  const name=askOneNormalize([doc.name,doc.originalName].join(' ')).filter(token=>token.length>2);
+  return {doc,score:name.reduce((sum,token)=>sum+(q.includes(token)?3:0),0)};
+ }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score||Number(b.doc.created||0)-Number(a.doc.created||0));
+ if(ranked.length)return ranked[0].doc.id;
+ return docs.slice().sort((a,b)=>Number(b.created||0)-Number(a.created||0))[0].id;
 }
 function detectIntent(query){
  const tokens=askOneNormalize(query),scores={};
@@ -1844,6 +1866,11 @@ async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
  const actionResult=await chatActionIntent(query);
+  if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
+  if(isDocumentContentQuestion(query)&&!targetDocId){
+   data.messages.push({role:'assistant',content:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});
+   persist();render();scrollChatToBottom();return;
+  }
   if(isSpendingAmountQuestion(query)){
    const spending=answerSpendingAmount(query);
    data.messages.push({role:'assistant',content:spending.answer,sources:spending.sources});
