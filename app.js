@@ -1389,9 +1389,9 @@ function askOneLevenshtein(a,b){
  return previous[b.length];
 }
 function isDocumentContentQuestion(question){
- const q=String(question||'').toLowerCase();
- const mentionsFile=/\b(?:pdf|image|photo|picture|document|uploaded file|file|scan|receipt|bill|invoice|notice|date sheet|this file|that file|this document|that document|this image|that image)\b|\b(?:is file|iss file|is pdf|iss pdf|is image|iss image|yeh document|ye document|issme|isme|is mein|iss mein|file ka content|document mein|pdf mein|image mein)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/u.test(q);
- const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|contains?|inside|says?|written|mentioned|answer|details|content|meaning|iska|isme|issme|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kab|kaise|kahan)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये)/u.test(q);
+ const q=String(question||'').toLowerCase().normalize('NFKC');
+ const mentionsFile=/\b(?:pdfs?|images?|photos?|pictures?|documents?|uploaded files?|files?|scans?|receipts?|bills?|invoices?|notices?|date sheets?|screenshots?)\b|\b(?:iss|is|yeh|ye|mera|meri|mere)\s+(?:pdf|image|photo|document|file)|\b(?:pdf|image|photo|document|file)\s+(?:se|mein|me|ka|ki|ke|ko|par|about|from)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/u.test(q);
+ const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|based|contains?|inside|says?|written|mentioned|answer|details|content|meaning|iska|iske|isme|issme|usme|usse|isse|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kitne|kitni|kab|kaise|kahan|nikalo|dikhao|samjha|btao|bta|hai|hain)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|कितने|कितनी|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये)/u.test(q);
  const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
  return mentionsFile&&asksContent&&!isFileLookup;
 }
