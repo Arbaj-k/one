@@ -553,7 +553,7 @@ function overview(){
 }
 async function autoProcessDocumentInsights(id){
  const current=(data.documents||[]).find(x=>x.id===id);if(!current||current.ocrStatus==='failed'||!String(current.extractedText||'').trim()||/^\[No readable text/.test(current.extractedText))return;
- const suggestions=oneExtractActionCandidates(current.extractedText,current.name||'Uploaded document');
+ const suggestions=oneExtractActionCandidates(current.extractedText,current.name||'Uploaded document');current.expiryCandidates=oneExtractExpiryCandidates(current.extractedText);if(current.expiryCandidates.length)persist();
  if(suggestions.length){
   current.detectedActionItems=suggestions.map(item=>({...item}));
   current.actionItemsDetectedAt=Date.now();persist();
@@ -593,19 +593,47 @@ function documentsCards(){
    '<small class="muted">'+esc(d.jsonStatus==='saved_to_knowledge'?'Structured data ready':d.jsonStatus==='processing'?'Extracting structured data…':d.jsonStatus==='error'?'Extraction issue: '+(d.jsonError||'Try again'):d.jsonStatus||'Text extracted')+'</small>'+(d.extractedJson?'<details><summary>Structured data · '+esc(d.extractedJson.document_type||'document')+'</summary><pre class="json-preview">'+esc(JSON.stringify(d.extractedJson,null,2).slice(0,12000))+'</pre></details>':'')+'<details><summary>Read extracted text</summary><p class="document-extract">'+esc((d.extractedText||'').slice(0,12000))+((d.extractedText||'').length>12000?'…':'')+'</p></details></article>';
  }).join(''):'<div class="card" style="grid-column:1/-1">'+empty(window.vaultDocumentQuery?'No uploaded documents match this search.':'No documents yet. Upload a PDF or image to start your vault.','📄')+'</div>')+'</div>';
 }
-function oneExtractDate(line){
- const s=String(line||'');let m=s.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
- if(m)return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
- m=s.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/);
- if(m){let y=Number(m[3]);if(y<100)y+=2000;const d=new Date(y,Number(m[2])-1,Number(m[1]));if(d.getFullYear()===y&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[1]))return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0')}
- m=s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?:\s+(20\d{2}))?/i);
- if(m){const months=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];const mo=months.findIndex(x=>m[2].toLowerCase().startsWith(x));const y=Number(m[3]||today().slice(0,4));const d=new Date(y,mo,Number(m[1]));if(d.getMonth()===mo&&d.getDate()===Number(m[1]))return y+'-'+String(mo+1).padStart(2,'0')+'-'+m[1].padStart(2,'0')}
- if(/\btomorrow\b|कल/i.test(s)){const d=new Date(today()+'T00:00:00');d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
- if(/\btoday\b|आज/i.test(s))return today();return '';
+function normalizeDocumentDigits(value){
+ const map={'०':'0','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6','७':'7','८':'8','९':'9'};
+ return String(value||'').replace(/[०-९]/g,ch=>map[ch]||ch);
 }
+function oneExtractDate(line){
+ const s=normalizeDocumentDigits(line);
+ const valid=(year,month,day)=>{
+  if(year<2000||year>2100||month<1||month>12||day<1||day>31)return '';
+  const d=new Date(year,month-1,day);
+  return d.getFullYear()===year&&d.getMonth()===month-1&&d.getDate()===day?year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
+ };
+ let m=s.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
+ if(m)return valid(Number(m[1]),Number(m[2]),Number(m[3]));
+ m=s.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/);
+ if(m){let year=Number(m[3]);if(year<100)year+=2000;return valid(year,Number(m[2]),Number(m[1]));}
+ const months={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12,'जनवरी':1,'फरवरी':2,'मार्च':3,'अप्रैल':4,'मई':5,'जून':6,'जुलाई':7,'अगस्त':8,'सितंबर':9,'सितम्बर':9,'अक्टूबर':10,'नवंबर':11,'नवम्बर':11,'दिसंबर':12,'दिसम्बर':12};
+ m=s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+|जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)(?:,?\s+(20\d{2}))?/i);
+ if(m){const month=months[m[2].toLowerCase()]||months[m[2]],year=Number(m[3]||0);if(month&&year)return valid(year,month,Number(m[1]));}
+ m=s.match(/\b([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(20\d{2})/i);
+ if(m){const month=months[m[1].toLowerCase()];if(month)return valid(Number(m[3]),month,Number(m[2]));}
+ if(/\b(tomorrow|कल|आने वाले कल)\b/i.test(s)){const d=new Date(today()+'T00:00:00');d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+ if(/\b(today|आज)\b/i.test(s))return today();
+ return '';
+}
+function oneExtractExpiryCandidates(text){
+ const cue=/(expiry|expires?|expiration|valid\s*(?:until|till|through)|validity|renew(?:al)?\s*(?:date|by|before)?|last\s*date|due\s*date|deadline|समाप्ति|समाप्त|वैधता|वैध\s*तक|नवीनीकरण|नवीकरण|अंतिम\s*तिथि|आखिरी\s*तारीख|जमा\s*करने\s*की\s*अंतिम)/i;
+ const lines=String(text||'').split(/\n/),out=[],seen=new Set();let page=null;
+ for(const raw of lines){
+  const pageMatch=raw.match(/^\s*\[Page\s+(\d+)\]/i);if(pageMatch){page=Number(pageMatch[1]);continue;}
+  const line=raw.trim();if(!line||!cue.test(line))continue;
+  const date=oneExtractDate(line);if(!date)continue;
+  const key=date+'|'+line.toLowerCase();if(seen.has(key))continue;seen.add(key);
+  out.push({date,line:line.slice(0,240),page,confidence:/expiry|expires?|expiration|valid\s*(?:until|till)|समाप्ति|वैधता|अंतिम\s*तिथि/i.test(line)?'high':'review'});
+  if(out.length>=8)break;
+ }
+ return out;
+}
+
 function oneExtractActionCandidates(text,sourceLabel){
  const lines=String(text||'').replace(/\r/g,'').split(/\n|(?<=[.!?])\s+(?=[A-Z])/).map(x=>x.replace(/^\s*(?:[-•*]|\d+[.)])\s*/,'').trim()).filter(x=>x.length>=8&&x.length<=280);
- const cue=/\b(submit|complete|finish|prepare|study|revise|review|pay|renew|register|apply|upload|send|email|call|meet|attend|book|collect|visit|deadline|due|assignment|project|exam|presentation|report|remind|schedule|follow.?up|pending|must|need to|have to|should)\b|करना है|जमा|भेजना|याद दिलाना|पूरा करना/i;
+ const cue=/\b(submit|complete|finish|prepare|study|revise|review|pay|renew|register|apply|upload|send|email|call|meet|attend|book|collect|visit|deadline|due|assignment|project|exam|presentation|report|remind|schedule|follow.?up|pending|must|need to|have to|should)\b|करना है|करें|करना|जमा|भेजना|याद दिलाना|पूरा करना|पढ़ना|पढ़ाई|नवीनीकरण|नवीकरण|अंतिम तिथि|आखिरी तारीख|समाप्ति/i;
  const seen=new Set(),out=[];for(const line of lines){if(!cue.test(line))continue;const title=line.replace(/\s+/g,' ').trim();const key=title.toLowerCase();if(seen.has(key))continue;seen.add(key);out.push({title:title.slice(0,140),due:oneExtractDate(line),source:sourceLabel});if(out.length>=15)break}return out;
 }
 function reviewOneExtractedActions(kind,id){
