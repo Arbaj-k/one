@@ -1842,3 +1842,56 @@ h1,h2,h3{font-family:'Plus Jakarta Sans',Manrope,sans-serif;color:#f7f9fd}
 /* Mandatory account gate: workspace UI is inaccessible until authentication succeeds. */
 body.one-auth-required .app{visibility:hidden!important;pointer-events:none!important;user-select:none!important}
 body.one-auth-required{overflow:hidden!important}
+
+
+
+/* Daily Planner calendar and selected-day activity */
+.daily-calendar{padding:17px!important;margin-top:22px!important}
+.planner-calendar-controls{display:flex;align-items:center;gap:10px;margin-bottom:17px}
+.planner-calendar-controls h2{flex:1;margin:0;text-align:center;font-size:17px;font-weight:800;color:#f0f4fb}
+.planner-calendar-controls button{min-width:38px;height:38px;border:1px solid #354052;border-radius:11px;background:#242d3b;color:#edf2fa;font-size:23px;cursor:pointer}
+.planner-calendar-controls .planner-calendar-today{min-width:58px;padding:0 10px;font-size:11px;font-weight:750}
+.planner-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.planner-calendar-weekdays{margin-bottom:7px}
+.planner-calendar-weekday{text-align:center;color:#9ca9bc;font-size:10px;font-weight:800;padding:5px 0}
+.planner-calendar-day{position:relative;display:flex;min-width:0;min-height:58px;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:9px 3px 5px;border:1px solid #303a4a;border-radius:12px;background:#1d2430;color:#edf2fa;cursor:pointer}
+.planner-calendar-day.is-blank{visibility:hidden}
+.planner-calendar-day.is-today{border-color:#718cff;background:#29365a}
+.planner-calendar-day.is-selected{outline:2px solid #829aff;outline-offset:1px;background:#344a7b}
+.planner-calendar-number{font-size:13px;font-weight:750;line-height:1.2}
+.planner-calendar-markers{display:flex;align-items:center;justify-content:center;gap:4px;min-height:6px}
+.planner-calendar-markers i,.planner-calendar-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#829aff}
+.planner-calendar-markers .money-marker,.planner-calendar-legend .money-marker{background:#43d3a0}
+.planner-calendar-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;color:#aeb9ca;font-size:11px}
+.planner-calendar-legend span{display:inline-flex;align-items:center;gap:7px}
+.planner-selected-date{margin-top:13px!important;padding:17px!important}
+.planner-selected-date-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.planner-selected-date-heading .eyebrow{font-size:10px;letter-spacing:1.2px;color:#91a9ff;font-weight:800}
+.planner-selected-date-heading h2{font-size:17px;margin:5px 0 0;color:#f2f5fb}
+.planner-date-section{padding-top:14px;margin-top:13px;border-top:1px solid #303a49}
+.planner-date-section h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:#e9eef7;font-size:13px}
+.planner-date-section h3 span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:12px;background:#27334b;color:#bdcbff;font-size:10px}
+.planner-date-record{display:flex;width:100%;align-items:center;gap:10px;padding:11px 8px;border:0;border-bottom:1px solid #293342;background:transparent;color:#edf2fa;text-align:left;cursor:pointer}
+.planner-date-record:last-child{border-bottom:0}
+.planner-date-record>span:nth-child(2){display:grid;flex:1;min-width:0;gap:4px}
+.planner-date-record b{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.planner-date-record small{font-size:10px;color:#a8b4c5}
+.planner-date-record-value{font-size:11px;color:#bfcaff;font-weight:750;white-space:nowrap}
+.planner-date-record-icon{display:grid;place-items:center;flex:0 0 31px;width:31px;height:31px;border-radius:10px;font-size:14px;font-weight:800}
+.task-record-icon{background:#29375b;color:#bcccff}
+.money-record-icon{background:#1e4439;color:#8ce8c4}
+.planner-date-empty{margin:0;padding:10px 2px;color:#9eabbd;font-size:12px}
+@media(max-width:560px){
+ .daily-calendar{padding:12px!important}
+ .planner-calendar-grid{gap:4px}
+ .planner-calendar-day{min-height:51px;padding:7px 2px 4px;border-radius:9px}
+ .planner-calendar-number{font-size:12px}
+ .planner-calendar-weekday{font-size:9px}
+ .planner-calendar-controls{gap:7px}
+ .planner-calendar-controls h2{font-size:15px}
+ .planner-selected-date{padding:14px!important}
+ .planner-selected-date-heading h2{font-size:15px}
+ .planner-date-record{gap:8px;padding:10px 4px}
+ .planner-date-record b{font-size:11px}
+ .planner-date-record-value{font-size:10px}
+}
