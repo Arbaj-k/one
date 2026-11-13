@@ -1,4 +1,4 @@
-/* One account authentication. Guest/local workspace remains usable without signing in. */
+/* One account authentication. A verified account is required to use the workspace. */
 (() => {
   'use strict';
   const URL = 'https://tcthrfpkydcmenxwajfg.supabase.co';
@@ -9,7 +9,7 @@
   const escapeHtml = (s='') => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function getClient() {
     if (client) return client;
-    if (!window.supabase?.createClient) throw Error('Authentication service could not load. Guest mode is still available.');
+    if (!window.supabase?.createClient) throw Error('Authentication service could not load. Please retry when you are online.');
     client = window.supabase.createClient(URL, KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'one-auth-session-v1'}});
     return client;
   }
@@ -22,10 +22,10 @@
     root.innerHTML = `<div class="one-auth-backdrop" role="dialog" aria-modal="true" aria-labelledby="one-auth-title">
       <section class="one-auth-card">
         <div class="one-auth-brand"><span class="one-auth-mark">✦</span><div><strong>One</strong><small>Your personal assistant</small></div></div>
-        <button class="one-auth-close" type="button" aria-label="Close authentication">×</button>
+        
         <div class="one-auth-kicker">YOUR SPACE, YOUR DATA</div>
         <h1 id="one-auth-title">${view==='signup'?'Create your account':view==='reset'?'Reset your password':view==='sent'?'Check your inbox':'Welcome back'}</h1>
-        <p class="one-auth-sub">${view==='signup'?'Create a secure account to access One across devices.':view==='reset'?'We’ll email you a secure password reset link.':view==='sent'?'Follow the link in your email to continue.':'Sign in to your account or continue using One as a guest.'}</p>
+        <p class="one-auth-sub">${view==='signup'?'Create a secure account to access One across devices.':view==='reset'?'We’ll email you a secure password reset link.':view==='sent'?'Follow the link in your email to continue.':'Sign in to securely access your personal workspace.'}</p>
         ${view==='sent'?'<p class="one-auth-note">If the email does not arrive, check spam or request another link.</p>':`
         ${view!=='reset'?'<button id="one-google" class="one-auth-google" type="button"><span class="google-g">G</span> Continue with Google</button><div class="one-auth-divider"><span>or continue with email</span></div>':''}
         <form id="one-auth-form" novalidate>
@@ -37,20 +37,20 @@
         </form>`}
         <div id="one-auth-message" class="one-auth-message" role="status" aria-live="polite" hidden></div>
         <div class="one-auth-switch">${view==='login'?'New to One? <button id="one-switch" type="button">Create account</button>':view==='signup'?'Already have an account? <button id="one-switch" type="button">Log in</button>':view==='reset'?'<button id="one-switch" type="button">Back to log in</button>':'<button id="one-switch" type="button">Back to log in</button>'}</div>
-        <button id="one-guest" class="one-auth-guest" type="button">Continue as guest · keep data on this device</button>
-        <p class="one-auth-legal">Your local workspace remains available in guest mode. Cloud access is tied to your signed-in account.</p>
+        
+        <p class="one-auth-legal">Your personal workspace is available only after you sign in. Your data is tied to your account.</p>
       </section></div>`;
     $('#one-auth-root').hidden=false;
-    $('.one-auth-close').onclick=close;
-    $('#one-guest').onclick=close;
+
+
     $('#one-switch')?.addEventListener('click',()=>{view=view==='login'?'signup':'login';render()});
     $('#one-forgot')?.addEventListener('click',()=>{view='reset';render()});
     $('.one-show-password')?.addEventListener('click',e=>{const input=$('[name=password]');input.type=input.type==='password'?'text':'password';e.currentTarget.textContent=input.type==='password'?'Show':'Hide'});
     $('#one-google')?.addEventListener('click',google);
     $('#one-auth-form')?.addEventListener('submit',submit);
   }
-  function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open')}
-  function open(next='login'){view=next;render();document.body.classList.add('one-auth-open')}
+  function close(){if(!session?.user)return;const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}
+  function open(next='login'){view=next;render();document.body.classList.add('one-auth-open','one-auth-required')}
   async function submit(e){
     e.preventDefault();const form=new FormData(e.currentTarget),email=String(form.get('email')||'').trim(),password=String(form.get('password')||''),name=String(form.get('name')||'').trim();
     const submitButton=$('.one-auth-submit');if(submitButton)submitButton.disabled=true;status('Please wait…');
@@ -102,7 +102,7 @@
     if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;const s=$('#cloud-status');if(s)s.textContent='Offline · Local data';}catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out. Please try again.',true)}}
+  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;document.body.classList.add('one-auth-required');open('login');const s=$('#cloud-status');if(s)s.textContent='Sign in required';}catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out. Please try again.',true)}}
   async function deleteAccount(){
     const user=session?.user;if(!user)return;
     if(!confirm('Permanently delete your One account and all cloud data, uploaded files, notes, tasks, messages and linked records? This cannot be undone.'))return;
@@ -119,12 +119,13 @@
     }catch(error){console.warn("Operation failed; diagnostic details redacted.");status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
   }
   async function boot(){
+    document.body.classList.add('one-auth-required');
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
-      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
-      if(session?.user){paintUser(session.user);await upsertProfile(session.user)}else window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
+      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){document.body.classList.add('one-auth-required');open('login');window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
+      if(session?.user){paintUser(session.user);await upsertProfile(session.user);document.body.classList.remove('one-auth-required')}else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));open('login')}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
-    }catch(err){console.warn("Operation failed; diagnostic details redacted.");const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Local mode'}
+    }catch(err){console.warn("Operation failed; diagnostic details redacted.");open('login');status('Authentication service is unavailable. Please check your connection and retry.',true)}
   }
   window.OneAuth={open,logout,getSession:()=>session,getUser:()=>session?.user||null};
   document.addEventListener('DOMContentLoaded',boot);
