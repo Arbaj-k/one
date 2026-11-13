@@ -451,6 +451,13 @@ assert.ok(app.includes('function openUploadedFile(id,download=false){') && app.i
 assert.ok(app.includes("intent==='files'") && app.includes('fileResults:localAnswer.fileResults||[]'), 'Ask One must return clickable file search results.');
 assert.ok(app.includes('Is naam ki koi file nahi mili.'), 'Ask One must return the requested file-not-found message.');
 
+assert.ok(app.includes('class="document-more-menu"') && app.includes('>Download</button>') && app.includes('data-action="open-uploaded-file"'), 'Download must be tucked into the file overflow menu while View stays primary.');
+assert.ok(app.includes('class="document-advanced-menu"') && app.includes('Refresh AI summary') && app.includes('data-action="retry-document-ocr"'), 'Manual summary refresh and OCR retry must live in advanced options.');
+assert.ok(!app.includes('>Find action items & dates</button>') && !app.includes('>Extract structured data</button>'), 'Manual action extraction and structured-data buttons must be removed from document cards.');
+assert.ok(app.includes('async function autoProcessDocumentInsights(id){') && app.includes('await autoProcessDocumentInsights(id)'), 'Document summary and action/date detection must run automatically after upload and OCR retry.');
+assert.ok(app.includes('ocrStatus:ocrFailed?\'failed\':\'complete\'') && app.includes("d.ocrStatus==='failed'"), 'OCR retry status must be tracked and surfaced only on failure.');
+assert.ok(app.includes('structuredRequest') && app.includes('convertDocumentToJSON(doc.id)'), 'Structured data extraction must be available through Ask One.');
+
 // Ask One date keywords must resolve natural English/Hinglish dates and return the selected day's saved tasks and money records.
 assert.ok(app.includes('const dateKeyword=') && app.includes('dateQueryIntent'), 'Ask One must detect date-focused questions.');
 assert.ok(app.includes('today|today\'?s|this\\s+day|current\\s+day|aaj'), 'Ask One must understand today and aaj variants.');
