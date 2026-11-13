@@ -878,8 +878,8 @@ async function processUploadedDocuments(files,sourceNoteId=null){
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
-     if(pdf.numPages>pageLimit)extracted+='\n[Extraction limited to first '+pageLimit+' of '+pdf.numPages+' pages. Split the remaining pages into another file.]';
     }
+     if(pdf.numPages>pageLimit)extracted+='\n[Extraction limited to first '+pageLimit+' of '+pdf.numPages+' pages. Split the remaining pages into another file.]';
     }
    }else{
     setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
