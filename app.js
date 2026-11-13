@@ -1293,7 +1293,7 @@ function answerSpendingAmount(question){
 }
 function isSpendingAmountQuestion(question){
  const q=String(question||'').toLowerCase();
- return /\b(spend|spent|spending|kharch|kharcha|kharchaa|खर्च|खर्चा)\b/.test(q)&&/\b(how much|kitna|kitne|kitni|total|amount|paisa|paise|rupees?|rs\\.?|₹|mera|meri|my|today|aaj|yesterday|kal|month|week|overall|all time)\b/.test(q);
+ return /\b(spend|spent|spending|kharch|kharcha|kharchaa|खर्च|खर्चा)\b/.test(q)&&/\b(how much|kitna|kitne|kitni|total|amount|paisa|paise|rupees?|rs.?|₹|mera|meri|my|today|aaj|yesterday|kal|month|week|overall|all time)\b/.test(q);
 }
 function phase4SpendingInsights(){
  const now=today(),month=now.slice(0,7),previous=addDaysToDate(month+'-01',-1).slice(0,7);
