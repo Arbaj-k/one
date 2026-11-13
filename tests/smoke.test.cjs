@@ -157,6 +157,7 @@ for (const token of [
   'const structuredDocuments=rankedJson.map(({doc})=>',
   'item.score>0||isDocumentContentQuestion(question)',
   '(targetDocId||documentQuestion)&&!matching.length',
+  "assert.ok(source.includes("  \"const documentQuestion=/\\\\\\\\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?)\\\\\\\\b\","), 'Document fallback regex must use word boundaries');",
   'if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id)',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
   'function exportData()', 'function studyPlanner()', 'function projects()',
