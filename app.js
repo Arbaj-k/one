@@ -1084,9 +1084,9 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const candidates=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId)).map(doc=>{
   const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
-  if(targetDocId&&!matching.length){
-   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,12));
-   return {doc,matching:fallback,docScore:1};
+  if((targetDocId||isDocumentContentQuestion(question))&&!matching.length){
+   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,targetDocId?12:8));
+   return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:1};
   }
   return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
  }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
@@ -1120,7 +1120,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   const tokenHits=qTokens.reduce((sum,token)=>sum+(searchable.includes(token)?1:0),0);
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?2:0;
   return {doc,score:tokenHits+phraseHit};
- }).filter(item=>targetDocId||item.score>0).sort((a,b)=>b.score-a.score).slice(0,targetDocId?1:3);
+ }).filter(item=>targetDocId||item.score>0||isDocumentContentQuestion(question)).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)).slice(0,targetDocId?1:3);
  const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
@@ -1219,7 +1219,9 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
- return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
+ const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
+ for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
+ return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
 }
 async function requestStudentBrainAI(question,targetDocId=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
@@ -1927,7 +1929,7 @@ async function sendChat(question,targetDocId=null){
   if(structuredRequest&&/\b(file|document|pdf|image|upload|bill|receipt|invoice|iska|is document|iss document)\b/i.test(query)){
    const candidates=phase5SearchResults(query).filter(item=>item.type==='Document');
    const doc=candidates.length?(data.documents||[]).find(item=>item.id===candidates[0].id):(data.documents||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
-   if(doc){await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
+   if(doc){if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
   }
   const detected=detectIntent(query);
   if(detected.ambiguous){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
