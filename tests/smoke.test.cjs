@@ -151,6 +151,10 @@ for (const id of ['page-content', 'modal-root', 'toast']) {
 // Core pages, data safety, document handling and CRUD routes.
 for (const token of [
   'function render()', 'function aiAnswer(question)', 'function processUploadedDocuments',
+  'const structuredDocuments=rankedJson.map(({doc})=>',
+  'item.score>0||isDocumentContentQuestion(question)',
+  '(targetDocId||isDocumentContentQuestion(question))&&!matching.length',
+  'if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id)',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
   'function exportData()', 'function studyPlanner()', 'function projects()',
   'function expenses()', 'function saveForm(', 'function splitDocumentIntoChunks(text)',
