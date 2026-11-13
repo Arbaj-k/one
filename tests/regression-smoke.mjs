@@ -428,6 +428,14 @@ assert.ok(app.includes('data-action="open-vault-result"') && app.includes('Relat
 assert.ok(app.includes('const isProjectLinked=item=>') && app.includes('relatedProjectId') && app.includes('projectIds'), 'Explicit project links must boost note and document retrieval.');
 assert.ok(app.includes('linked to project '), 'AI document evidence must identify the project relationship in its source label.');
 
+// Ask One date keywords must resolve natural English/Hinglish dates and return the selected day's saved tasks and money records.
+assert.ok(app.includes('const dateKeyword=') && app.includes('dateQueryIntent'), 'Ask One must detect date-focused questions.');
+assert.ok(app.includes('today|today\'?s|this\\s+day|current\\s+day|aaj'), 'Ask One must understand today and aaj variants.');
+assert.ok(app.includes('tomorrow|kal|yesterday|parso|parson'), 'Ask One must understand tomorrow, kal, yesterday and parso variants.');
+assert.ok(app.includes("filter(t=>t.due===selectedDate)"), 'Ask One date lookup must return tasks for the resolved date.');
+assert.ok(app.includes("filter(e=>e.date===selectedDate||e.dueDate===selectedDate)"), 'Ask One date lookup must return money transactions and repayments for the resolved date.');
+assert.ok(app.includes('No tasks scheduled.') && app.includes('No money activity.'), 'Ask One date lookup must clearly report empty task and money results.');
+
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
