@@ -24,6 +24,11 @@ assert.ok(source.includes('const asksMoney=overviewIntent||'), 'Ask One money co
 assert.ok(source.includes('const expenses=asksMoney?'), 'Unrelated money records must not be sent to AI');
 assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routine records must not be sent to AI');
 
+// Universal retrieval must not fall back to unrelated records when a query has no match.
+assert.ok(source.includes('else selectedTasks=matches.map(item=>item.task).slice(0,40);'), 'Task retrieval must return only matched records');
+assert.ok(source.includes('selectedProjects=matches.map(item=>item.project).slice(0,15);'), 'Project retrieval must return only matched records');
+assert.ok(source.includes('selectedMemories=ranked.map(item=>item.memory).slice(0,15);'), 'Memory retrieval must return only matched records');
+
 // Ask One actions must protect against accidental destructive actions and duplicate creation.
 const intentStart=source.indexOf('async function chatActionIntent(question)');
 const intentEnd=source.indexOf('async function sendChat(question',intentStart);
