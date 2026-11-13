@@ -1407,6 +1407,24 @@ async function chatActionIntent(question){
   return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
  };
  const fieldDateForMoney=()=>{if(/\b(?:yesterday|kal\s+tha|beete\s+kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}return parseDate()||today()};
+ const dateKeyword=/\b(?:today|aaj|aaj\s+ka|aaj\s+ki|aaj\s+ke|tomorrow|kal|kal\s+ka|kal\s+ki|kal\s+ke|yesterday|parso|parson|day\s+after\s+tomorrow|next\s+day|आज|आज\s+का|आज\s+की|आज\s+के|कल|कल\s+का|कल\s+की|कल\s+के|परसों)\b/i.test(lower);
+ const dateQueryIntent=dateKeyword&&(/\b(?:task|tasks|todo|to-do|kaam|assignment|planner|money|expense|expenses|spending|kharcha|kharch|income|payment|udhaar|lent|borrowed|repayment|transaction|transactions|schedule|plan|kya|what|show|dikhao|batao|bata|hai|hain|list|details|activity|records?)\b/i.test(lower)||/^\s*(?:today|aaj|kal|tomorrow|yesterday|parso|parson|आज|कल|परसों)\s*[?.!]*$/i.test(lower));
+ if(!pendingChatAction&&dateQueryIntent){
+  let selectedDate=parseDate();
+  if(/\b(?:yesterday|kal\s+tha|beete\s+kal|day\s+before\s+yesterday)\b/i.test(lower)){const d=new Date(today()+'T12:00:00');d.setDate(d.getDate()-(/\bday\s+before\s+yesterday\b/i.test(lower)?2:1));selectedDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  else if(/\b(?:parso|parson|day\s+after\s+tomorrow|परसों)\b/i.test(lower)){const d=new Date(today()+'T12:00:00');d.setDate(d.getDate()+2);selectedDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  selectedDate=selectedDate||today();
+  const dayTasks=(data.tasks||[]).filter(t=>t.due===selectedDate);
+  const dayMoney=(data.expenses||[]).filter(e=>e.date===selectedDate||e.dueDate===selectedDate);
+  const dayLabel=dateFmt(selectedDate);
+  const taskLines=dayTasks.length?dayTasks.map(t=>(t.done?'✓ ':'• ')+String(t.title||'Untitled task')+' — '+(t.done?'Completed':'Pending')+(t.category?' · '+t.category:'')).join('\n'):'No tasks scheduled.';
+  const moneyLines=dayMoney.length?dayMoney.map(e=>{const kind=e.kind||'expense',label=({expense:'Expense',income:'Income',lent:'Money lent',borrowed:'Money borrowed',lent_repayment:'Repayment received',borrowed_repayment:'Repayment paid'})[kind]||'Money';return '• '+String(e.description||label)+' — '+fmtMoney(e.amount)+' · '+label+(e.dueDate===selectedDate&&e.date!==selectedDate?' · Due today':'')}).join('\n'):'No money activity.';
+  const wantsTask=/\b(?:task|tasks|todo|to-do|kaam|assignment|planner)\b/i.test(lower),wantsMoney=/\b(?:money|expense|expenses|spending|kharcha|kharch|income|payment|udhaar|lent|borrowed|repayment|transaction|transactions)\b/i.test(lower);
+  const parts=[];
+  if(!wantsMoney||wantsTask)parts.push('TASKS ('+dayTasks.length+')\n'+taskLines);
+  if(!wantsTask||wantsMoney)parts.push('MONEY ('+dayMoney.length+')\n'+moneyLines);
+  return {answer:dayLabel+'\n\n'+parts.join('\n\n'),sources:['Daily Planner','Money & Udhaar']};
+ }
  // Deterministic command routing: reminder/briefing requests must be handled
  // locally before document Q&A, while explicit "add task" remains a Planner task.
  const explicitTaskAddIntent=/\b(?:add|create|make)\s+(?:a\s+)?(?:new\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b|\b(?:task\s+bana\s+do|task\s+create\s+karo|task\s+add\s+kar\s+do|todo\s+bana\s+do)\b/i.test(lower);
