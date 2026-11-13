@@ -138,6 +138,7 @@ for (const phrase of expectedTaskPhrases) {
     persist: () => {},
     toast: () => {},
     speakVoiceConfirmation: () => {},
+    parseStructuredVoiceCapture: () => null,
     confirm: () => true,
     render: () => {},
     document: { querySelector: () => null },
