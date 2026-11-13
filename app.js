@@ -1396,7 +1396,9 @@ function isDocumentContentQuestion(question){
  const mentionsFile=/\b(?:pdfs?|images?|photos?|pictures?|documents?|uploaded files?|files?|scans?|receipts?|bills?|invoices?|notices?|date sheets?|screenshots?)\b|\b(?:iss|is|yeh|ye|mera|meri|mere)\s+(?:pdf|image|photo|document|file)|\b(?:pdf|image|photo|document|file)\s+(?:se|mein|me|ka|ki|ke|ko|par|about|from)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/u.test(q);
  const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|based|contains?|inside|says?|written|mentioned|answer|details|content|meaning|iska|iske|isme|issme|usme|usse|isse|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kitne|kitni|kab|kaise|kahan|nikalo|dikhao|samjha|btao|bta|hai|hain)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|कितने|कितनी|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये)/u.test(q);
  const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
- return mentionsFile&&asksContent&&!isFileLookup;
+ const asksTimetable=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(q);
+ const hasUploadedDocuments=(data.documents||[]).some(doc=>doc&&doc.id);
+ return (mentionsFile&&asksContent&&!isFileLookup)||(hasUploadedDocuments&&asksTimetable);
 }
 function resolveAskDocumentId(question,targetDocId){
  if(targetDocId)return targetDocId;

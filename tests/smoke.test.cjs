@@ -23,8 +23,10 @@ assert.equal(bearerPattern.exec('Basic test-token'), null, 'Document JSON must r
 assert.ok(source.includes('const asksTasks=overviewIntent||'), 'Ask One task context must be intent-gated');
 assert.ok(source.includes('const asksMoney=overviewIntent||'), 'Ask One money context must be intent-gated');
 assert.ok(source.includes('function isDocumentContentQuestion(question)'), 'Document Q&A intent detection is missing');
+assert.ok(source.includes('const asksTimetable=/\\\\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)'), 'Timetable questions must use uploaded document context even when the user does not mention PDF/image');
+assert.ok(source.includes('(hasUploadedDocuments&&asksTimetable)'), 'Uploaded timetable questions must bypass Tasks/Notes clarification');
 assert.ok(source.includes('pdf|image|photo|document|file)\\s+(?:se|mein|me|ka|ki|ke|ko|par|about|from)'), 'Hindi/Hinglish document references must trigger document Q&A');
-assert.ok(source.includes('return mentionsFile&&asksContent&&!isFileLookup;'), 'Document questions must route to document evidence, not the generic task/note router');
+assert.ok(source.includes('return (mentionsFile&&asksContent&&!isFileLookup)||(hasUploadedDocuments&&asksTimetable);'), 'Document and contextual timetable questions must route to document evidence');
 assert.ok(source.includes('const expenses=asksMoney?'), 'Unrelated money records must not be sent to AI');
 assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routine records must not be sent to AI');
 
