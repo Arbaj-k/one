@@ -7,6 +7,7 @@ const source = fs.readFileSync('app.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 const css = fs.readFileSync('styles.css', 'utf8');
 const documentFunction = fs.readFileSync('supabase/functions/document-json/index.ts', 'utf8');
+const documentExtractor = fs.readFileSync('document-extractor.js', 'utf8');
 
 // Document JSON must accept a normal HTTP Bearer token (not a literal \\s sequence).
 assert.match(documentFunction, /\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
@@ -101,8 +102,14 @@ for (const token of [
  'function normalizeDocumentDigits(value)',
  'function oneExtractExpiryCandidates(text)',
  "'confirm-expiry-candidate'",
- 'PDF exceeds 100 pages'
+ 'const pageLimit=Math.min(pdf.numPages,100)',
+ 'if(pdf.numPages>pageLimit)extracted+=',
+ 'ocrQuality:Math.round(documentTextQuality(usableText)*100)',
 ]) assert.ok(source.includes(token),'Document extraction feature missing: '+token);
+assert.ok(documentFunction.includes('Hindi (Devanagari), or mixed Hindi-English/Hinglish'),'Structured extraction prompt must support Hindi and Hinglish');
+assert.ok(documentFunction.includes('image/webp'),'Structured extraction must accept WEBP images');
+assert.ok(documentExtractor.includes("type:'expiry'")&&documentExtractor.includes("type:'deadline'")&&documentExtractor.includes("type:'amount'"),'Structured extraction must classify expiry, deadline and amount fields');
+assert.ok(documentExtractor.includes('facts,tables,timetable,line_records'),'Structured facts must be retained alongside tables and timetable data');
 assert.ok(!source.includes('async function summarizeDocument(id)'), 'Automatic AI summary function should be removed');
 assert.ok(!source.includes("'summarize-document':"), 'AI summary action should be removed');
 assert.ok(source.includes("doc.expiryDateSource={line:candidate.line,page:candidate.page,confirmedAt:Date.now()}"),'Expiry reminder must retain the user-confirmed source evidence');
