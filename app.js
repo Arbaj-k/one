@@ -842,7 +842,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    }
    setProgress(88,'Saving '+file.name);const id=uid();let fileStored=false;
    try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}
-   const readableText=extracted.trim(),ocrFailed=!readableText||/^\[No readable text/.test(readableText)||/^\[This PDF has/.test(readableText);
+   const readableText=extracted.trim(),usableText=readableText.replace(/\[Page \d+\]|\[No selectable text detected on this page\.\]|\[OCR\]/g,'').trim(),ocrFailed=usableText.replace(/\s/g,'').length<12||/^\[This PDF has/.test(readableText);
    const extractedText=readableText||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
