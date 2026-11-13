@@ -1276,6 +1276,25 @@ function phase4DailyPlan(){
  const lines=ranked.map((item,i)=>{const t=item.task,when=item.days===null?'No due date':item.days<0?'Overdue by '+Math.abs(item.days)+' day(s)':item.days===0?'Due today': 'Due in '+item.days+' day(s)';return (i+1)+'. '+t.title+' — '+when+' · '+(t.priority||'Medium')});
  return {answer:ranked.length?'Suggested plan based on saved deadlines and priorities:\n'+lines.join('\n')+'\n\nThis is a suggested order, not an automatic change to your tasks.': 'No open tasks found. Your planner is clear.',sources:['Tasks & Planner']};
 }
+function answerSpendingAmount(question){
+ const q=String(question||'').toLowerCase(),now=today();
+ let start='',end=now,label='this month';
+ if(/\b(today|aaj|आज)\b/.test(q)){start=now;label='today'}
+ else if(/\b(yesterday|kal)\b/.test(q)){start=addDaysToDate(now,-1);end=start;label='yesterday'}
+ else if(/\b(last month|previous month|pichhle mahine|pichle mahine)\b/.test(q)){start=addDaysToDate(now.slice(0,7)+'-01',-1);start=start.slice(0,7)+'-01';end=addDaysToDate(now.slice(0,7)+'-01',-1);label='last month'}
+ else if(/\b(all time|overall|total ever|since beginning|ab tak|shuru se)\b/.test(q)){start='';label='all time'}
+ else {start=now.slice(0,7)+'-01';label='this month'}
+ const rows=(data.expenses||[]).filter(item=>(item.kind||'expense')==='expense'&&item.date&&(!start||item.date>=start)&&item.date<=end);
+ const total=rows.reduce((sum,item)=>sum+Number(item.amount||0),0),breakdown=new Map();
+ for(const item of rows){const category=String(item.category||'Uncategorized');breakdown.set(category,(breakdown.get(category)||0)+Number(item.amount||0))}
+ const top=[...breakdown.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3);
+ const dateLabel=start&&start===end?dateFmt(start):start?dateFmt(start)+' – '+dateFmt(end):'all recorded dates';
+ return {answer:'Aapka '+label+' ka total spending ₹'+total.toLocaleString('en-IN')+' hai ('+rows.length+' expense records, '+dateLabel+').'+(top.length?'\nTop categories: '+top.map(([name,amount])=>name+' ₹'+amount.toLocaleString('en-IN')).join(', '):'')+'\nIncome, Udhaar aur repayments is total mein include nahi hain. Yeh sirf One mein saved expense records ka total hai.',sources:['Money & Udhaar']};
+}
+function isSpendingAmountQuestion(question){
+ const q=String(question||'').toLowerCase();
+ return /\b(spend|spent|spending|kharch|kharcha|kharchaa|खर्च|खर्चा)\b/.test(q)&&/\b(how much|kitna|kitne|kitni|total|amount|paisa|paise|rupees?|rs.?|₹|mera|meri|my|today|aaj|yesterday|kal|month|week|overall|all time)\b/.test(q);
+}
 function phase4SpendingInsights(){
  const now=today(),month=now.slice(0,7),previous=addDaysToDate(month+'-01',-1).slice(0,7);
  const expenses=(data.expenses||[]).filter(e=>(e.kind||'expense')==='expense');
@@ -1825,6 +1844,11 @@ async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
  const actionResult=await chatActionIntent(query);
+  if(isSpendingAmountQuestion(query)){
+   const spending=answerSpendingAmount(query);
+   data.messages.push({role:'assistant',content:spending.answer,sources:spending.sources});
+   persist();render();scrollChatToBottom();return;
+  }
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
  if(!targetDocId){
   const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
