@@ -1287,6 +1287,98 @@ function phase4ProjectRisks(){
  }).filter(item=>item.reasons.length).sort((a,b)=>(a.level==='High'?-1:1)-(b.level==='High'?-1:1));
  return {answer:risks.length?'Project risk check:\n'+risks.slice(0,8).map((item,i)=>(i+1)+'. '+(item.project.name||'Untitled project')+' — '+item.level+'\n   '+item.reasons.join(', ')+' · '+item.done+'/'+item.total+' tasks completed').join('\n\n')+'\n\nProjects without linked tasks or target dates may have limited risk visibility.': 'No deadline risks detected in your active projects based on saved task due dates and project targets.',sources:['Projects','Tasks & Planner']};
 }
+const ASK_ONE_INTENT_MAP={
+ tasks:['task','tasks','todo','to do','kaam','काम','pending','due','deadline','complete','completed','done','finish','remind','reminder','yaad dilao','yaad dilana','assignment'],
+ notes:['note','notes','likha','likhi','likhe','yaad','memo','idea','save kiya','saved note','नोट','लिखा','विचार'],
+ projects:['project','projects','milestone','progress','plan','planning','प्रोजेक्ट','परियोजना'],
+ routines:['routine','routines','habit','habits','daily','roz','roj','subah','raat','streak','रोज','सुबह','रात','आदत'],
+ money:['paisa','paise','kharcha','kharch','expense','expenses','income','budget','balance','spent','salary','udhaar','loan','rupees','rupee','money','payment','paisa','पैसा','पैसे','खर्चा','खर्च','आमदनी','उधार']
+};
+function askOneNormalize(query){
+ return String(query||'').toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+}
+function askOneLevenshtein(a,b){
+ if(Math.abs(a.length-b.length)>1)return 2;
+ let previous=Array.from({length:b.length+1},(_,i)=>i);
+ for(let i=1;i<=a.length;i++){
+  const current=[i];let rowMin=i;
+  for(let j=1;j<=b.length;j++){const value=Math.min(current[j-1]+1,previous[j]+1,previous[j-1]+(a[i-1]===b[j-1]?0:1));current[j]=value;rowMin=Math.min(rowMin,value)}
+  if(rowMin>1)return 2;previous=current;
+ }
+ return previous[b.length];
+}
+function detectIntent(query){
+ const tokens=askOneNormalize(query),scores={};
+ for(const [intent,keywords] of Object.entries(ASK_ONE_INTENT_MAP)){
+  let score=0;
+  for(const keyword of keywords){
+   const variants=askOneNormalize(keyword);
+   if(variants.length>1){if(String(query||'').toLowerCase().includes(keyword.toLowerCase()))score+=2;continue}
+   const key=variants[0];if(!key)continue;
+   if(tokens.some(token=>token===key))score+=2;
+   else if(tokens.some(token=>token.length>=3&&key.length>=3&&(token.includes(key)||key.includes(token))))score+=1;
+   else if(tokens.some(token=>token.length>=3&&key.length>=3&&askOneLevenshtein(token,key)<=1))score+=1;
+  }
+  scores[intent]=score;
+ }
+ const highest=Math.max(0,...Object.values(scores)),winners=Object.keys(scores).filter(key=>scores[key]===highest&&highest>0);
+ return {intent:winners.length===1?winners[0]:null,scores,ambiguous:winners.length>1,matched:winners};
+}
+function askOneDateFromQuery(query){
+ const q=String(query||'').toLowerCase(),base=new Date(today()+'T12:00:00');
+ if(/\b(?:yesterday|kal\s+tha|beete\s+kal)\b/.test(q))base.setDate(base.getDate()-1);
+ else if(/\b(?:tomorrow|kal|parso|parson)\b/.test(q))base.setDate(base.getDate()+( /\b(?:parso|parson)\b/.test(q)?2:1));
+ else if(!/\b(?:today|aaj|आज)\b/.test(q))return '';
+ return base.getFullYear()+'-'+String(base.getMonth()+1).padStart(2,'0')+'-'+String(base.getDate()).padStart(2,'0');
+}
+function askOneRecordText(item){
+ return Object.entries(item||{}).filter(([,value])=>value!==null&&value!==undefined&&['string','number','boolean'].includes(typeof value)).map(([key,value])=>key+' '+value).join(' ').toLowerCase();
+}
+function askOneRelevant(records,query,ignoreWords=[]){
+ const tokens=askOneNormalize(query),ignored=new Set([...ignoreWords,...['what','whats','show','me','list','all','the','my','is','are','was','were','for','of','in','on','at','to','a','an','and','or','please','kya','ka','ki','ke','hai','hain','tha','thi','the','batao','dikhao','kitna','kitne','kitni','wala','wali','wale','mera','meri','mere','today','tomorrow','yesterday','aaj','kal','parso','parson','this','that','how','much','much','total','pending','incomplete','open','completed','complete','done','task','tasks','todo','note','notes','project','projects','routine','routines','habit','habits','money','expense','expenses','spent','paisa','paise','kharcha','kharch','income','budget','balance','salary','udhaar','daily','roz','subah','raat']]);
+ const terms=tokens.filter(token=>!ignored.has(token)&&token.length>1);
+ if(!terms.length)return records.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0)).slice(0,8);
+ return records.map(item=>{const words=askOneNormalize(askOneRecordText(item));let score=0;for(const term of terms){if(words.includes(term))score+=2;else if(words.some(word=>word.length>=3&&term.length>=3&&(word.includes(term)||term.includes(word))))score+=1;else if(words.some(word=>word.length>=3&&term.length>=3&&askOneLevenshtein(word,term)<=1))score+=1}return {item,score}}).filter(row=>row.score>0).sort((a,b)=>b.score-a.score).slice(0,8).map(row=>row.item);
+}
+function answerQuery(intent,query){
+ const q=String(query||'').toLowerCase(),date=askOneDateFromQuery(query);
+ const describe=(items,formatter)=>items.map((item,index)=>(index+1)+'. '+formatter(item)).join('\n');
+ if(intent==='tasks'){
+  let rows=(data.tasks||[]);
+  if(/\b(?:pending|incomplete|unfinished|open|baaki|bacha|bachi)\b/.test(q))rows=rows.filter(item=>!item.done);
+  else if(/\b(?:completed|complete|done|finished|ho gaya|kar diya)\b/.test(q))rows=rows.filter(item=>item.done);
+  if(date)rows=rows.filter(item=>item.due===date);
+  rows=askOneRelevant(rows,query,ASK_ONE_INTENT_MAP.tasks);
+  return {answer:rows.length?'Tasks:\n'+describe(rows,item=>(item.title||'Untitled task')+' — '+(item.done?'Completed':'Pending')+' · '+(item.due?dateFmt(item.due):'No due date')):'Mujhe is query se match karta hua koi task nahi mila.',sources:['Tasks & Planner']};
+ }
+ if(intent==='notes'){
+  const rows=askOneRelevant(data.notes||[],query,ASK_ONE_INTENT_MAP.notes);
+  return {answer:rows.length?'Matching notes:\n'+describe(rows,item=>(item.title||'Untitled note')+(item.subject?' · '+item.subject:'')+' — '+String(item.content||'').slice(0,420)):'Mujhe is query se match karta hua koi saved note nahi mila.',sources:['Notes & Memory']};
+ }
+ if(intent==='projects'){
+  const rows=askOneRelevant(data.projects||[],query,ASK_ONE_INTENT_MAP.projects);
+  return {answer:rows.length?'Projects:\n'+describe(rows,item=>(item.name||item.title||'Untitled project')+(item.description?' — '+String(item.description).slice(0,300):'')+(item.status?' · '+item.status:'')):'Mujhe is query se match karta hua koi project nahi mila.',sources:['Projects']};
+ }
+ if(intent==='routines'){
+  const rows=askOneRelevant(data.studySessions||[],query,ASK_ONE_INTENT_MAP.routines);
+  return {answer:rows.length?'Routine / activity records:\n'+describe(rows,item=>(item.title||item.name||item.subject||'Activity')+(item.date?' · '+dateFmt(item.date):'')+(item.duration?' · '+item.duration+' min':'')):'Abhi One mein matching routine ya habit records saved nahi hain.',sources:['Routines & Activity']};
+ }
+ if(intent==='money'){
+  let rows=(data.expenses||[]);
+  if(date)rows=rows.filter(item=>item.date===date||item.dueDate===date);
+  const searchRows=askOneRelevant(rows,query,ASK_ONE_INTENT_MAP.money);
+  if(date&&/\b(?:spent|spending|kharcha|kharch|expense|expenses|kitna|total)\b/.test(q)){
+   const expenses=rows.filter(item=>(item.kind||'expense')==='expense').reduce((sum,item)=>sum+Number(item.amount||0),0);
+   const income=rows.filter(item=>item.kind==='income').reduce((sum,item)=>sum+Number(item.amount||0),0);
+   const details=searchRows.length?'\n\nRecords:\n'+describe(searchRows,item=>(item.description||item.category||item.kind||'Money record')+' — '+money(item.amount)):'';
+   return {answer:dateFmt(date)+' money summary:\nExpenses: '+money(expenses)+'\nIncome: '+money(income)+details,sources:['Money & Udhaar']};
+  }
+  const list=searchRows.length?searchRows:rows.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,8);
+  return {answer:list.length?'Money records:\n'+describe(list,item=>(item.description||item.category||item.kind||'Money record')+' — '+money(item.amount)+' · '+(item.date?dateFmt(item.date):'No date')+(item.person?' · '+item.person:'')):'Mujhe matching money records nahi mile.',sources:['Money & Udhaar']};
+ }
+ return {answer:'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:[]};
+}
+
 function aiAnswer(question){
  const raw=String(question||''),terms=aiQueryTerms(raw);
  if(/^\s*(?:search|find|look for|locate)\b/i.test(raw)||(/\bwhere is\b/i.test(raw)&&/\b(?:my|workspace|one|task|note|memory|project|file|document|expense|record)\b/i.test(raw)))return phase4SearchWorkspace(raw);
@@ -1663,6 +1755,13 @@ async function sendChat(question,targetDocId=null){
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
  const actionResult=await chatActionIntent(query);
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
+ if(!targetDocId){
+  const detected=detectIntent(query);
+  if(detected.ambiguous){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
+  if(!detected.intent){const message='Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
+  const localAnswer=answerQuery(detected.intent,query);
+  data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources});persist();render();scrollChatToBottom();return;
+ }
  if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
   const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
  }
