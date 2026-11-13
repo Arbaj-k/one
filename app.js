@@ -587,7 +587,7 @@ function documentsCards(){
  return '<div class="grid item-grid document-grid">'+(docs.length?docs.map(d=>{
   const related=documentRelatedNotes(d),noteOptions=(data.notes||[]).map(n=>'<option value="'+esc(n.id)+'" '+(Array.isArray(d.relatedNoteIds)&&d.relatedNoteIds.includes(n.id)?'selected':'')+'>'+esc(n.title||'Untitled note')+'</option>').join('');
   return '<article class="card document-card '+(d.pinned?'document-pinned':'')+'" id="vault-document-'+esc(d.id)+'">'+
-   '<div class="row document-card-top"><span class="tag blue">'+(d.type==='pdf'?'PDF':'Image')+'</span><span class="muted">'+(d.pinned?'★ Pinned':'')+'</span><div class="spacer"></div><button class="btn small '+(d.pinned?'primary':'')+'" data-action="toggle-document-pin" data-id="'+esc(d.id)+'">'+(d.pinned?'Unpin':'Pin')+'</button><button class="btn small" data-action="ask-document" data-id="'+esc(d.id)+'">Ask AI</button><button class="btn small danger" data-action="delete-document" data-id="'+esc(d.id)+'">Delete</button></div>'+
+   '<div class="row document-card-top"><span class="tag blue">'+(d.type==='pdf'?'PDF':'Image')+'</span><span class="muted">'+(d.pinned?'★ Pinned':'')+'</span><div class="spacer"></div><button class="btn small '+(d.pinned?'primary':'')+'" data-action="toggle-document-pin" data-id="'+esc(d.id)+'">'+(d.pinned?'Unpin':'Pin')+'</button><button class="btn small" data-action="ask-document" data-id="'+esc(d.id)+'">Ask AI</button><button class="btn small danger" data-action="delete-uploaded-file" data-id="'+esc(d.id)+'">Delete</button></div>'+
    '<h3>'+esc(d.name)+'</h3><p class="muted">'+esc(d.originalName||'')+' · '+(d.size?Math.ceil(d.size/1024)+' KB':'')+' · '+(d.createdAt||d.created?new Date(d.createdAt||d.created).toLocaleDateString('en-IN'):'Date unavailable')+'</p>'+(d.tags?.length?'<p class="muted">'+d.tags.map(tag=>'#'+esc(tag)).join(' ')+'</p>':'')+(d.note?'<p>'+esc(d.note)+'</p>':'')+'<div class="actions"><button class="btn small" data-action="open-uploaded-file" data-id="'+esc(d.id)+'">View</button><button class="btn small" data-action="download-uploaded-file" data-id="'+esc(d.id)+'">Download</button><button class="btn small" data-action="rename-uploaded-file" data-id="'+esc(d.id)+'">Rename</button></div>'+
    '<div class="document-vault-expiry"><label for="document-expiry-'+esc(d.id)+'">Expiry / renewal date</label><div class="row"><input type="date" id="document-expiry-'+esc(d.id)+'" value="'+esc(d.expiresOn||'')+'" aria-label="Expiry date for '+esc(d.name)+'"><button class="btn small" data-action="save-document-expiry" data-id="'+esc(d.id)+'">Save date</button></div><small class="muted">'+(d.expiresOn?'Reminder enabled · '+dateFmt(d.expiresOn):'Add a date to receive expiry reminders')+'</small></div>'+
    '<div class="actions"><button class="btn small" data-action="extract-document-actions" data-id="'+esc(d.id)+'">Find action items & dates</button><button class="btn small primary" data-action="summarize-document" data-id="'+esc(d.id)+'">'+(d.summary?'Refresh AI summary':'Generate AI summary')+'</button><button class="btn small" data-action="convert-document-json" data-id="'+esc(d.id)+'">Extract structured data</button><button class="btn small" data-action="retry-document-ocr" data-id="'+esc(d.id)+'">Re-upload / OCR</button></div>'+
@@ -1343,7 +1343,7 @@ function askOneRelevant(records,query,ignoreWords=[]){
 }
 
 function searchFiles(query){
- const tokens=askOneNormalize(query).filter(token=>!['file','files','pdf','image','photo','document','documents','upload','uploaded','bill','bills','show','me','dikhao','dikhado','kahan','where','is','my','the','please'].includes(token)&&token.length>1);
+ const tokens=askOneNormalize(query).filter(token=>!['file','files','pdf','image','photo','document','documents','upload','uploaded','show','me','dikhao','dikhado','kahan','where','is','my','the','please'].includes(token)&&token.length>1);
  return (data.documents||[]).map(file=>{
   const text=askOneNormalize([file.name,file.originalName,(file.tags||[]).join(' '),file.note].join(' '));
   let score=0;
@@ -1359,7 +1359,7 @@ async function saveFile(file,metadata){
  if(!isPdf&&!validImage)throw new Error('Only PDF, JPG, PNG and WEBP files are supported.');
  const id=uid();
  await saveOriginalDocument(id,file);
- const record={id,name:String(metadata.name||'').trim(),tags:String(metadata.tags||'').split(',').map(x=>x.trim()).filter(Boolean),note:String(metadata.note||'').trim(),type:isPdf?'pdf':'image',mimeType:file.type|| (isPdf?'application/pdf':'image/'+(file.name.split('.').pop()||'jpeg')),size:file.size,originalName:file.name,createdAt:Date.now(),created:Date.now(),fileStored:true,extractedText:'',extractedJson:null,chunks:[]};
+ const record={id,name:String(metadata.name||'').trim(),tags:String(metadata.tags||'').split(',').map(x=>x.trim()).filter(Boolean),note:String(metadata.note||'').trim(),type:isPdf?'pdf':'image',mimeType:file.type|| (isPdf?'application/pdf':'image/'+(file.name.split('.').pop()||'jpeg')),size:file.size,originalName:file.name,createdAt:Date.now(),created:Date.now(),data:{storage:'indexeddb',key:id},fileStored:true,extractedText:'',extractedJson:null,chunks:[]};
  data.documents=data.documents||[];data.documents.push(record);persist();return record;
 }
 function renameFile(id,metadata){
