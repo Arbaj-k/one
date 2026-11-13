@@ -34,14 +34,7 @@ async function getStudentBrainAIToken(){
  if(current.data.session?.access_token)return current.data.session.access_token;
  if(studentBrainAITokenPromise)return studentBrainAITokenPromise;
  studentBrainAITokenPromise=(async()=>{
-  const result=await client.auth.signInAnonymously();
-  if(result.error){
-   if(/anonymous|disabled|not enabled|captcha/i.test(result.error.message||''))throw new Error('Supabase Anonymous Sign-Ins are not enabled. Open Supabase → Authentication → Sign In / Providers → Anonymous Sign-Ins, enable it, then retry.');
-   throw result.error;
-  }
-  const token=result.data.session?.access_token;
-  if(!token)throw new Error('Supabase did not create an AI session. Refresh and retry.');
-  return token;
+  throw new Error('Please sign in to use One.');
  })();
  try{return await studentBrainAITokenPromise}finally{studentBrainAITokenPromise=null}
 }
@@ -1995,9 +1988,8 @@ function switchAccountWorkspace(user){
  return workspaceSwitchQueue;
 }
 window.OneWorkspace={purgeUserLocalData};
-window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())});
+window.addEventListener('one:auth-changed',event=>{const user=event.detail?.user||null;if(user)switchAccountWorkspace(user).then(()=>consumeOneShareInbox())});
 initCloud();
-migrateWorkspaceToIndexedDB();
 requestWorkspaceStoragePersistence();
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.querySelector('.create-radial-menu'))closeQuickAddMenu();else if(document.querySelector('.modal-backdrop'))action('close-modal')}});
