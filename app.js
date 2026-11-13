@@ -1349,19 +1349,19 @@ function answerQuery(intent,query){
   else if(/\b(?:completed|complete|done|finished|ho gaya|kar diya)\b/.test(q))rows=rows.filter(item=>item.done);
   if(date)rows=rows.filter(item=>item.due===date);
   rows=askOneRelevant(rows,query,ASK_ONE_INTENT_MAP.tasks);
-  return {answer:rows.length?'Tasks:\n'+describe(rows,item=>(item.title||'Untitled task')+' — '+(item.done?'Completed':'Pending')+' · '+(item.due?dateFmt(item.due):'No due date')):'Mujhe is query se match karta hua koi task nahi mila.',sources:['Tasks & Planner']};
+  return {answer:rows.length?'Tasks:\n'+describe(rows,item=>(item.title||'Untitled task')+' — '+(item.done?'Completed':'Pending')+' · '+(item.due?dateFmt(item.due):'No due date')):'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:['Tasks & Planner']};
  }
  if(intent==='notes'){
   const rows=askOneRelevant(data.notes||[],query,ASK_ONE_INTENT_MAP.notes);
-  return {answer:rows.length?'Matching notes:\n'+describe(rows,item=>(item.title||'Untitled note')+(item.subject?' · '+item.subject:'')+' — '+String(item.content||'').slice(0,420)):'Mujhe is query se match karta hua koi saved note nahi mila.',sources:['Notes & Memory']};
+  return {answer:rows.length?'Matching notes:\n'+describe(rows,item=>(item.title||'Untitled note')+(item.subject?' · '+item.subject:'')+' — '+String(item.content||'').slice(0,420)):'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:['Notes & Memory']};
  }
  if(intent==='projects'){
   const rows=askOneRelevant(data.projects||[],query,ASK_ONE_INTENT_MAP.projects);
-  return {answer:rows.length?'Projects:\n'+describe(rows,item=>(item.name||item.title||'Untitled project')+(item.description?' — '+String(item.description).slice(0,300):'')+(item.status?' · '+item.status:'')):'Mujhe is query se match karta hua koi project nahi mila.',sources:['Projects']};
+  return {answer:rows.length?'Projects:\n'+describe(rows,item=>(item.name||item.title||'Untitled project')+(item.description?' — '+String(item.description).slice(0,300):'')+(item.status?' · '+item.status:'')):'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:['Projects']};
  }
  if(intent==='routines'){
   const rows=askOneRelevant(data.studySessions||[],query,ASK_ONE_INTENT_MAP.routines);
-  return {answer:rows.length?'Routine / activity records:\n'+describe(rows,item=>(item.title||item.name||item.subject||'Activity')+(item.date?' · '+dateFmt(item.date):'')+(item.duration?' · '+item.duration+' min':'')):'Abhi One mein matching routine ya habit records saved nahi hain.',sources:['Routines & Activity']};
+  return {answer:rows.length?'Routine / activity records:\n'+describe(rows,item=>(item.title||item.name||item.subject||'Activity')+(item.date?' · '+dateFmt(item.date):'')+(item.duration?' · '+item.duration+' min':'')):'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:['Routines & Activity']};
  }
  if(intent==='money'){
   let rows=(data.expenses||[]);
@@ -1374,7 +1374,7 @@ function answerQuery(intent,query){
    return {answer:dateFmt(date)+' money summary:\nExpenses: '+money(expenses)+'\nIncome: '+money(income)+details,sources:['Money & Udhaar']};
   }
   const list=searchRows.length?searchRows:rows.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,8);
-  return {answer:list.length?'Money records:\n'+describe(list,item=>(item.description||item.category||item.kind||'Money record')+' — '+money(item.amount)+' · '+(item.date?dateFmt(item.date):'No date')+(item.person?' · '+item.person:'')):'Mujhe matching money records nahi mile.',sources:['Money & Udhaar']};
+  return {answer:list.length?'Money records:\n'+describe(list,item=>(item.description||item.category||item.kind||'Money record')+' — '+money(item.amount)+' · '+(item.date?dateFmt(item.date):'No date')+(item.person?' · '+item.person:'')):'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:['Money & Udhaar']};
  }
  return {answer:'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:[]};
 }
@@ -1758,7 +1758,7 @@ async function sendChat(question,targetDocId=null){
  if(!targetDocId){
   const detected=detectIntent(query);
   if(detected.ambiguous){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
-  if(!detected.intent){const message='Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
+  if(!detected.intent){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
   const localAnswer=answerQuery(detected.intent,query);
   data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources});persist();render();scrollChatToBottom();return;
  }
