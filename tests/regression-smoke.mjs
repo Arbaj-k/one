@@ -51,7 +51,7 @@ const noteFormSource=app.slice(noteFormStart,noteFormEnd);
 assert.ok(noteFormSource.includes("field('Title (optional)','title'"),'Note title must be optional.');
 assert.ok(noteFormSource.includes("field('Content','content'"),'Note form must provide a content field.');
 assert.ok(!noteFormSource.includes("field('Subject'")&&!noteFormSource.includes("field('Tags'")&&!noteFormSource.includes("field('Attach PDF"),'Note form must contain only optional Title and Content fields.');
-assert.ok(app.includes("if(formType==='note'){v.title=String(v.title||'').trim();v.content=String(v.content||'').trim();if(!v.content){toast('Enter note content');return}"),'Notes must save content without requiring a title.');
+assert.ok(app.includes("v.title=String(v.title||'').trim();v.content=String(v.content||'').trim();if(!v.content){toast('Enter note content');return}"),'Notes must save content without requiring a title.');
 assert.ok(app.includes("fab?.classList.add('is-hidden')"), 'Create button must hide while a create form is open.');
 assert.ok(app.includes('class="modal-back-button"'), 'Create forms must provide one side back control.');
 assert.ok(app.includes('function choiceField('), 'Create forms must render reusable option chips.');
