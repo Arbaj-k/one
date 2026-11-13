@@ -256,6 +256,12 @@ assert.equal(parsed.dueDate,'2026-11-20','Return date should resolve to the next
 assert.equal(parsed.taskTitle,'Follow up with Suresh about the project','Conversation follow-up should become a task.');
 assert.equal(parsed.hasFollowup,true,'Follow-up intent should be detected.');
 
+
+assert.ok(app.includes("name=\"noteFiles\" type=\"file\" accept=\"application/pdf,image/*\" multiple"), 'Notes must support attaching multiple PDF/image files.');
+assert.ok(app.includes("field('Links (one URL per line)','noteLinks'"), 'Notes must allow external links.');
+assert.ok(app.includes('safeNoteUrl(raw)')&&app.includes("['http:','https:'].includes(url.protocol)"), 'Note links must reject unsafe URL protocols.');
+assert.ok(app.includes('processUploadedDocuments(noteFiles,savedNote.id)'), 'Note attachments must be linked to the saved note.');
+assert.ok(app.includes('function oneWelcomeGreeting()')&&app.includes("first?'Welcome to One':'Good to see you again'"), 'Account-aware first-visit and returning greetings must remain available.');
 console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, spoken task-save behavior, chat file uploads, data safety and CRUD routes.');
 console.log('Note: UI behavior, OCR extraction, backup round-trip, and mobile layout still require browser/device testing.');
 
