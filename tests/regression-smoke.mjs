@@ -359,7 +359,8 @@ assert.ok(app.includes('dueDate:expense.dueDate||\'\''), 'AI money context must 
 assert.ok(app.includes("const addTask="), 'Ask One must create tasks from chat commands.');
 assert.ok(app.includes("const note={id:uid(),title:'Quick note'"), 'Ask One must save notes from chat commands.');
 assert.ok(app.includes("const project={id:uid(),name"), 'Ask One must create projects from chat commands.');
-assert.ok(app.includes("const complete=/\\b(?:complete|finish|mark|done|ho gaya|kar diya)"), 'Ask One must complete tasks from chat commands.');
+assert.ok(app.includes('const completionCue=')&&app.includes('const completionIntent=taskCue&&completionCue'), 'Ask One must complete tasks from natural-language chat commands.');
+assert.ok(app.includes('task.completedAt=Date.now()')&&app.includes("verify('tasks',task)"), 'Ask One must persist and verify task completion.');
 assert.ok(app.includes("const reopen=/\\b(?:reopen|undo|uncomplete"), 'Ask One must reopen completed tasks from chat commands.');
 assert.ok(app.includes("const deleteTask=/\\b(?:delete|remove|hata do|delete kar)"), 'Ask One must delete specifically matched tasks from chat commands.');
 assert.ok(app.includes("pending.type==='create-record'"), 'Ask One creates must pass through the shared confirmation handler.');
