@@ -1081,7 +1081,7 @@ function aiRankDocumentChunks(chunks,question){
 }
 function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const intent=aiQueryIntent(question),maxDocs=limits.maxDocs??6,maxChunks=limits.maxChunks??24,maxChars=limits.maxChars??30000;
- const documentQuestion=/\\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?)\\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/iu.test(String(question||''));
+ const documentQuestion=/\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/iu.test(String(question||''));
  const candidates=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId)).map(doc=>{
   const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
@@ -1398,7 +1398,11 @@ function isDocumentContentQuestion(question){
  const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
  const asksTimetable=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(q);
  const hasUploadedDocuments=(data.documents||[]).some(doc=>doc&&doc.id);
- return (mentionsFile&&asksContent&&!isFileLookup)||(hasUploadedDocuments&&asksTimetable);
+ const refersToCurrentFile=/\b(?:this|that|it|these|those|iska|iske|iski|iss|isme|isey|isse|uska|uske|uski|usme|usse|yeh|ye|uploaded)\b|(?:इसका|इसकी|इसके|इसमें|इसे|उसका|उसकी|उसमें|उससे|ये|यह)/iu.test(q);
+ const asksDocumentField=/\b(?:amount|total|price|cost|date|deadline|expiry|expires|validity|name|address|phone|email|number|subject|marks|grade|percentage|salary|invoice|bill|receipt|policy|certificate|details|summary|written|mentioned|content|meaning|explain|describe|read|extract|what|which|who|when|how|kitna|kitne|kitni|kab|kya|kaun|batao|samjhao)\b|(?:राशि|कुल|कीमत|तारीख|नाम|पता|नंबर|विषय|अंक|कितना|कितने|कितनी|क्या|कब|कौन|बताओ|समझाओ)/iu.test(q);
+ const intentGuess=detectIntent(question);
+ const strongWorkspaceIntent=intentGuess.intent&&['tasks','notes','projects','routines','money'].includes(intentGuess.intent)&&intentGuess.scores[intentGuess.intent]>=4;
+ return (mentionsFile&&asksContent&&!isFileLookup)||(hasUploadedDocuments&&(asksTimetable||((refersToCurrentFile||asksDocumentField)&&asksContent&&!strongWorkspaceIntent)));
 }
 function resolveAskDocumentId(question,targetDocId){
  if(targetDocId)return targetDocId;
@@ -1926,7 +1930,7 @@ async function sendChat(question,targetDocId=null){
    data.messages.push({role:'assistant',content:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});
    persist();render();scrollChatToBottom();return;
   }
-  if(isSpendingAmountQuestion(query)){
+  if(isSpendingAmountQuestion(query)&&!targetDocId){
    const spending=answerSpendingAmount(query);
    data.messages.push({role:'assistant',content:spending.answer,sources:spending.sources});
    persist();render();scrollChatToBottom();return;

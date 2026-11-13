@@ -188,3 +188,7 @@ execFileSync(process.execPath, ['tests/cloud-schema-guardrails.cjs'], { stdio: '
 execFileSync(process.execPath, ['tests/regression-smoke.mjs'], { stdio: 'inherit' });
 
 console.log('Student Brain smoke checks passed: syntax, app shell, core features, data safety, CRUD and quick actions.');
+
+assert.ok(source.includes('const refersToCurrentFile='), 'Follow-up questions must resolve against uploaded file context');
+assert.ok(source.includes('const asksDocumentField='), 'Generic document field questions must route to uploaded files');
+assert.ok(source.includes("if(isSpendingAmountQuestion(query)&&!targetDocId)"), 'Money spending shortcut must not intercept a selected document question');
