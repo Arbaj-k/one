@@ -503,12 +503,17 @@ assert.ok(app.includes("tomorrow|kal|next day|कल"), 'Hindi tomorrow wording 
 const sendChatCode=app.slice(app.indexOf('async function sendChat('),app.indexOf('function action(',app.indexOf('async function sendChat(')));
 assert.ok(sendChatCode.indexOf('chatActionIntent(query)') < sendChatCode.indexOf('requestStudentBrainAI(query'), 'Local reminder/briefing actions must run before document AI retrieval.');
 
-// Calendar integration is removed from the daily task planner; task date filters remain.
-const dailyPlanner=app.slice(app.indexOf('function tasks(){'),app.indexOf('function studyPlanner(){'));
-assert.ok(!dailyPlanner.includes('planner-calendar-wrap'), 'Daily planner must not render the monthly calendar integration.');
-assert.ok(!dailyPlanner.includes('MONTH AT A GLANCE'), 'Monthly calendar heading must be removed.');
+// Daily Planner has its own local month calendar (not external calendar integration).
+const dailyPlanner=app.slice(app.indexOf('function plannerCalendar(){'),app.indexOf('function studyPlanner(){'));
+assert.ok(dailyPlanner.includes('function plannerCalendar(){'), 'Daily Planner monthly calendar renderer is missing.');
+assert.ok(dailyPlanner.includes('data-action="planner-date"'), 'Calendar dates must be selectable.');
+assert.ok(dailyPlanner.includes('data-action="planner-month"'), 'Calendar month navigation must be interactive.');
+assert.ok(dailyPlanner.includes("filter(t=>t.due===selected)"), 'Selected date must show its tasks.');
+assert.ok(dailyPlanner.includes("filter(e=>e.date===selected||e.dueDate===selected)"), 'Selected date must show money transactions and due repayments.');
+assert.ok(dailyPlanner.includes('planner-calendar-markers'), 'Calendar must mark dates with task and money activity.');
 assert.ok(dailyPlanner.includes("'Tomorrow'"), 'Tomorrow task filter must remain available.');
 assert.ok(dailyPlanner.includes("'Upcoming'"), 'Upcoming task filter must remain available.');
+assert.ok(css.includes('.planner-calendar-day.is-selected')&&css.includes('.planner-date-record'), 'Selected calendar day and activity list must be styled.');
 
 // Natural-language reminders (e.g. "kal subah assignment likhna hai yaad dila dena") must be shown in Home Task Briefing.
 const naturalReminder=app.slice(app.indexOf('const reminderIntent='),app.indexOf('const addTask=',app.indexOf('const reminderIntent=')));
