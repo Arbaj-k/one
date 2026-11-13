@@ -871,7 +871,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
      if(shouldRunDocumentOCR(pageText)&&window.Tesseract){
       try{
        setProgress((p-1)/pdf.numPages*85,'OCR scanning page '+p+' of '+pdf.numPages+' · '+file.name);
-       const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(1.8,1800/base.width)});
+       const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
        const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
@@ -1389,8 +1389,8 @@ function askOneLevenshtein(a,b){
 }
 function isDocumentContentQuestion(question){
  const q=String(question||'').toLowerCase();
- const mentionsFile=/\b(?:pdf|image|photo|picture|document|uploaded file|file|scan|receipt|bill|invoice|notice|date sheet|this file|that file|this document|that document|this image|that image)\b|\b(?:is file|iss file|is pdf|iss pdf|is image|iss image|yeh document|ye document|issme|isme|is mein|iss mein|file ka content|document mein|pdf mein|image mein)\b/i.test(q);
- const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|contains?|inside|says?|written|mentioned|answer|details|content|meaning|iska|isme|issme|batao|samjhao|likha|kya|padh|padho|bata|samjha)\b/i.test(q);
+ const mentionsFile=/\b(?:pdf|image|photo|picture|document|uploaded file|file|scan|receipt|bill|invoice|notice|date sheet|this file|that file|this document|that document|this image|that image)\b|\b(?:is file|iss file|is pdf|iss pdf|is image|iss image|yeh document|ye document|issme|isme|is mein|iss mein|file ka content|document mein|pdf mein|image mein)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/u.test(q);
+ const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|contains?|inside|says?|written|mentioned|answer|details|content|meaning|iska|isme|issme|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kab|kaise|kahan)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये)/u.test(q);
  const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
  return mentionsFile&&asksContent&&!isFileLookup;
 }
@@ -1483,11 +1483,11 @@ async function openUploadedFile(id,download=false){
 }
 function openFileMetadataDialog(file){
  if(!file)return;
- if(file.size>5*1024*1024){toast('File size limit is 5 MB. Choose a smaller file.');return}
+ if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const preview=isPdf?'<div class="file-upload-preview"><span style="font-size:30px">📄</span><span>'+esc(file.name)+'</span></div>':'<div class="file-upload-preview"><img alt="Selected file preview" src="'+URL.createObjectURL(file)+'" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:10px"><span>'+esc(file.name)+'</span></div>';
  window.pendingOneFile=file;formType='fileMeta';editing=null;
- modal('Save file',preview+field('Naam','name',file.name,'text',{required:true,full:true})+field('Tags / Keywords','tags','','text',{full:true,placeholder:'bijli bill, 2025, ghar'})+field('Note','note','','textarea',{full:true,placeholder:'Add a short note (optional)'})+'<small class="muted">Maximum file size: 5 MB</small>','Save file');
+ modal('Save file',preview+field('Naam','name',file.name,'text',{required:true,full:true})+field('Tags / Keywords','tags','','text',{full:true,placeholder:'bijli bill, 2025, ghar'})+field('Note','note','','textarea',{full:true,placeholder:'Add a short note (optional)'})+'<small class="muted">Maximum file size: 12 MB</small>','Save file');
  const input=document.querySelector('#edit-form [name=name]'),button=document.querySelector('#edit-form .modal-save-button');
  if(input&&button){const update=()=>button.disabled=!input.value.trim();input.addEventListener('input',update);update()}
 }
