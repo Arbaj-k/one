@@ -428,6 +428,18 @@ assert.ok(app.includes('data-action="open-vault-result"') && app.includes('Relat
 assert.ok(app.includes('const isProjectLinked=item=>') && app.includes('relatedProjectId') && app.includes('projectIds'), 'Explicit project links must boost note and document retrieval.');
 assert.ok(app.includes('linked to project '), 'AI document evidence must identify the project relationship in its source label.');
 
+// Ask One local intent map: exact, partial and typo-tolerant keyword routing without an external API.
+assert.ok(app.includes('const ASK_ONE_INTENT_MAP={') && app.includes('function detectIntent(query){') && app.includes('function answerQuery(intent,query){'), 'Ask One must expose a maintainable local intent map and separate detect/answer functions.');
+assert.ok(app.includes('function askOneLevenshtein(a,b){') && app.includes('askOneLevenshtein(token,key)<=1'), 'Ask One must support one-edit fuzzy keyword matches.');
+assert.ok(app.includes("tasks:['task','tasks','todo','to do','kaam'") && app.includes("notes:['note','notes','likha'") && app.includes("projects:['project','projects','milestone'") && app.includes("routines:['routine','routines','habit'") && app.includes("money:['paisa','paise','kharcha'"), 'Ask One must include English and Hindi/Hinglish keywords for all five sections.');
+assert.ok(app.includes('Aap Tasks ke baare mein pooch rahe ho ya Notes ke?'), 'Ask One must clarify zero-score and tied intent matches.');
+assert.ok(app.includes('Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.'), 'Ask One must show the friendly no-result fallback.');
+assert.ok(app.includes('if(!detected.intent)') && app.includes('answerQuery(detected.intent,query)'), 'Ask One chat must route recognized queries to local saved-data answers.');
+assert.ok(app.includes("filter(item=>!item.done)"), 'Ask One task intent must filter pending tasks.');
+assert.ok(app.includes("data.notes||[],query,ASK_ONE_INTENT_MAP.notes"), 'Ask One note intent must search saved notes.');
+assert.ok(app.includes("data.studySessions||[],query,ASK_ONE_INTENT_MAP.routines"), 'Ask One routine intent must search saved activity records.');
+assert.ok(app.includes("item.date===date||item.dueDate===date"), 'Ask One money intent must filter transactions and repayments by date.');
+
 // Ask One date keywords must resolve natural English/Hinglish dates and return the selected day's saved tasks and money records.
 assert.ok(app.includes('const dateKeyword=') && app.includes('dateQueryIntent'), 'Ask One must detect date-focused questions.');
 assert.ok(app.includes('today|today\'?s|this\\s+day|current\\s+day|aaj'), 'Ask One must understand today and aaj variants.');
