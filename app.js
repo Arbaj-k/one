@@ -1595,12 +1595,23 @@ async function chatActionIntent(question){
   return {answer:'Please confirm money record: '+(kind==='income'?'income':'expense')+' of '+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'. Reply YES to save or NO to cancel. Abhi money record add nahi hua.',sources:['Money & Udhaar']};
  }
 
- const complete=/\b(?:complete|finish|mark|done|ho gaya|kar diya)\b/i.test(lower)&&/\b(?:task|assignment|todo|kaam|done)\b/i.test(lower);
- if(complete){
-  const needle=raw.replace(/\b(?:please|complete|finish|mark|as|done|task|the|my|todo|assignment|kaam|ho gaya|kar diya)\b/ig,' ').trim().toLowerCase();
-  const found=(data.tasks||[]).filter(t=>!t.done&&needle&&String(t.title||'').toLowerCase().includes(needle));
-  if(found.length===1){found[0].done=true;found[0].completedAt=Date.now();found[0].updated=Date.now();persist();if(!verify('tasks',found[0]))return {answer:'Task completion save verify nahi hua.',sources:[]};page='planner';render();return {answer:'Task "'+found[0].title+'" completed and saved.',sources:['Planner']}}
-  return {answer:found.length?'Multiple tasks mile. Exact task name batao.':'Woh open task nahi mila. Saved task ka exact naam batao.',sources:['Planner']};
+ const completionCue=/\b(?:complete(?:d)?|finish(?:ed)?|done|mark(?:ed)?\s+(?:as\s+)?(?:complete(?:d)?|done)|finished)\b|\b(?:ho\s+gaya|ho\s+gya|ho\s+chuka|kar\s+liya|kar\s+diya|khatam|poora\s+ho\s+gaya)\b/i.test(lower);
+ const taskCue=/\b(?:task|tasks|todo|to-do|assignment|kaam)\b/i.test(lower);
+ const completionIntent=taskCue&&completionCue&&!/\b(?:show|list|what|which|kitne|kitna|batao|dikhao)\b/i.test(lower);
+ if(completionIntent){
+  const needle=raw.toLowerCase()
+   .replace(/\b(?:please|i|have|has|been|the|my|this|that|it|is|ye|yeah|yeh|mera|meri|mere|woh|wo|task|tasks|todo|to-do|assignment|kaam|complete(?:d)?|finish(?:ed)?|done|mark(?:ed)?|as|ho|gaya|gya|chuka|kar|liya|diya|khatam|poora|hogaya|hogya|hochuka)\b/ig,' ')
+   .replace(/[^\p{L}\p{N}\s-]/gu,' ').replace(/\s+/g,' ').trim();
+  const openTasks=(data.tasks||[]).filter(t=>!t.done);
+  const found=needle?openTasks.filter(t=>{const title=String(t.title||'').toLowerCase();return title.includes(needle)||needle.includes(title)}):openTasks;
+  if(found.length===1){
+   const task=found[0];task.done=true;task.completedAt=Date.now();task.updated=Date.now();persist();
+   if(!verify('tasks',task)){task.done=false;delete task.completedAt;return {answer:'Task completion save verify nahi hua. Planner mein task abhi open hi rehna chahiye; dobara try karo.',sources:[]}}
+   page='planner';const sync=await syncResult();render();
+   return {answer:'Task "'+task.title+'" completed and saved.'+sync,sources:['Planner']};
+  }
+  if(found.length>1)return {answer:'Ek se zyada open tasks match ho rahe hain. Exact task title likho, jaise: “DSA assignment completed”. Abhi koi task change nahi kiya.',sources:['Planner']};
+  return {answer:needle?'Is naam ka koi open task nahi mila. Task ka saved title check karke dobara likho.':'Kaunsa task complete hua? Exact task title batao. Abhi koi task change nahi kiya.',sources:['Planner']};
  }
  const reopen=/\b(?:reopen|undo|uncomplete|mark.*(?:open|pending)|pending kar)\b/i.test(lower);
  if(reopen){
