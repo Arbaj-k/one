@@ -14,6 +14,21 @@
     .filter(line=>line&&!/^\[(?:OCR|No selectable text detected|No readable text found)[^\]]*\]$/i.test(line));
    return {page,text:lines};
   }).filter(item=>item.text.length);
+  const facts=[];
+  const labels=[
+   {type:'expiry',re:/(?:expiry|expires?|expiration|validity|समाप्ति|समाप्त|वैधता|वैध\s*तक)/i},
+   {type:'deadline',re:/(?:last\s*date|deadline|due\s*date|अंतिम\s*तिथि|आखिरी\s*तारीख|जमा\s*करने\s*की\s*अंतिम)/i},
+   {type:'date',re:/(?:date|दिनांक|तिथि|तारीख)/i},
+   {type:'amount',re:/(?:amount|fee|fees|total|price|राशि|शुल्क|फीस|कुल)/i},
+   {type:'time',re:/(?:time|समय)/i},
+   {type:'venue',re:/(?:venue|location|place|स्थान|जगह)/i}
+  ];
+  for(const page of pages)for(const line of page.text){
+   const match=line.match(/^\s*([^:：|\t]{2,60})\s*[:：]\s*(.{1,220})\s*$/);
+   if(!match)continue;
+   const label=match[1].trim(),value=match[2].trim(),field=labels.find(item=>item.re.test(label));
+   if(field)facts.push({type:field.type,page:page.page,label,value,source_line:line});
+  }
   const key_value=[];
   for(const page of pages)for(const line of page.text){
    const m=line.match(/^\s*([^:：|\t]{2,50})\s*[:：]\s*(.+?)\s*$/);
@@ -48,7 +63,7 @@
   }
   return {document_name:String(name||'Untitled document'),schema_version:3,
    extraction_status:pages.length?'success':'no_text',pages,
-   structured_data:{key_value,tables,timetable,line_records},
+   structured_data:{key_value,facts,tables,timetable,line_records},
    extraction_notes:pages.length?[]:['No readable text was detected; structured fields are empty until OCR/text extraction succeeds.']};
  }
  global.StudentBrainDocumentExtractor={extract,normalizeKey};
