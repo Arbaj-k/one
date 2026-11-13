@@ -385,7 +385,7 @@ assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') &&
 assert.ok(push.includes('relatedNoteId') && push.includes('relatedDocumentId'), 'Background push messages must include linked note/document context.');
 assert.ok(push.includes('one_push_deliveries'), 'Background reminder deliveries must remain idempotent.');
 assert.ok(push.includes('daily-pending-summary:') && push.includes('hhmm>="09:00"'), 'Background dispatcher must send one daily 09:00 Asia/Kolkata digest.');
-assert.ok(push.includes('["assignment","reminder","briefing"]') && push.includes('Boolean(task.due)'), 'Daily digest must include all unfinished dated tasks and explicit reminders/briefings.');
+assert.ok(push.includes('["assignment","reminder","briefing"]') && push.includes('if(task.due||'), 'Daily digest must include all unfinished dated tasks and explicit reminders/briefings.');
 assert.ok(push.includes('notification_type:"daily_digest"') && push.includes('Your pending reminders'), 'Daily digest must use idempotency tracking and a clear notification.');
 assert.ok(push.includes('doc.expiresOn<=addLocalDays(date,7)') && push.includes('Document expiry:'), 'Daily digest must include upcoming and overdue document expiry reminders.');
 assert.ok(push.includes('const loans=expenses.filter') && push.includes('Collect from ') && push.includes('Repay '), 'Daily digest must include outstanding Udhaar due reminders.');
