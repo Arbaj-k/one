@@ -16,10 +16,13 @@
   const q=norm(query),reminderCue=/\\b(?:remind(?:er)?|yaad\\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\\s+(?:a\\s+)?reminder|reminder\\s+(?:set|laga)|briefing)\\b/i.test(q),det=reminderCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
   let action=reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
-  if(/\b(salary aayi|salary aaya|income received|credited)\b/.test(q)&&amount)action='add';
+  if(/\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\b/.test(q)&&amount)action='add';
+  if(det.intent==='routines'&&/\b(routine|habit|daily|roz|subah|raat)\b/.test(q)&&!/\b(show|list|dikhao|batao|kitna|kya hai)\b/.test(q))action='add';
+  if(action==='complete'&&!det.intent)det.intent='tasks';
+  if(action==='delete'&&!det.intent)det.intent='tasks';
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
   const date=parseDate(query),time=parseTime(query);
-  let title=q.replace(/\b(add|jodo|daalo|dalo|banao|create|likho|save|dikhao|batao|show|list|search|dhundo|edit|update|delete|hatao|remove|complete|done|ho gaya|khatam|finish|task|tasks|todo|note|notes|project|routine|habit|paisa|paise|kharcha|kharch|expense|expenses|income|salary|aayi|aaya|file|files|pdf|photo|image|please|kar do|karo|mein|me|ka|ki|ke|hai|hain|subah|baje|morning|evening|raat|tomorrow|kal|aaj|roz|daily|milestone|naya|new|wala|wali|wale|rupees|rupee|rupaye|rupay|रुपये|रुपए|rs|remind|reminder|yaad|dilana|dilao|kholo|open|am|pm|oclock|ek|do|teen|char|chaar|paanch|panch|chhe|saat|aath|nau|das|bees|sau|hazaar|hajar)\b/gi,' ')
+  let title=q.replace(/\b(add|jodo|daalo|dalo|banao|create|likho|save|dikhao|batao|show|list|search|dhundo|edit|update|delete|hatao|remove|complete|done|ho gaya|khatam|finish|task|tasks|todo|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|aayi|aaya|file|files|pdf|photo|image|please|kar do|karo|mein|me|ka|ki|ke|hai|hain|subah|baje|morning|evening|raat|tomorrow|kal|aaj|roz|daily|milestone|naya|new|wala|wali|wale|rupees|rupee|rupaye|rupay|रुपये|रुपए|rs|remind|reminder|yaad|dilana|dilao|kholo|open|am|pm|oclock|ek|do|teen|char|chaar|paanch|panch|chhe|saat|aath|nau|das|bees|sau|hazaar|hajar)\b/gi,' ')
    .replace(/\b\d[\d,]*(?:\.\d+)?\b/g,' ').replace(/\s+/g,' ').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
@@ -45,7 +48,7 @@
  }
  const p=parseCommand(query),s=p.section;if(!s)return null;
  const collection={tasks:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
- const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','pending','complete','delete','wala','wali','wale','please'].includes(t));
+ const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','pending','complete','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please'].includes(t));
  const rows=arr().map(x=>{const hay=norm([x.title,x.name,x.description,x.content,x.note,x.tags,x.subject].flat().join(' '));return {x,score:terms.reduce((n,t)=>n+(hay.split(' ').includes(t)?2:hay.includes(t)?1:0),0)}}).filter(x=>!terms.length||x.score>0).sort((a,b)=>b.score-a.score).map(x=>x.x);
  if(p.action==='add'){
   if(s==='scan'){const picker=document.createElement('input');picker.type='file';picker.accept='image/*';picker.capture='environment';picker.onchange=()=>{const file=picker.files?.[0];if(file)openFileMetadataDialog(file)};picker.click();return answer('Camera scan khul gaya. Document ki photo lo, phir save karo.','Scan')}if(s==='files'){openUploadForm();return answer('File picker khul gaya. PDF ya photo choose karo.','Uploaded Items')}
