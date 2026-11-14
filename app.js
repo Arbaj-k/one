@@ -2376,6 +2376,19 @@ async function checkTaskReminders(){
    }catch(err){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
+ const routineDate=today(),routineWeekday=new Date(routineDate+'T12:00:00').getDay();
+ for(const routine of (data.routines||[])){
+  const rule=routine.repeatRule||routine.frequency||'none';
+  const dueToday=rule==='daily'||(rule==='weekly'&&Number(routine.repeatDay??new Date(routine.created||Date.now()).getDay())===routineWeekday);
+  if(!dueToday||!routine.time)continue;
+  const [hour,minute]=String(routine.time).split(':').map(Number);
+  if(!Number.isFinite(hour)||!Number.isFinite(minute))continue;
+  const when=new Date(routineDate+'T00:00:00').getTime()+hour*3600000+minute*60000;
+  const key='routine-'+routine.id+'-'+routineDate;
+  if(shown[key]||now<when||now>=when+24*60*60*1000)continue;
+  try{await notify('One · Routine reminder',(routine.title||'Your routine')+' · Scheduled for '+routine.time,key,null,'routine');shown[key]=true}
+  catch(error){console.warn("Operation failed; diagnostic details redacted.")}
+ }
  const todayDate=today();
  for(const doc of (data.documents||[])){
   if(!doc.expiresOn||!/^\d{4}-\d{2}-\d{2}$/.test(doc.expiresOn))continue;
