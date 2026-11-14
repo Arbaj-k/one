@@ -23,7 +23,7 @@
  function parseRecurrence(text){
   const q=norm(text);
   const days={sunday:0,somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0};
-  const dayKey=Object.keys(days).find(day=>new RegExp('\\\\b'+day+'\\\\b','i').test(q));
+  const dayKey=Object.keys(days).find(day=>q.split(' ').includes(day));
   const daily=/\\b(daily|every day|roz|roj|har roz|har din)\\b/i.test(q);
   const weekly=!!dayKey||/\\b(weekly|every week|har hafte|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|har somvar|har mangalvar|har budhvar|har guruwar|har shukravar|har shanivar|har ravivar)\\b/i.test(q);
   return {repeatRule:daily?'daily':weekly?'weekly':'none',repeatDay:dayKey?days[dayKey]:null};
