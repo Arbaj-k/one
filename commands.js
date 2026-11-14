@@ -12,22 +12,40 @@
  function parseAmount(text){let m=text.match(/(?:₹|rs\.?\s*)?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|hazaar|hazar|rupees?|rs\.?|रुपये|रुपए)?/i);if(m){let n=Number(m[1].replace(/,/g,''));return n*(m[2]&&/^(k|thousand|hazaar|hazar)$/i.test(m[2])?1000:1)}let total=0,cur=0,found=false;for(const t of norm(text).split(' ')){if(numberMap[t]!=null){found=true;const n=numberMap[t];if(n>=100){cur=(cur||1)*n;if(n>=1000){total+=cur;cur=0}}else cur+=n}}return found?total+cur:0}
  function parseDate(text){const q=norm(text),d=new Date(today()+'T12:00:00');if(/\b(aaj|today)\b/.test(q))return today();if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);else{let m=q.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.toISOString().slice(0,10)}else{const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};let day=Object.keys(days).find(k=>q.includes(k));if(!day)return '';let delta=(days[day]-d.getDay()+7)%7;if(!delta||q.includes('agle'))delta=delta||7;d.setDate(d.getDate()+delta)}}return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
  function parseTime(text){const q=norm(text);let m=q.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)?\b/);if(!m)return '';let h=+m[1],min=+(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;if(/\b(shaam|evening|raat)\b/.test(q)&&h<12)h+=12;if(/\b(subah|morning)\b/.test(q)&&h===12)h=0;return h<24&&min<60?String(h).padStart(2,'0')+':'+String(min).padStart(2,'0'):''}
+ function parseRecurrence(text){
+  const q=norm(text);
+  const days={sunday:0,somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0};
+  const dayKey=Object.keys(days).find(day=>new RegExp('\\\\b'+day+'\\\\b','i').test(q));
+  const daily=/\\b(daily|every day|roz|roj|har roz|har din)\\b/i.test(q);
+  const weekly=!!dayKey||/\\b(weekly|every week|har hafte|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|har somvar|har mangalvar|har budhvar|har guruwar|har shukravar|har shanivar|har ravivar)\\b/i.test(q);
+  return {repeatRule:daily?'daily':weekly?'weekly':'none',repeatDay:dayKey?days[dayKey]:null};
+ }
  function parseCommand(query){
-  const q=norm(query),reminderCue=/\\b(?:remind(?:er)?|yaad\\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\\s+(?:a\\s+)?reminder|reminder\\s+(?:set|laga)|briefing)\\b/i.test(q),det=reminderCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const q=norm(query),reminderCue=/\\b(?:remind(?:er)?|yaad\\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\\s+(?:a\\s+)?reminder|reminder\\s+(?:set|laga)|briefing)\\b/i.test(q);
+  const recurrence=parseRecurrence(q);
+  const det=reminderCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const planSummary=/\\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\\b/i.test(q);
+  const weeklySpending=/\\b(is hafte|iss hafte|this week|weekly)\\b/i.test(q)&&/\\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\\b/i.test(q);
+  if(!det.intent&&recurrence.repeatRule!=='none')det.intent=/\\b(routine|habit|walk|exercise|meditation)\\b/i.test(q)?'routines':'tasks';
+  if(planSummary)det.intent='tasks';
   let action=reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
-  if(/\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\b/.test(q)&&amount)action='add';
-  if(det.intent==='routines'&&/\b(routine|habit|daily|roz|subah|raat)\b/.test(q)&&!/\b(show|list|dikhao|batao|kitna|kya hai)\b/.test(q))action='add';
+  if(/\\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\\b/.test(q)&&amount)action='add';
+  if(det.intent==='routines'&&/\\b(routine|habit|daily|roz|roj|subah|raat|walk)\\b/.test(q)&&!/\\b(show|list|dikhao|batao|kitna|kya hai)\\b/.test(q))action='add';
+  if(recurrence.repeatRule!=='none'&&!/\\b(show|list|dikhao|batao|search|dhundo)\\b/.test(q))action='add';
   if(action==='complete'&&!det.intent)det.intent='tasks';
   if(action==='delete'&&!det.intent)det.intent='tasks';
-  if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
+  if(/\\b(kitna|kitni|kitne|kya hai|how much|what is)\\b/.test(q))action='show';
+  if(planSummary||weeklySpending)action='summary';
   const date=parseDate(query),time=parseTime(query);
-  let title=q.replace(/\b(add|jodo|daalo|dalo|banao|create|likho|save|dikhao|batao|show|list|search|dhundo|edit|update|delete|hatao|remove|complete|done|ho gaya|khatam|finish|task|tasks|todo|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|aayi|aaya|file|files|pdf|photo|image|please|kar do|karo|mein|me|ka|ki|ke|hai|hain|subah|baje|morning|evening|raat|tomorrow|kal|aaj|roz|daily|milestone|naya|new|wala|wali|wale|rupees|rupee|rupaye|rupay|रुपये|रुपए|rs|remind|reminder|yaad|dilana|dilao|kholo|open|am|pm|oclock|ek|do|teen|char|chaar|paanch|panch|chhe|saat|aath|nau|das|bees|sau|hazaar|hajar)\b/gi,' ')
-   .replace(/\b\d[\d,]*(?:\.\d+)?\b/g,' ').replace(/\s+/g,' ').trim();
-  const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
-  if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
-  return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query};
-}
+  let title=q.replace(/\\b(add|jodo|daalo|dalo|banao|create|likho|save|dikhao|batao|show|list|search|dhundo|edit|update|delete|hatao|remove|complete|done|ho gaya|khatam|finish|task|tasks|todo|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|aayi|aaya|file|files|pdf|photo|image|please|kar do|karo|mein|me|ka|ki|ke|hai|hain|subah|baje|morning|evening|raat|tomorrow|kal|aaj|roz|roj|daily|milestone|naya|new|wala|wali|wale|rupees|rupee|rupaye|rupay|रुपये|रुपए|rs|remind|reminder|yaad|dilana|dilao|kholo|open|am|pm|oclock|ek|do|teen|char|chaar|paanch|panch|chhe|saat|aath|nau|das|bees|sau|hazaar|hajar|har|every|week|weekly|somvar|monday|mangalvar|tuesday|budhvar|wednesday|guruwar|thursday|shukravar|friday|shanivar|saturday|ravivar|sunday|report)\\b/gi,' ')
+   .replace(/\\b\\d[\\d,]*(?:\\.\\d+)?\\b/g,' ').replace(/\\s+/g,' ').trim();
+  const projectName=(q.match(/\\bproject\\s+([\\p{L}\\p{N}_-]+)/u)||[])[1]||'';
+  if(det.intent==='projects'&&/\\bmilestone\\b/.test(q))title='New milestone';
+  const summary=planSummary?'today-plan':weeklySpending?'week-spending':null;
+  return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,...recurrence};
+ }
+
  let pending=null, pendingReminderDraft=null;
  function answer(text,source){return {answer:text,sources:[source||'Ask One']}}
  function executeCommand(query){const q=norm(query);if(pending){const p=pending;if(p.choose){const n=Number(q);if(!Number.isInteger(n)||n<1||n>p.choose.length)return answer('List me se number reply karo, jaise 1 ya 2.');const item=p.choose[n-1];pending=null;if(p.action==='delete'){pending={apply:()=>{data[p.collection]=data[p.collection].filter(x=>x.id!==item.id);persist();render()},done:'Deleted '+(item.title||item.name||item.description)};return answer('Ye delete karna hai: "'+(item.title||item.name||item.description)+'"? Haan / Nahi bolo.')}if(p.action==='complete'&&p.collection==='tasks'){pending={apply:()=>{item.done=true;item.completedAt=Date.now();persist();render()},done:'Completed '+item.title};return answer('Mark "'+item.title+'" complete? Haan / Nahi bolo.')}return answer(item.title||item.name||item.description||'Selected item')}pending=null;if(/^(haan|ha|yes|y|confirm|kar do|proceed)$/.test(q)){p.apply();return answer(p.done,'Ask One')}if(/^(nahi|na|no|n|cancel)$/.test(q))return answer('Cancelled. Koi change nahi kiya.');pending=p;return answer('Pending action ke liye Haan ya Nahi bolo.')}
