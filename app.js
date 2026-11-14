@@ -1773,7 +1773,7 @@ async function chatActionIntent(question){
   pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:(daily?'Daily briefing':'Scheduled briefing')+' saved: '+title+' · '+(daily?'every day':dateFmt(due))+' at '+reminderTime+'. Enable notifications for alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(daily?'daily':'one-time')+' briefing: '+title+' · '+(daily?'Every day':dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Task briefing','Planner']};
  }
- const explicitTaskAdd=/\\b(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|\\b(?:task|todo)\\s+(?:add|bana|create|make)\\b|\\b(?:task|todo)\\s+(?:mein|me)\\s+(?:add|jod)\\s+(?:kar|karo|kar do)\\b|\\b(?:add|create|make)\\s+(?:kar|karo|kar\\s+do)\\s+(?:a\\s+)?(?:task|todo)\\b|\\b(?:add|create|make)\\s+(?:kar|karo|kar\\s+do)\\s+(?:task|todo)\\s+(?:ki|ka|ke)\\b|\\b(?:task bana do|task create karo|task add kar do|todo bana do)\\b|\\b(?:assignment|homework|exam|project)\\b.*\\b(?:add kar do|bana do|create|add)\\b/i.test(lower);
+ const explicitTaskAdd=/\b(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+(?:mein|me)\s+(?:add|jod)\s+(?:kar|karo|kar do)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:a\s+)?(?:task|todo)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:task|todo)\s+(?:ki|ka|ke)\b|\b(?:task bana do|task create karo|task add kar do|todo bana do)\b|\b(?:assignment|homework|exam|project)\b.*\b(?:add kar do|bana do|create|add)\b/i.test(lower);
  const naturalReminder=/\\b(?:yaad\\s+(?:dila|dilana|dila dena|dila do|dila dijiyega|dilaa dena)|remind\\s+me|reminder\\s+(?:laga|set)|mat\\s+bhoolna|bhoolna\\s+mat|yaad\\s+rakhna|remind\\s+karna)\\b/i.test(lower);
  const reminderIntent=!explicitTaskAdd&&naturalReminder||/\\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do)\\b/i.test(lower);
  if(reminderIntent){
@@ -1795,14 +1795,14 @@ async function chatActionIntent(question){
  const addTask=explicitTaskAdd&&!naturalReminder||!naturalReminder&&/\\b(?:schedule|bana do|banao|add kar|jod do|likh lo)\\b/i.test(lower)&&/\\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\\b/i.test(lower);
  if(addTask){
   const noteMatch=raw.match(/\b(?:notes?|details?)\s*[:\-]\s*(.+)$/i),notes=noteMatch?noteMatch[1].trim():'';
-  const taskType=/\\bassignment\\b/i.test(raw)?'Assignment':/\\bhomework\\b/i.test(raw)?'Homework':/\\bexam\\b/i.test(raw)?'Exam':/\\bproject\\b/i.test(raw)?'Project':'';
-  let title=raw.replace(/\\b(?:notes?|details?)\\s*[:\\-]\\s*.+$/i,'')
-   .replace(/^\\s*(?:please\\s+)?(?:add|create|make)\\s+(?:kar\\s+(?:do|de|dijiye)\\s+)?(?:(?:a|an|new)\\s+)?(?:task|todo)\\b(?:\\s+(?:ki|ka|ke))?/i,' ')
-   .replace(/^\\s*(?:please\\s+)?(?:add|create|make)\\s+(?:kar\\s+(?:do|de|dijiye)\\s+)?/i,' ')
-   .replace(/^\\s*(?:task|todo)\\s+(?:add|bana|create|make)\\s*(?:kar\\s*(?:do|de|dijiye))?\\s*(?:ki|ka|ke)?\\s*/i,' ')
-   .replace(/^\\s*(?:task|todo)\\s+(?:ki|ka|ke)\\s*/i,' ')
-   .replace(/\\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|jod do|likh lo|yaad dilana|task|todo|assignment|homework|exam|project|deadline|submit|kaam|due|today|tomorrow|kal|aaj|on|by|karna|karo|kar|hai|ka|ki|ke|a|an|the)\\b/ig,' ')
-   .replace(/\\s+/g,' ').replace(/^[\\s:,-]+|[\\s:,-]+$/g,'').trim();
+  const taskType=/\bassignment\b/i.test(raw)?'Assignment':/\bhomework\b/i.test(raw)?'Homework':/\bexam\b/i.test(raw)?'Exam':/\bproject\b/i.test(raw)?'Project':'';
+  let title=raw.replace(/\b(?:notes?|details?)\s*[:\-]\s*.+$/i,'')
+   .replace(/^\s*(?:please\s+)?(?:add|create|make)\s+(?:kar\s+(?:do|de|dijiye)\s+)?(?:(?:a|an|new)\s+)?(?:task|todo)\b(?:\s+(?:ki|ka|ke))?/i,' ')
+   .replace(/^\s*(?:please\s+)?(?:add|create|make)\s+(?:kar\s+(?:do|de|dijiye)\s+)?/i,' ')
+   .replace(/^\s*(?:task|todo)\s+(?:add|bana|create|make)\s*(?:kar\s*(?:do|de|dijiye))?\s*(?:ki|ka|ke)?\s*/i,' ')
+   .replace(/^\s*(?:task|todo)\s+(?:ki|ka|ke)\s*/i,' ')
+   .replace(/\b(?:please|add|create|make|remind me to|remind me|schedule|bana do|banao|add kar do|add kar|jod do|likh lo|yaad dilana|task|todo|assignment|homework|exam|project|deadline|submit|kaam|due|today|tomorrow|kal|aaj|on|by|karna|karo|kar|hai|ka|ki|ke|a|an|the)\b/ig,' ')
+   .replace(/\s+/g,' ').replace(/^[\s:,-]+|[\s:,-]+$/g,'').trim();
   if(taskType)title=title?title+' '+taskType:taskType;
   if(!title)return {answer:'Task ka naam batao. Example: Add task DSA assignment due tomorrow. Notes: chapter 4 complete karna.',sources:['Planner']};
   const due=parseDate();
