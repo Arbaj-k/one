@@ -1683,7 +1683,7 @@ async function chatActionIntent(question){
     const saved=verify(collection,record);
     if(!saved)return {answer:'Update verify nahi hua. Koi success confirmation nahi de raha; record manually check karo.',sources:[pending.source]};
     const sync=await syncResult();page=pending.recordType==='task'?'planner':pending.recordType==='note'?'notes':'projects';render();
-    return {answer:'Updated '+pending.recordType+': "'+pending.title+'". '+Object.keys(pending.patch).join(', ')+' changed.'+sync,sources:[pending.source]};
+    return {answer:pending.patch?.done===true?'Task "'+pending.title+'" marked completed and saved.'+sync:'Updated '+pending.recordType+': "'+pending.title+'". '+Object.keys(pending.patch).join(', ')+' changed.'+sync,sources:[pending.source]};
    }
    if(pending.type==='delete-task'){
     const target=(data.tasks||[]).find(task=>task.id===pending.id);
@@ -2029,12 +2029,12 @@ async function sendChat(question,targetDocId=null){
    data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources,fileResults:localAnswer.fileResults||[]});persist();render();scrollChatToBottom();return;
   }
  }
- if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
-  const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
- }
  if(!targetDocId&&!isDocumentContentQuestion(query)){
   try{const planned=await requestAskOneActionPlan(query);if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}}
   catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
+ }
+ if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
+  const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
  }
  chatBusy=true;render();scrollChatToBottom();
  try{const result=await requestStudentBrainAI(query,targetDocId);data.messages.push({role:'assistant',content:result.answer,sources:result.sources})}
