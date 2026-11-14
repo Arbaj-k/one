@@ -13,7 +13,7 @@
     add: { tasks: 'addTask', notes: 'addNote', projects: 'addProject', routines: 'addRoutine', money: 'addExpense' },
     show: { tasks: 'show', notes: 'show', projects: 'show', routines: 'show', money: 'show', files: 'show' },
     complete: { tasks: 'completeTask' },
-    delete: { tasks: 'remove', notes: 'remove', projects: 'remove', routines: 'remove' },
+    delete: { tasks: 'remove', notes: 'remove', projects: 'remove', routines: 'remove', money: 'remove' },
     edit: { tasks: 'editTask', notes: 'editNote', projects: 'editProject', routines: 'editRoutine' }
   };
 
@@ -54,7 +54,8 @@
           const names = { tasks: 'Tasks', notes: 'Notes', projects: 'Projects', routines: 'Routines', money: 'Money', files: 'Files', scan: 'Scan' };
           result = { answer: 'Aap ' + parsed.matched.map(key => names[key] || key).join(' ya ') + ' ke baare mein pooch rahe ho?', sources: ['Ask One'] };
         } else {
-          const actionName = ACTION_FOR[parsed?.action]?.[parsed?.section];
+          let actionName = ACTION_FOR[parsed?.action]?.[parsed?.section];
+          if (parsed?.section === 'money' && parsed?.action === 'add' && /\\b(income|salary|kamai|received|credited|aayi|aaya)\\b/i.test(text)) actionName = 'addIncome';
           const callback = actionName && cfg.actions && cfg.actions[actionName];
           if (typeof callback === 'function') {
             const args = {
