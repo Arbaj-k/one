@@ -1895,3 +1895,20 @@ body.one-auth-required{overflow:hidden!important}
  .planner-date-record b{font-size:11px}
  .planner-date-record-value{font-size:10px}
 }
+
+/* Ask One: keep long conversations usable without pushing the composer off-screen. */
+.chat-shell.has-messages{min-height:min(76vh,820px);min-height:min(76dvh,820px)}
+.chat-shell.has-messages .chat-messages{flex:1 1 auto;min-height:180px;max-height:calc(100dvh - 340px);overflow-y:auto;overscroll-behavior:contain;overflow-anchor: none}
+.chat-shell.has-messages .chat-form{flex:0 0 auto}
+.chat-shell.has-messages .voice-controls,
+.chat-shell.has-messages .one-command-history,
+.chat-shell.has-messages .chat-note{flex:0 0 auto}
+.chat-shell .chat-message-row{display:flex;min-width:0;width:100%}
+.chat-shell .chat-message-row.from-user{justify-content:flex-end}
+.chat-shell .chat-message-row.from-one{justify-content:flex-start}
+.chat-shell .bubble{min-width:0}
+@media(max-width:760px){
+ .chat-shell.has-messages{min-height:calc(100dvh - 190px);padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+ .chat-shell.has-messages .chat-messages{min-height:160px;max-height:none}
+ .chat-shell.has-messages .chat-form{position:sticky;bottom:calc(66px + env(safe-area-inset-bottom))}
+}
