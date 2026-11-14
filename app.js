@@ -2027,7 +2027,15 @@ async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;window.OneCommands?.remember(query);
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
  let actionResult=null;
- if(window.OneCommands){const parsed=window.OneCommands.parseCommand(query);const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(query);if(reminderCue||window.OneCommands.hasPendingReminder?.()){const local=window.OneCommands.executeCommand(query);if(local){data.messages.push({role:'assistant',content:local.answer,sources:local.sources||[]});persist();render();scrollChatToBottom();return;}}if(parsed.ambiguous){const labels={tasks:'Tasks',notes:'Notes',projects:'Projects',routines:'Routines',money:'Money',files:'Files',scan:'Scan'};const choices=parsed.matched.map(k=>labels[k]||k);data.messages.push({role:'assistant',content:'Aap '+choices.join(' ya ')+' ke baare mein pooch rahe ho?',sources:[]});persist();render();scrollChatToBottom();return;}const actionCue=Object.values(window.OneCommands.KEYWORDS.action).flat().some(w=>String(query).toLowerCase().includes(w));if(parsed.section||window.OneCommands.hasPending()){const local=window.OneCommands.executeCommand(query);if(local){data.messages.push({role:'assistant',content:local.answer,sources:local.sources||[]});persist();render();scrollChatToBottom();return;}}else if(actionCue){data.messages.push({role:'assistant',content:'Samajh nahi aaya. Aise try karo: “kal 5 baje meeting task add karo”.\n“500 rupaye chai pe kharcha jodo”\n“pending tasks dikhao”',sources:['Ask One']});persist();render();scrollChatToBottom();return;}}
+ if(window.OneCommands?.create){
+  window.OneCommandCenter=window.OneCommandCenter||window.OneCommands.create({
+   lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
+   speak:false,
+   onReply:(message)=>{data.messages.push({role:'assistant',content:message,sources:['Ask One']});persist();render();scrollChatToBottom();}
+  });
+  const handled=await window.OneCommandCenter.run(query);
+  if(handled)return;
+ }
  // Process an outstanding confirmation first; otherwise let semantic planning run before legacy keyword rules.
  if(pendingChatAction)actionResult=await chatActionIntent(query);
   if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
