@@ -2020,21 +2020,10 @@ async function sendChat(question,targetDocId=null){
    const doc=candidates.length?(data.documents||[]).find(item=>item.id===candidates[0].id):(data.documents||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
    if(doc){if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
   }
-  const detected=detectIntent(query);
-  // Use the local deterministic answer only when the intent classifier has
-  // one unambiguous match. Unknown or overlapping intents must reach the
-  // semantic AI fallback below; never force users to choose Tasks vs Notes.
-  if(detected.intent&&!detected.ambiguous){
-   const localAnswer=answerQuery(detected.intent,query);
-   data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources,fileResults:localAnswer.fileResults||[]});persist();render();scrollChatToBottom();return;
-  }
  }
  if(!targetDocId&&!isDocumentContentQuestion(query)){
   try{const planned=await requestAskOneActionPlan(query);if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}}
   catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
- }
- if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
-  const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
  }
  chatBusy=true;render();scrollChatToBottom();
  try{const result=await requestStudentBrainAI(query,targetDocId);data.messages.push({role:'assistant',content:result.answer,sources:result.sources})}
