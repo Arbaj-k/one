@@ -1948,10 +1948,13 @@ async function sendChat(question,targetDocId=null){
    if(doc){if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
   }
   const detected=detectIntent(query);
-  if(detected.ambiguous){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
-  if(!detected.intent){const message='Aap Tasks ke baare mein pooch rahe ho ya Notes ke?';data.messages.push({role:'assistant',content:message,sources:[]});persist();render();scrollChatToBottom();return}
-  const localAnswer=answerQuery(detected.intent,query);
-  data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources,fileResults:localAnswer.fileResults||[]});persist();render();scrollChatToBottom();return;
+  // Use the local deterministic answer only when the intent classifier has
+  // one unambiguous match. Unknown or overlapping intents must reach the
+  // semantic AI fallback below; never force users to choose Tasks vs Notes.
+  if(detected.intent&&!detected.ambiguous){
+   const localAnswer=answerQuery(detected.intent,query);
+   data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources,fileResults:localAnswer.fileResults||[]});persist();render();scrollChatToBottom();return;
+  }
  }
  if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
   const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
