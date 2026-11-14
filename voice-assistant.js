@@ -30,6 +30,7 @@
     .voice-transcript.visible{display:block}
     @media(max-width:600px){.voice-controls{gap:6px}.voice-status{flex-basis:100%;padding:2px 3px}}
   `;
+  style.textContent += "\n    .one-voice-overlay{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:24px;background:rgba(8,14,30,.48);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}\n    .one-voice-overlay.open{opacity:1;visibility:visible}\n    .one-voice-panel{width:min(440px,100%);min-height:390px;border:1px solid rgba(255,255,255,.72);border-radius:30px;padding:30px 26px 24px;background:linear-gradient(155deg,#fff 0%,#f5f7ff 65%,#eef3ff 100%);box-shadow:0 28px 90px rgba(5,12,35,.28);display:flex;flex-direction:column;align-items:center;text-align:center;color:#17243a;position:relative}\n    .one-voice-close{position:absolute;right:17px;top:15px;width:38px;height:38px;border:0;border-radius:50%;background:#edf1f8;color:#56647b;font-size:22px;cursor:pointer}\n    .one-voice-kicker{font-size:11px;font-weight:800;letter-spacing:.16em;color:#61718d;margin:8px 0 7px}\n    .one-voice-title{font-size:23px;font-weight:700;letter-spacing:-.035em;margin:0}\n    .one-voice-subtitle{font-size:13px;color:#7b879b;margin:8px 0 0}\n    .one-voice-orb-wrap{height:176px;width:100%;display:grid;place-items:center;position:relative;margin:14px 0 5px}\n    .one-voice-orb{height:94px;width:94px;border-radius:50%;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#6485ff,#4169e1 58%,#7659e8);box-shadow:0 12px 35px rgba(65,105,225,.34);position:relative;z-index:1;transition:transform .2s ease}\n    .one-voice-orb svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}\n    .one-voice-ring{position:absolute;width:116px;height:116px;border-radius:50%;border:1px solid rgba(76,112,232,.25);opacity:0}\n    .one-voice-overlay[data-state=\"listening\"] .one-voice-ring{animation:oneVoicePulse 1.8s ease-out infinite}\n    .one-voice-overlay[data-state=\"listening\"] .one-voice-ring:nth-child(2){animation-delay:.6s}\n    .one-voice-overlay[data-state=\"listening\"] .one-voice-ring:nth-child(3){animation-delay:1.2s}\n    .one-voice-overlay[data-state=\"listening\"] .one-voice-orb{transform:scale(1.04)}\n    @keyframes oneVoicePulse{0%{transform:scale(.82);opacity:.7}100%{transform:scale(1.85);opacity:0}}\n    .one-voice-live-text{min-height:46px;max-width:340px;width:100%;font-size:15px;line-height:1.5;color:#273650;display:grid;place-items:center;overflow-wrap:anywhere}\n    .one-voice-live-text.placeholder{color:#8b96a8}\n    .one-voice-footer{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:auto;padding-top:18px}\n    .one-voice-stop{border:0;border-radius:999px;padding:12px 24px;background:#4169e1;color:#fff;font:700 13px inherit;cursor:pointer;box-shadow:0 7px 18px rgba(65,105,225,.22)}\n    .one-voice-stop.secondary{background:#e9edf5;color:#47566e;box-shadow:none}\n    .one-voice-overlay[data-state=\"error\"] .one-voice-orb{background:linear-gradient(145deg,#f08a8a,#d94f65)}\n    @media(max-width:600px){.one-voice-overlay{padding:14px;align-items:end}.one-voice-panel{width:100%;min-height:410px;border-radius:28px 28px 22px 22px;padding:28px 22px 22px}.one-voice-orb-wrap{height:170px;margin:12px 0}.one-voice-title{font-size:21px}}\n";
   document.head.appendChild(style);
 
   function status(message, state = 'idle') {
@@ -39,6 +40,70 @@
       node.dataset.state = state;
     }
   }
+  function ensureVoiceOverlay() {
+    let overlay = document.querySelector('#one-voice-overlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'one-voice-overlay';
+    overlay.className = 'one-voice-overlay';
+    overlay.dataset.state = 'idle';
+    overlay.innerHTML = `
+      <section class="one-voice-panel" role="dialog" aria-modal="true" aria-labelledby="one-voice-title">
+        <button type="button" class="one-voice-close" aria-label="Close voice assistant">×</button>
+        <div class="one-voice-kicker">ONE VOICE</div>
+        <h2 class="one-voice-title" id="one-voice-title">Speak to One</h2>
+        <p class="one-voice-subtitle" data-voice-hint>I'm listening. Say what's on your mind.</p>
+        <div class="one-voice-orb-wrap" aria-hidden="true">
+          <span class="one-voice-ring"></span><span class="one-voice-ring"></span><span class="one-voice-ring"></span>
+          <div class="one-voice-orb"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></div>
+        </div>
+        <div class="one-voice-live-text placeholder" data-voice-transcript aria-live="polite">Try: “Remind me tomorrow at 5”</div>
+        <div class="one-voice-footer">
+          <button type="button" class="one-voice-stop secondary" data-voice-cancel>Cancel</button>
+          <button type="button" class="one-voice-stop" data-voice-stop>Done</button>
+        </div>
+      </section>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay || event.target.closest('[data-voice-cancel]') || event.target.closest('.one-voice-close')) {
+        stopListening();
+        closeVoiceOverlay();
+      } else if (event.target.closest('[data-voice-stop]')) {
+        stopListening();
+      }
+    });
+    return overlay;
+  }
+
+  function updateVoiceOverlay(message, state = 'listening') {
+    const overlay = document.querySelector('#one-voice-overlay');
+    if (!overlay) return;
+    overlay.dataset.state = state;
+    const hint = overlay.querySelector('[data-voice-hint]');
+    const transcript = overlay.querySelector('[data-voice-transcript]');
+    if (hint) hint.textContent = message;
+    if (transcript && state !== 'listening' && state !== 'processing') {
+      transcript.textContent = message;
+      transcript.classList.add('placeholder');
+    }
+  }
+
+  function closeVoiceOverlay() {
+    const overlay = document.querySelector('#one-voice-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('open');
+    window.setTimeout(() => overlay.remove(), 240);
+  }
+
+  function showVoiceOverlay() {
+    const overlay = ensureVoiceOverlay();
+    overlay.dataset.state = 'listening';
+    overlay.querySelector('[data-voice-hint]').textContent = 'I’m listening. Say what’s on your mind.';
+    overlay.querySelector('[data-voice-transcript]').textContent = 'Start speaking…';
+    overlay.querySelector('[data-voice-transcript]').classList.add('placeholder');
+    requestAnimationFrame(() => overlay.classList.add('open'));
+  }
+
 
   function updateMic() {
     const mic = document.querySelector('#voice-mic');
@@ -49,7 +114,7 @@
   }
 
   function stopListening() {
-    if (recognition && listening) recognition.stop();
+    if (recognition && listening) { updateVoiceOverlay('Finishing up…', 'processing'); recognition.stop(); }
   }
 
   function startListening() {
@@ -63,6 +128,7 @@
     }
 
     try {
+      showVoiceOverlay();
       recognition = new Recognition();
       recognition.lang = selectedLanguage;
       recognition.interimResults = true;
@@ -74,6 +140,7 @@
         listening = true;
         updateMic();
         status('Listening… speak clearly, then pause.', 'listening');
+        updateVoiceOverlay('I’m listening. Speak naturally, then pause.', 'listening');
       };
 
       recognition.onresult = event => {
@@ -88,6 +155,11 @@
           transcript.textContent = (finalText + interim).trim() || 'Listening…';
           transcript.classList.add('visible');
         }
+        const overlayTranscript = document.querySelector('#one-voice-overlay [data-voice-transcript]');
+        if (overlayTranscript) {
+          overlayTranscript.textContent = (finalText + interim).trim() || 'I’m listening…';
+          overlayTranscript.classList.toggle('placeholder', !(finalText + interim).trim());
+        }
       };
 
       recognition.onerror = event => {
@@ -98,7 +170,9 @@
           'audio-capture': 'No microphone found. Check your mic connection.',
           'network': 'Speech recognition needs a network connection.'
         };
-        status(messages[event.error] || 'Could not hear that. Please try again.', 'error');
+        const errorMessage = messages[event.error] || 'Could not hear that. Please try again.';
+        status(errorMessage, 'error');
+        updateVoiceOverlay(errorMessage, 'error');
       };
 
       recognition.onend = () => {
@@ -108,16 +182,18 @@
         if (phrase && !submitted) {
           submitted = true;
           status('Heard: “' + phrase + '” · processing…', 'processing');
+          updateVoiceOverlay('Heard you. Processing…', 'processing');
           if (typeof window.submitStudentBrainVoiceText === 'function') {
             const accepted = window.submitStudentBrainVoiceText(phrase);
-            if (accepted) status('Command received: “' + phrase + '”', 'idle');
-            else status('Could not process that command. Tap Speak and try again.', 'error');
+            if (accepted) { status('Command received: “' + phrase + '”', 'idle'); updateVoiceOverlay('Got it. Taking care of that…', 'processing'); window.setTimeout(closeVoiceOverlay, 900); }
+            else { status('Could not process that command. Tap Speak and try again.', 'error'); updateVoiceOverlay('Could not process that. Please try again.', 'error'); }
           } else {
-            status('Voice command handler is not ready. Refresh and try again.', 'error');
+            status('Voice command handler is not ready. Refresh and try again.', 'error'); updateVoiceOverlay('One is still getting ready. Please try again.', 'error');
           }
           finalText = '';
         } else if (document.querySelector('#voice-status')?.dataset.state === 'listening') {
           status('No complete words were detected. Tap Speak and try again.', 'error');
+          updateVoiceOverlay('I didn’t catch that. Tap Done and try again.', 'error');
         }
       };
 
@@ -126,6 +202,7 @@
       listening = false;
       updateMic();
       status('Microphone is busy. Try again in a moment.', 'error');
+      updateVoiceOverlay('Microphone is busy. Try again in a moment.', 'error');
     }
   }
 
