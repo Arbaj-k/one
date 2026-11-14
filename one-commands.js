@@ -55,7 +55,7 @@
           result = { answer: 'Aap ' + parsed.matched.map(key => names[key] || key).join(' ya ') + ' ke baare mein pooch rahe ho?', sources: ['Ask One'] };
         } else {
           let actionName = ACTION_FOR[parsed?.action]?.[parsed?.section];
-          if (parsed?.section === 'money' && parsed?.action === 'add' && /\\b(income|salary|kamai|received|credited|aayi|aaya)\\b/i.test(text)) actionName = 'addIncome';
+          if (parsed?.section === 'money' && parsed?.action === 'add' && /\b(income|salary|kamai|received|credited|aayi|aaya)\b/i.test(text)) actionName = 'addIncome';
           const callback = actionName && cfg.actions && cfg.actions[actionName];
           if (typeof callback === 'function') {
             const args = {
