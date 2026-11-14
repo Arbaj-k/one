@@ -2033,7 +2033,7 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
  window.OneCommandCenter=window.OneCommands.create({
   actions,
   lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
-  speak:!!document.querySelector('#one-voice-speak')?.checked,
+  speak:false, // voice.js speaks rendered replies once, avoiding duplicate speech
   onReply:(message)=>{data.messages.push({role:'assistant',content:message,sources:['Ask One']});persist();render();scrollChatToBottom();},
   onHeard:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;},
   onListening:(active)=>{const mic=document.querySelector('#one-voice-mic');mic?.classList.toggle('mic-on',active);const status=document.querySelector('#one-voice-status');if(status)status.textContent=active?'Listening…':'Processing voice command…';},
