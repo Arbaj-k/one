@@ -1477,12 +1477,28 @@ function resolveAskDocumentId(question,targetDocId){
  if(targetDocId)return targetDocId;
  const docs=(data.documents||[]).filter(doc=>doc&&doc.id);
  if(!docs.length||!isDocumentContentQuestion(question))return null;
- const q=askOneNormalize(question),ranked=docs.map(doc=>{
-  const name=askOneNormalize([doc.name,doc.originalName].join(' ')).filter(token=>token.length>2);
-  return {doc,score:name.reduce((sum,token)=>sum+(q.includes(token)?3:0),0)};
- }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score||Number(b.doc.created||0)-Number(a.doc.created||0));
- if(ranked.length)return ranked[0].doc.id;
- return docs.slice().sort((a,b)=>Number(b.created||0)-Number(a.created||0))[0].id;
+ const raw=String(question||'').toLowerCase();
+ const timetableQuestion=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(raw);
+ const day=(raw.match(/\b(friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/i)||[])[1]?.toLowerCase()||'';
+ const ranked=docs.map(doc=>{
+  const name=askOneNormalize([doc.name,doc.originalName,doc.tags||'',doc.note||''].join(' '));
+  const evidence=String(doc.extractedText||doc.ocrText||doc.summary||'')+' '+JSON.stringify(doc.extractedJson||{});
+  const normalizedEvidence=askOneNormalize(evidence);
+  let score=0;
+  for(const token of name){if(token.length>2&&askOneNormalize(question).includes(token))score+=4;}
+  if(timetableQuestion){
+   const timetableText=/time ?table|timetable|class schedule|lecture schedule|period|subject|day\s*[:|,-]|\b(mon|tue|wed|thu|fri|sat|sun)(?:day)?\b/i.test(evidence);
+   if(timetableText)score+=8;
+   if(day&&normalizedEvidence.includes(day))score+=12;
+   const rows=typeof extractTimetableData==='function'?extractTimetableData(evidence):[];
+   score+=Math.min(rows.length,12)*2;
+   if(doc.extractedJson?.structured_data?.timetable)score+=20;
+  }
+  return {doc,score,created:Number(doc.createdAt||doc.created||0)};
+ }).sort((a,b)=>b.score-a.score||b.created-a.created);
+ if(timetableQuestion&&ranked[0]?.score>0)return ranked[0].doc.id;
+ const named=ranked.find(item=>item.score>0);
+ return (named||ranked.sort((a,b)=>b.created-a.created)[0]).doc.id;
 }
 function detectIntent(query){
  const tokens=askOneNormalize(query),scores={};
