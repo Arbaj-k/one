@@ -13,7 +13,7 @@
     add: { tasks: 'addTask', notes: 'addNote', projects: 'addProject', routines: 'addRoutine', money: 'addExpense' },
     show: { tasks: 'show', notes: 'show', projects: 'show', routines: 'show', money: 'show', files: 'show' },
     complete: { tasks: 'completeTask' },
-    delete: { tasks: 'remove', notes: 'remove', projects: 'remove', routines: 'remove' },
+    delete: { tasks: 'remove', notes: 'remove', projects: 'remove', routines: 'remove', money: 'remove' },
     edit: { tasks: 'editTask', notes: 'editNote', projects: 'editProject', routines: 'editRoutine' }
   };
 
@@ -54,7 +54,8 @@
           const names = { tasks: 'Tasks', notes: 'Notes', projects: 'Projects', routines: 'Routines', money: 'Money', files: 'Files', scan: 'Scan' };
           result = { answer: 'Aap ' + parsed.matched.map(key => names[key] || key).join(' ya ') + ' ke baare mein pooch rahe ho?', sources: ['Ask One'] };
         } else {
-          const actionName = ACTION_FOR[parsed?.action]?.[parsed?.section];
+          let actionName = ACTION_FOR[parsed?.action]?.[parsed?.section];
+          if (parsed?.section === 'money' && parsed?.action === 'add' && /\b(income|salary|kamai|received|credited|aayi|aaya)\b/i.test(text)) actionName = 'addIncome';
           const callback = actionName && cfg.actions && cfg.actions[actionName];
           if (typeof callback === 'function') {
             const args = {
@@ -62,8 +63,8 @@
               label: parsed.title, due: parsed.date, time: parsed.time,
               kind: parsed.section, query: text
             };
-            await callback(args);
-            result = { answer: 'Done. ' + actionName + ' complete ho gaya.', sources: [parsed.section || 'Ask One'] };
+            result = await callback(args);
+            if (!result) result = legacy.executeCommand(text);
           } else {
             result = legacy.executeCommand(text);
           }
@@ -95,7 +96,10 @@
           const transcript = Array.from(event.results).map(item => item[0]?.transcript || '').join(' ').trim();
           cfg.onHeard?.(transcript);
           const last = event.results[event.results.length - 1];
-          if (last?.isFinal && transcript) run(transcript);
+          if (last?.isFinal && transcript) {
+            if (typeof cfg.onVoiceSubmit === 'function') cfg.onVoiceSubmit(transcript);
+            else run(transcript);
+          }
         };
         recognition.onerror = event => {
           const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
@@ -117,7 +121,7 @@
       if (recognition && listening) recognition.stop();
     }
 
-    return { run, startVoice, stopVoice, isListening: () => listening, canHandle };
+    return { run, startVoice, stopVoice, isListening: () => listening, canHandle, setLanguage: value => { cfg.lang = value || 'hi-IN'; } };
   }
 
   global.OneCommands.create = create;
