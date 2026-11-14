@@ -146,6 +146,7 @@ ${message}`;
       prompt += `
 
 ASK ONE ACTION PLANNER MODE:
+This instruction overrides earlier response-format instructions. Output the action-plan object only; do not wrap it in an answer/sources envelope.
 You are classifying the user's latest message into ONE supported workspace action. Do not execute anything.
 Return ONLY a JSON object with these keys:
 {"kind":"action"|"none"|"clarify","action":"create_task"|"create_note"|"create_project"|"create_expense"|"create_income"|"complete_task"|"delete_task"|"update_task"|"none","title":"","content":"","name":"","amount":0,"description":"","date":"","due_date":"","priority":"","category":"","target":"","patch":{},"confidence":0.0,"clarifying_question":""}
