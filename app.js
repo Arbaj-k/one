@@ -2379,7 +2379,7 @@ async function checkTaskReminders(){
  const routineDate=today(),routineWeekday=new Date(routineDate+'T12:00:00').getDay();
  for(const routine of (data.routines||[])){
   const rule=routine.repeatRule||routine.frequency||'none';
-  const dueToday=rule==='daily'||rule==='daily'||(rule==='weekly'&&Number(routine.repeatDay??new Date(routine.created||Date.now()).getDay())===routineWeekday);
+  const dueToday=rule==='daily'||(rule==='weekly'&&Number(routine.repeatDay??new Date(routine.created||Date.now()).getDay())===routineWeekday);
   if(!dueToday||!routine.time)continue;
   const [hour,minute]=String(routine.time).split(':').map(Number);
   if(!Number.isFinite(hour)||!Number.isFinite(minute))continue;
