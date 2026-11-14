@@ -32,7 +32,7 @@
  if(reminderCue||pendingReminderDraft){
   const combined=pendingReminderDraft?pendingReminderDraft+' '+query:query;
   const due=parseDate(combined),time=parseTime(combined);
-  const title=norm(combined).replace(/\b(remind(?:er)?|set|laga|lagao|laga do|set karo|set kar do|yaad|dila|dilana|dila do|dila dena|rakhna|briefing|brief me|mujhe|mere|please|karo|karna|kar|me|to|the|a|an|go|for|liya|liye|ke liye|call|ko|ka|ki|ke|kal|tomorrow|aaj|today|parso|parson|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm|daily|every day|roz|har roz|har din)\b/gi,' ')
+  const title=norm(combined).replace(/\b(remind(?:er)?|set|laga|lagao|laga do|set karo|set kar do|yaad|dila|dilana|dila do|dila dena|rakhna|briefing|brief me|mujhe|mere|please|karo|karna|kar|me|to|the|a|an|for|liya|liye|ke liye|ko|ka|ki|ke|kal|tomorrow|aaj|today|parso|parson|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm|daily|every day|roz|har roz|har din)\b/gi,' ')
    .replace(/\b\d{1,2}(?::\d{2})?\b/g,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title){pendingReminderDraft=combined;return answer('Kis baat ka reminder set karna hai? Example: assignment, bill pay karna, ya kisi ko call karna.','Task Briefing')}
   if(!due){pendingReminderDraft=combined;return answer('“'+title+'” ka reminder kis din set karna hai? Jaise kal, Friday ya 20/11.','Task Briefing')}
