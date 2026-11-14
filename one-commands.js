@@ -62,8 +62,8 @@
               label: parsed.title, due: parsed.date, time: parsed.time,
               kind: parsed.section, query: text
             };
-            await callback(args);
-            result = { answer: 'Done. ' + actionName + ' complete ho gaya.', sources: [parsed.section || 'Ask One'] };
+            result = await callback(args);
+            if (!result) result = legacy.executeCommand(text);
           } else {
             result = legacy.executeCommand(text);
           }
@@ -95,7 +95,10 @@
           const transcript = Array.from(event.results).map(item => item[0]?.transcript || '').join(' ').trim();
           cfg.onHeard?.(transcript);
           const last = event.results[event.results.length - 1];
-          if (last?.isFinal && transcript) run(transcript);
+          if (last?.isFinal && transcript) {
+            if (typeof cfg.onVoiceSubmit === 'function') cfg.onVoiceSubmit(transcript);
+            else run(transcript);
+          }
         };
         recognition.onerror = event => {
           const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
