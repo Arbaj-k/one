@@ -1290,7 +1290,7 @@ async function requestAskOneActionPlan(question){
  try{plan=JSON.parse(String(result.answer||'').replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,''))}
  catch{return null}
  if(!plan||!['action','clarify','none'].includes(plan.kind))return null;
- if(plan.kind==='none')return null;
+ if(plan.kind==='none')return {kind:'none',sources:[]};
  if(plan.kind==='clarify')return {answer:String(plan.clarifying_question||'Is command ke liye ek detail clear kar do.').slice(0,300),sources:['Ask One']};
  if(Number(plan.confidence)<0.75)return {answer:String(plan.clarifying_question||'Is action ko sahi samajhne ke liye thoda aur detail batao.'),sources:['Ask One']};
  const clean=(v,max=180)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -2012,7 +2012,9 @@ async function chatActionIntent(question){
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
- const actionResult=await chatActionIntent(query);
+ let actionResult=null;
+ // Process an outstanding confirmation first; otherwise let semantic planning run before legacy keyword rules.
+ if(pendingChatAction)actionResult=await chatActionIntent(query);
   if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
   if(!targetDocId&&asksTimetableContext){
@@ -2028,6 +2030,16 @@ async function sendChat(question,targetDocId=null){
    data.messages.push({role:'assistant',content:spending.answer,sources:spending.sources});
    persist();render();scrollChatToBottom();return;
   }
+ let semanticReadOnly=false;
+ if(!actionResult&&!targetDocId&&!isDocumentContentQuestion(query)){
+  try{
+   const planned=await requestAskOneActionPlan(query);
+   if(planned?.kind==='none')semanticReadOnly=true;
+   else if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}
+  }catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
+ }
+ // Do not let legacy keyword heuristics override an AI-classified question or document query.
+ if(!actionResult&&!semanticReadOnly&&!isDocumentContentQuestion(query))actionResult=await chatActionIntent(query);
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
  if(!targetDocId){
   const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
@@ -2036,10 +2048,6 @@ async function sendChat(question,targetDocId=null){
    const doc=candidates.length?(data.documents||[]).find(item=>item.id===candidates[0].id):(data.documents||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
    if(doc){if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
   }
- }
- if(!targetDocId&&!isDocumentContentQuestion(query)){
-  try{const planned=await requestAskOneActionPlan(query);if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}}
-  catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
  }
  chatBusy=true;render();scrollChatToBottom();
  try{const result=await requestStudentBrainAI(query,targetDocId);data.messages.push({role:'assistant',content:result.answer,sources:result.sources})}
