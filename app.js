@@ -1224,7 +1224,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
  return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
 }
-async function requestStudentBrainAI(question,targetDocId=null){
+async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
  const privacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,...(data.aiPrivacy||{})};
  const selectedWorkspace={...context.workspace};
@@ -1238,7 +1238,7 @@ async function requestStudentBrainAI(question,targetDocId=null){
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
  const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.money||!['Money & Udhaar','Study sessions'].includes(source))&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
- const body={message:question,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
+ const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // AI requests are read-only: retry once on a transient transport/5xx failure.
@@ -1283,6 +1283,79 @@ async function requestStudentBrainAI(question,targetDocId=null){
  if(typeof result.answer!=='string'||!result.answer.trim())throw new Error('AI returned an empty answer. Please try again.');
  return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
+
+async function requestAskOneActionPlan(question){
+ const result=await requestStudentBrainAI(question,null,'action_plan');
+ let plan;
+ try{plan=JSON.parse(String(result.answer||'').replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,''))}
+ catch{return null}
+ if(!plan||!['action','clarify','none'].includes(plan.kind))return null;
+ if(plan.kind==='none')return null;
+ if(plan.kind==='clarify')return {answer:String(plan.clarifying_question||'Is command ke liye ek detail clear kar do.').slice(0,300),sources:['Ask One']};
+ if(Number(plan.confidence)<0.75)return {answer:String(plan.clarifying_question||'Is action ko sahi samajhne ke liye thoda aur detail batao.'),sources:['Ask One']};
+ const clean=(v,max=180)=>typeof v==='string'?v.trim().slice(0,max):'';
+ const validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(clean(v,10))&&(()=>{const d=new Date(v+'T12:00:00');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v})();
+ const now=Date.now(),source='Ask One';
+ const makeConfirm=(collection,record,page,success,extra={})=>{
+  pendingChatAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
+  return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
+ };
+ const action=clean(plan.action,40);
+ if(action==='create_task'){
+  const title=clean(plan.title,180);if(!title)return {answer:'Task ka naam batao.',sources:['Planner']};
+  const due=validDate(plan.due_date)?plan.due_date:'';
+  const priority=['Low','Medium','High'].includes(plan.priority)?plan.priority:'Medium';
+  const record={id:uid(),title,category:clean(plan.category,40)||'Personal',due,reminderTime:'09:00',priority,done:false,created:now,updated:now};
+  if((data.tasks||[]).some(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due))return {answer:'Ye task pehle se Planner mein hai. Duplicate nahi banaya.',sources:['Planner']};
+  return makeConfirm('tasks',record,'planner','Task saved in Planner: '+title+'.');
+ }
+ if(action==='create_note'){
+  const content=clean(plan.content,4000);if(!content)return {answer:'Note mein kya save karna hai?',sources:['Notes & Memory']};
+  const record={id:uid(),title:clean(plan.title,120)||'Quick note',content,subject:'Quick note',tags:'chat capture',created:now,updated:now};
+  return makeConfirm('notes',record,'notes','Note saved in Notes & Memory.');
+ }
+ if(action==='create_project'){
+  const name=clean(plan.name||plan.title,180);if(!name)return {answer:'Project ka naam batao.',sources:['Projects']};
+  const record={id:uid(),name,description:clean(plan.description,1000),status:'In progress',targetDate:validDate(plan.due_date)?plan.due_date:'',created:now,updated:now};
+  return makeConfirm('projects',record,'projects','Project created: '+name+'.');
+ }
+ if(action==='create_expense'||action==='create_income'){
+  const amount=Number(plan.amount),description=clean(plan.description,180);
+  if(!Number.isFinite(amount)||amount<=0||!description)return {answer:'Amount aur kis cheez ka transaction hai, dono batao. Kuch save nahi kiya.',sources:['Money & Udhaar']};
+  const date=validDate(plan.date)?plan.date:today(),kind=action==='create_income'?'income':'expense';
+  const record={id:uid(),description,amount:String(amount),category:clean(plan.category,60)||'Other',date,kind,created:now,updated:now};
+  return makeConfirm('expenses',record,'expenses',(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+'.',{expenseMonth:date.slice(0,7)});
+ }
+ const findTask=target=>{
+  const needle=clean(target,180).toLowerCase();if(!needle)return {error:'Task ka saved title batao.'};
+  const matches=(data.tasks||[]).filter(t=>{const title=String(t.title||'').toLowerCase();return title===needle||title.includes(needle)||needle.includes(title)});
+  if(matches.length!==1)return {error:matches.length?'Ek se zyada tasks match hue. Exact task title batao.':'Matching task nahi mila.'};
+  return {task:matches[0]};
+ };
+ if(['complete_task','delete_task','update_task'].includes(action)){
+  const found=findTask(plan.target);if(found.error)return {answer:found.error+' Kuch change nahi kiya.',sources:['Planner']};
+  const task=found.task;
+  if(action==='delete_task'){
+   pendingChatAction={type:'delete-task',id:task.id,title:task.title,requestedAt:now};
+   return {answer:'Confirm delete: "'+task.title+'" task delete karna hai? Reply YES to delete or NO to cancel. Abhi delete nahi hua.',sources:['Planner']};
+  }
+  if(action==='complete_task'){
+   if(task.done)return {answer:'Task "'+task.title+'" pehle se completed hai.',sources:['Planner']};
+   pendingChatAction={type:'update-record',recordType:'task',id:task.id,title:task.title,patch:{done:true,completedAt:now},source:'Planner',requestedAt:now};
+   return {answer:'Confirm: "'+task.title+'" ko completed mark kar doon? Reply YES or NO.',sources:['Planner']};
+  }
+  const patch={};
+  if(validDate(plan.patch?.due_date))patch.due=plan.patch.due_date;
+  if(['Low','Medium','High'].includes(plan.patch?.priority))patch.priority=plan.patch.priority;
+  if(clean(plan.patch?.notes,1000))patch.notes=clean(plan.patch.notes,1000);
+  if(clean(plan.patch?.title,180))patch.title=clean(plan.patch.title,180);
+  if(!Object.keys(patch).length)return {answer:'Kya update karna hai—due date, priority, notes ya title?',sources:['Planner']};
+  pendingChatAction={type:'update-record',recordType:'task',id:task.id,title:task.title,patch,source:'Planner',requestedAt:now};
+  return {answer:'Confirm task update "'+task.title+'": '+Object.entries(patch).map(([k,v])=>k+' → '+v).join('; ')+'. Reply YES or NO.',sources:['Planner']};
+ }
+ return {answer:'Ye action abhi supported nahi hai. Kuch change nahi kiya.',sources:['Ask One']};
+}
+
 function isStructuredWorkspaceQuestion(question){
  return /\b(spend|spent|spending|spending pattern|spending insight|spending trend|category breakdown|compare.*(?:spend|expense)|budget insight|where.*money go|project risk|projects at risk|behind schedule|what should i do|plan my day|plan today|plan my day|daily plan|prioriti[sz]e my tasks|aaj kya karu|search|find|look for|where is|locate|workspace|memory|memories|expense|expenses|money|rupees?|rs\.?|kharch|kharcha|transaction|transactions|budget|udhaar|lent|lending|borrow|borrowed|loan|repay|repaid|repayment|outstanding|owe|owed|who owes|kitna|diye|diya|task|tasks|todo|to-do|pending|unfinished|incomplete|overdue|deadline|reminder|remind me|planner)\b/i.test(question);
 }
@@ -1610,7 +1683,7 @@ async function chatActionIntent(question){
     const saved=verify(collection,record);
     if(!saved)return {answer:'Update verify nahi hua. Koi success confirmation nahi de raha; record manually check karo.',sources:[pending.source]};
     const sync=await syncResult();page=pending.recordType==='task'?'planner':pending.recordType==='note'?'notes':'projects';render();
-    return {answer:'Updated '+pending.recordType+': "'+pending.title+'". '+Object.keys(pending.patch).join(', ')+' changed.'+sync,sources:[pending.source]};
+    return {answer:pending.patch?.done===true?'Task "'+pending.title+'" marked completed and saved.'+sync:'Updated '+pending.recordType+': "'+pending.title+'". '+Object.keys(pending.patch).join(', ')+' changed.'+sync,sources:[pending.source]};
    }
    if(pending.type==='delete-task'){
     const target=(data.tasks||[]).find(task=>task.id===pending.id);
@@ -1955,6 +2028,10 @@ async function sendChat(question,targetDocId=null){
    const localAnswer=answerQuery(detected.intent,query);
    data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources,fileResults:localAnswer.fileResults||[]});persist();render();scrollChatToBottom();return;
   }
+ }
+ if(!targetDocId&&!isDocumentContentQuestion(query)){
+  try{const planned=await requestAskOneActionPlan(query);if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}}
+  catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
  }
  if(isStructuredWorkspaceQuestion(query)&&!targetDocId){
   const local=aiAnswer(query);data.messages.push({role:'assistant',content:local.answer,sources:local.sources});persist();render();scrollChatToBottom();return
