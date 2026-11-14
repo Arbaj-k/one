@@ -13,8 +13,8 @@
  function parseDate(text){const q=norm(text),d=new Date(today()+'T12:00:00');if(/\b(aaj|today)\b/.test(q))return today();if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);else{let m=q.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.toISOString().slice(0,10)}else{const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};let day=Object.keys(days).find(k=>q.includes(k));if(!day)return '';let delta=(days[day]-d.getDay()+7)%7;if(!delta||q.includes('agle'))delta=delta||7;d.setDate(d.getDate()+delta)}}return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
  function parseTime(text){const q=norm(text);let m=q.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)?\b/);if(!m)return '';let h=+m[1],min=+(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;if(/\b(shaam|evening|raat)\b/.test(q)&&h<12)h+=12;if(/\b(subah|morning)\b/.test(q)&&h===12)h=0;return h<24&&min<60?String(h).padStart(2,'0')+':'+String(min).padStart(2,'0'):''}
  function parseCommand(query){
-  const q=norm(query),det=detectIntent(q);
-  let action=Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
+  const q=norm(query),reminderCue=/\\b(?:remind(?:er)?|yaad\\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\\s+(?:a\\s+)?reminder|reminder\\s+(?:set|laga)|briefing)\\b/i.test(q),det=reminderCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  let action=reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
   if(/\b(salary aayi|salary aaya|income received|credited)\b/.test(q)&&amount)action='add';
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
@@ -25,9 +25,24 @@
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
   return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query};
 }
- let pending=null;
+ let pending=null, pendingReminderDraft=null;
  function answer(text,source){return {answer:text,sources:[source||'Ask One']}}
  function executeCommand(query){const q=norm(query);if(pending){const p=pending;if(p.choose){const n=Number(q);if(!Number.isInteger(n)||n<1||n>p.choose.length)return answer('List me se number reply karo, jaise 1 ya 2.');const item=p.choose[n-1];pending=null;if(p.action==='delete'){pending={apply:()=>{data[p.collection]=data[p.collection].filter(x=>x.id!==item.id);persist();render()},done:'Deleted '+(item.title||item.name||item.description)};return answer('Ye delete karna hai: "'+(item.title||item.name||item.description)+'"? Haan / Nahi bolo.')}if(p.action==='complete'&&p.collection==='tasks'){pending={apply:()=>{item.done=true;item.completedAt=Date.now();persist();render()},done:'Completed '+item.title};return answer('Mark "'+item.title+'" complete? Haan / Nahi bolo.')}return answer(item.title||item.name||item.description||'Selected item')}pending=null;if(/^(haan|ha|yes|y|confirm|kar do|proceed)$/.test(q)){p.apply();return answer(p.done,'Ask One')}if(/^(nahi|na|no|n|cancel)$/.test(q))return answer('Cancelled. Koi change nahi kiya.');pending=p;return answer('Pending action ke liye Haan ya Nahi bolo.')}
+ const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
+ if(reminderCue||pendingReminderDraft){
+  const combined=pendingReminderDraft?pendingReminderDraft+' '+query:query;
+  const due=parseDate(combined),time=parseTime(combined);
+  const title=norm(combined).replace(/\b(remind(?:er)?|set|laga|lagao|laga do|set karo|set kar do|yaad|dila|dilana|dila do|dila dena|rakhna|briefing|brief me|mujhe|mere|please|to|the|ko|ka|ki|ke|kal|tomorrow|aaj|today|parso|parson|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm|daily|every day|roz|har roz|har din)\b/gi,' ')
+   .replace(/\b\d{1,2}(?::\d{2})?\b/g,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  if(!title){pendingReminderDraft=combined;return answer('Kis baat ka reminder set karna hai? Example: assignment, bill pay karna, ya kisi ko call karna.','Task Briefing')}
+  if(!due){pendingReminderDraft=combined;return answer('“'+title+'” ka reminder kis din set karna hai? Jaise kal, Friday ya 20/11.','Task Briefing')}
+  const daily=/\b(daily|every day|roz|har roz|har din)\b/i.test(combined);
+  const r={id:uid(),title,due,reminderTime:time||'09:00',priority:'Medium',category:'Briefing',repeatRule:daily?'daily':'none',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
+  pendingReminderDraft=null;data.tasks.push(r);persist();
+  window.OneCommandsUndo=()=>{data.tasks=data.tasks.filter(x=>x.id!==r.id);persist();render()};
+  window.OneCommandsShowUndo?.();render();
+  return answer('Reminder set: '+r.title+' · '+dateFmt(r.due)+' at '+r.reminderTime+(daily?' · Daily repeat':''),'Task Briefing');
+ }
  const p=parseCommand(query),s=p.section;if(!s)return null;
  const collection={tasks:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
  const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','pending','complete','delete','wala','wali','wale','please'].includes(t));
