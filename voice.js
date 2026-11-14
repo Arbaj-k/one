@@ -48,7 +48,17 @@
   form.insertBefore(mic,form.querySelector('button[type=submit]'));form.after(status);micNode=mic;
   mic.onclick=()=>{const center=window.ensureOneCommandCenter?.();if(!center){status.textContent='Ask One load ho raha hai. Dobara try karein.';return}if(center.isListening()){center.stopVoice();closeOverlay();return}openOverlay();status.textContent='Listening…';if(!center.startVoice()){closeOverlay();status.textContent='Mic start nahi hua. Permission check karein.'}};
  }
- window.startStudentBrainListening=()=>document.querySelector('#one-voice-mic')?.click();window.isStudentBrainVoiceRepliesOn=()=>speakReplies;window.speakVoiceConfirmation=speak;window.submitStudentBrainVoiceText=raw=>{const q=String(raw||'').trim();if(!q||typeof sendChat!=='function')return false;sendChat(q);return true};
+ window.startStudentBrainListening=()=>{
+  if(!SR){toastVoiceFallback();return false}
+  const center=window.ensureOneCommandCenter?.();
+  if(!center){toastVoiceFallback();return false}
+  if(center.isListening()){center.stopVoice();closeOverlay();return true}
+  openOverlay();
+  if(!center.startVoice()){closeOverlay();return false}
+  return true;
+ };
+ function toastVoiceFallback(){const status=document.querySelector('#one-voice-status');if(status)status.textContent='Voice input supported nahi hai ya Ask One load ho raha hai. Type karke bhejein.';else window.dispatchEvent(new CustomEvent('one:voice-unavailable'))}
+ window.isStudentBrainVoiceRepliesOn=()=>speakReplies;window.speakVoiceConfirmation=speak;window.submitStudentBrainVoiceText=raw=>{const q=String(raw||'').trim();if(!q||typeof sendChat!=='function')return false;sendChat(q);return true};
  const obs=new MutationObserver(attach);obs.observe(document.body,{childList:true,subtree:true});attach();
  document.addEventListener('change',e=>{if(e.target.id==='one-voice-language'){lang=e.target.value;window.OneCommandCenter?.setLanguage?.(lang);save()}if(e.target.id==='one-voice-speak'){speakReplies=e.target.checked;save()}});
  const spoken=new MutationObserver(()=>{const n=document.querySelectorAll('#chat-messages .bubble.assistant'),last=n[n.length-1];if(last&&!last.dataset.voiceSpoken){last.dataset.voiceSpoken='1';speak(last.innerText)}});spoken.observe(document.body,{childList:true,subtree:true});
