@@ -1308,7 +1308,7 @@ async function requestAskOneActionPlan(question){
   const clock=clean(plan.reminder_time,5);
   if(!title)return {answer:'Kis cheez ka reminder set karna hai?',sources:['Task Briefing']};
   if(!due)return {answer:'Reminder ki date batao. Example: Kal subah 9 baje assignment yaad dilana.',sources:['Task Briefing']};
-  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(clock))return {answer:'Reminder ka time batao. Example: 9:00 AM ya 18:30.',sources:['Task Briefing']};
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return {answer:'Reminder ka time batao. Example: 9:00 AM ya 18:30.',sources:['Task Briefing']};
   const record={id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'};
   const duplicate=(data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'')===clock);
   if(duplicate)return {answer:'Ye reminder pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
