@@ -1301,6 +1301,19 @@ async function requestAskOneActionPlan(question){
   return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
  const action=clean(plan.action,40);
+ if(action==='create_reminder'){
+  const title=clean(plan.title,180);
+  const due=validDate(plan.due_date)?plan.due_date:'';
+  const repeat=['daily','weekly','none'].includes(plan.repeat_rule)?plan.repeat_rule:'none';
+  const clock=clean(plan.reminder_time,5);
+  if(!title)return {answer:'Kis cheez ka reminder set karna hai?',sources:['Task Briefing']};
+  if(!due)return {answer:'Reminder ki date batao. Example: Kal subah 9 baje assignment yaad dilana.',sources:['Task Briefing']};
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return {answer:'Reminder ka time batao. Example: 9:00 AM ya 18:30.',sources:['Task Briefing']};
+  const record={id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'};
+  const duplicate=(data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'')===clock);
+  if(duplicate)return {answer:'Ye reminder pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
+  return makeConfirm('tasks',record,'overview',(repeat==='daily'?'Daily reminder set: ':'Reminder set: ')+title+' · '+due+' at '+clock+'. It will appear in Task Briefing. Enable notifications in One to receive browser alerts.');
+ }
  if(action==='create_task'){
   const title=clean(plan.title,180);if(!title)return {answer:'Task ka naam batao.',sources:['Planner']};
   const due=validDate(plan.due_date)?plan.due_date:'';
