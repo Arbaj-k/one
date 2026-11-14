@@ -2054,6 +2054,28 @@ async function sendChat(question,targetDocId=null){
  // Do not let legacy keyword heuristics override an AI-classified question or document query.
  if(!actionResult&&!semanticReadOnly&&!isDocumentContentQuestion(query))actionResult=await chatActionIntent(query);
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
+ // Deterministic local read-only routing: use the section intent map before the generic AI answer.
+ if(!targetDocId&&!isDocumentContentQuestion(query)){
+  const detected=detectIntent(query);
+  if(detected.intent){
+   const localAnswer=answerQuery(detected.intent,query);
+   data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources||[]});
+   persist();render();scrollChatToBottom();return;
+  }
+  if(detected.ambiguous){
+   const labels={tasks:'Tasks',notes:'Notes',projects:'Projects',routines:'Routines',money:'Money',files:'Uploaded Items'};
+   const choices=detected.matched.map(key=>labels[key]||key);
+   data.messages.push({role:'assistant',content:'Aap '+choices.join(' ya ')+' ke baare mein pooch rahe ho?',sources:[]});
+   persist();render();scrollChatToBottom();return;
+  }
+  if(!semanticReadOnly){
+   const tokens=askOneNormalize(query);
+   if(tokens.length){
+    data.messages.push({role:'assistant',content:'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:[]});
+    persist();render();scrollChatToBottom();return;
+   }
+  }
+ }
  if(!targetDocId){
   const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
   if(structuredRequest&&/\b(file|document|pdf|image|upload|bill|receipt|invoice|iska|is document|iss document)\b/i.test(query)){
