@@ -121,7 +121,7 @@
       if (recognition && listening) recognition.stop();
     }
 
-    return { run, startVoice, stopVoice, isListening: () => listening, canHandle };
+    return { run, startVoice, stopVoice, isListening: () => listening, canHandle, setLanguage: value => { cfg.lang = value || 'hi-IN'; } };
   }
 
   global.OneCommands.create = create;
