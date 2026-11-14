@@ -2027,7 +2027,7 @@ async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
  let actionResult=null;
- if(window.OneCommands){const parsed=window.OneCommands.parseCommand(query);if(parsed.section){const local=window.OneCommands.executeCommand(query);if(local){data.messages.push({role:'assistant',content:local.answer,sources:local.sources||[]});persist();render();scrollChatToBottom();window.OneVoice?.speak(local.answer);return;}}}
+ if(window.OneCommands){const parsed=window.OneCommands.parseCommand(query);if(parsed.section||window.OneCommands.hasPending()){const local=window.OneCommands.executeCommand(query);if(local){data.messages.push({role:'assistant',content:local.answer,sources:local.sources||[]});persist();render();scrollChatToBottom();window.OneVoice?.speak(local.answer);return;}}}
  // Process an outstanding confirmation first; otherwise let semantic planning run before legacy keyword rules.
  if(pendingChatAction)actionResult=await chatActionIntent(query);
   if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
