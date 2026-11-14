@@ -19,7 +19,7 @@
   if(/\b(salary aayi|salary aaya|income received|credited)\b/.test(q)&&amount)action='add';
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
   const date=parseDate(query),time=parseTime(query);
-  let title=q.replace(/\b(add|jodo|daalo|dalo|banao|create|likho|save|dikhao|batao|show|list|search|dhundo|edit|update|delete|hatao|remove|complete|done|ho gaya|khatam|finish|task|tasks|todo|note|notes|project|routine|habit|paisa|paise|kharcha|kharch|expense|expenses|income|salary|aayi|aaya|file|files|pdf|photo|image|please|kar do|karo|mein|me|ka|ki|ke|hai|hain|subah|baje|morning|evening|raat|tomorrow|kal|aaj|roz|daily|milestone|naya|new|wala|wali|wale|rupees|rupee|rupaye|rupay|रुपये|रुपए|rs|remind|reminder|yaad|dilana|dilao|kholo|open)\b/gi,' ')
+  let title=q.replace(/\b(add|jodo|daalo|dalo|banao|create|likho|save|dikhao|batao|show|list|search|dhundo|edit|update|delete|hatao|remove|complete|done|ho gaya|khatam|finish|task|tasks|todo|note|notes|project|routine|habit|paisa|paise|kharcha|kharch|expense|expenses|income|salary|aayi|aaya|file|files|pdf|photo|image|please|kar do|karo|mein|me|ka|ki|ke|hai|hain|subah|baje|morning|evening|raat|tomorrow|kal|aaj|roz|daily|milestone|naya|new|wala|wali|wale|rupees|rupee|rupaye|rupay|रुपये|रुपए|rs|remind|reminder|yaad|dilana|dilao|kholo|open|am|pm|oclock|ek|do|teen|char|chaar|paanch|panch|chhe|saat|aath|nau|das|bees|sau|hazaar|hajar)\b/gi,' ')
    .replace(/\b\d[\d,]*(?:\.\d+)?\b/g,' ').replace(/\s+/g,' ').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
