@@ -372,6 +372,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
 function dateFmt(d){if(!d)return 'No date';const x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
 function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
+function showOneCommandUndo(){const t=document.querySelector('#toast');if(!t)return;t.innerHTML='Saved · <button type="button" id="one-command-undo" style="border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer">Undo</button>';t.classList.add('show');t.querySelector('#one-command-undo')?.addEventListener('click',()=>{window.OneCommandsUndo?.();t.classList.remove('show');toast('Action undone')},{once:true});clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),4000)}window.OneCommandsShowUndo=showOneCommandUndo;
 function toast(msg){const t=document.querySelector('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),2300)}
 function updateNotificationBell(){
  const badge=document.querySelector('#notification-unread-count');
