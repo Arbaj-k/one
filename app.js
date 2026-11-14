@@ -2039,8 +2039,8 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
   lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
   speak:false, // voice.js speaks rendered replies once, avoiding duplicate speech
   onReply:(message)=>{data.messages.push({role:'assistant',content:message,sources:['Ask One']});persist();render();scrollChatToBottom();},
-  onHeard:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;},
-  onListening:(active)=>{const mic=document.querySelector('#one-voice-mic');mic?.classList.toggle('mic-on',active);const status=document.querySelector('#one-voice-status');if(status)status.textContent=active?'Listening…':'Processing voice command…';},
+  onHeard:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;window.OneVoice?.setTranscript?.(transcript);},
+  onListening:(active)=>{const mic=document.querySelector('#one-voice-mic');mic?.classList.toggle('mic-on',active);const status=document.querySelector('#one-voice-status');if(status)status.textContent=active?'Listening…':'Processing voice command…';window.OneVoice?.setListening?.(active);},
   onVoiceSubmit:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;sendChat(transcript);}
  });
  return window.OneCommandCenter;
