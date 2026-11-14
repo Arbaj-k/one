@@ -2023,17 +2023,30 @@ async function chatActionIntent(question){
  }
  return null;
 }
+window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
+ if(window.OneCommandCenter)return window.OneCommandCenter;
+ const executeLocal=({query})=>window.OneCommands.executeCommand(query);
+ const actions={
+  addTask:executeLocal,addNote:executeLocal,addExpense:executeLocal,addIncome:executeLocal,
+  addRoutine:executeLocal,addProject:executeLocal,completeTask:executeLocal,remove:executeLocal,show:executeLocal
+ };
+ window.OneCommandCenter=window.OneCommands.create({
+  actions,
+  lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
+  speak:!!document.querySelector('#one-voice-speak')?.checked,
+  onReply:(message)=>{data.messages.push({role:'assistant',content:message,sources:['Ask One']});persist();render();scrollChatToBottom();},
+  onHeard:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;},
+  onListening:(active)=>{const mic=document.querySelector('#one-voice-mic');mic?.classList.toggle('mic-on',active);const status=document.querySelector('#one-voice-status');if(status)status.textContent=active?'Listening…':'Processing voice command…';},
+  onVoiceSubmit:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;sendChat(transcript);}
+ });
+ return window.OneCommandCenter;
+};
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;window.OneCommands?.remember(query);
  data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
  let actionResult=null;
  if(window.OneCommands?.create){
-  window.OneCommandCenter=window.OneCommandCenter||window.OneCommands.create({
-   lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
-   speak:false,
-   onReply:(message)=>{data.messages.push({role:'assistant',content:message,sources:['Ask One']});persist();render();scrollChatToBottom();}
-  });
-  const handled=await window.OneCommandCenter.run(query);
+  const handled=await window.ensureOneCommandCenter().run(query);
   if(handled)return;
  }
  // Process an outstanding confirmation first; otherwise let semantic planning run before legacy keyword rules.
