@@ -65,12 +65,12 @@
    .replace(/\b\d{1,2}(?::\d{2})?\b/g,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title){pendingReminderDraft=combined;return answer('Kis baat ka reminder set karna hai? Example: assignment, bill pay karna, ya kisi ko call karna.','Task Briefing')}
   if(!due){pendingReminderDraft=combined;return answer('“'+title+'” ka reminder kis din set karna hai? Jaise kal, Friday ya 20/11.','Task Briefing')}
-  const daily=/\b(daily|every day|roz|har roz|har din)\b/i.test(combined);
-  const r={id:uid(),title,due,reminderTime:time||'09:00',priority:'Medium',category:'Briefing',repeatRule:daily?'daily':'none',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
+  const repeat=parseRecurrence(combined),repeatRule=repeat.repeatRule;
+  const r={id:uid(),title,due:due||(repeatRule!=='none'?today():''),reminderTime:time||'09:00',priority:'Medium',category:'Briefing',repeatRule,repeatDay:repeat.repeatDay,done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
   pendingReminderDraft=null;data.tasks.push(r);persist();
   window.OneCommandsUndo=()=>{data.tasks=data.tasks.filter(x=>x.id!==r.id);persist();render()};
   window.OneCommandsShowUndo?.();render();
-  return answer('Reminder set: '+r.title+' · '+dateFmt(r.due)+' at '+r.reminderTime+(daily?' · Daily repeat':''),'Task Briefing');
+  return answer('Reminder set: '+r.title+' · '+dateFmt(r.due)+' at '+r.reminderTime+(repeatRule!=='none'?' · Repeats '+repeatRule:''),'Task Briefing');
  }
  const p=parseCommand(query),s=p.section;if(!s)return null;
  const collection={tasks:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
