@@ -1290,7 +1290,7 @@ async function requestAskOneActionPlan(question){
  try{plan=JSON.parse(String(result.answer||'').replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,''))}
  catch{return null}
  if(!plan||!['action','clarify','none'].includes(plan.kind))return null;
- if(plan.kind==='none')return null;
+ if(plan.kind==='none')return {kind:'none',sources:[]};
  if(plan.kind==='clarify')return {answer:String(plan.clarifying_question||'Is command ke liye ek detail clear kar do.').slice(0,300),sources:['Ask One']};
  if(Number(plan.confidence)<0.75)return {answer:String(plan.clarifying_question||'Is action ko sahi samajhne ke liye thoda aur detail batao.'),sources:['Ask One']};
  const clean=(v,max=180)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -2030,11 +2030,16 @@ async function sendChat(question,targetDocId=null){
    data.messages.push({role:'assistant',content:spending.answer,sources:spending.sources});
    persist();render();scrollChatToBottom();return;
   }
+ let semanticReadOnly=false;
  if(!actionResult&&!targetDocId&&!isDocumentContentQuestion(query)){
-  try{const planned=await requestAskOneActionPlan(query);if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}}
-  catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
+  try{
+   const planned=await requestAskOneActionPlan(query);
+   if(planned?.kind==='none')semanticReadOnly=true;
+   else if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}
+  }catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
  }
- if(!actionResult)actionResult=await chatActionIntent(query);
+ // Do not let legacy keyword heuristics override an AI-classified question or document query.
+ if(!actionResult&&!semanticReadOnly&&!isDocumentContentQuestion(query))actionResult=await chatActionIntent(query);
  if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources});persist();render();scrollChatToBottom();return}
  if(!targetDocId){
   const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
