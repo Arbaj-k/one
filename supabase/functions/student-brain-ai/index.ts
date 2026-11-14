@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const prompt = `You are One, the user's personal AI assistant inside a private workspace app. You help manage notes, tasks, reminders, projects, routines, documents, and spending.
+    let prompt = `You are One, the user's personal AI assistant inside a private workspace app. You help manage notes, tasks, reminders, projects, routines, documents, and spending.
 
 LANGUAGE AND TONE:
 - Reply in the same language as the user (Hindi, English, or Hinglish). Keep answers short, clear, and natural.
@@ -142,6 +142,27 @@ ${workspaceText}
 STUDENT QUESTION:
 ${message}`;
 
+    if (body?.mode === "action_plan") {
+      prompt += `
+
+ASK ONE ACTION PLANNER MODE:
+You are classifying the user's latest message into ONE supported workspace action. Do not execute anything.
+Return ONLY a JSON object with these keys:
+{"kind":"action"|"none"|"clarify","action":"create_task"|"create_note"|"create_project"|"create_expense"|"create_income"|"complete_task"|"delete_task"|"update_task"|"none","title":"","content":"","name":"","amount":0,"description":"","date":"","due_date":"","priority":"","category":"","target":"","patch":{},"confidence":0.0,"clarifying_question":""}
+Rules:
+- Understand intent semantically in Hindi, Hinglish, and English; do not rely on exact trigger words.
+- Use kind=none for questions, greetings, explanations, and read-only requests. Those go to the normal answer path.
+- Only use an action if the user clearly intends a workspace change.
+- Never invent missing titles, amounts, descriptions, dates, target names, or field values. Leave missing fields empty and use kind=clarify with one short question when essential.
+- Supported create_task requires title. create_note requires content. create_project requires name. create_expense/create_income require a positive amount and description. complete_task/delete_task require target. update_task requires target and at least one safe patch field.
+- Date fields must be YYYY-MM-DD only when explicitly clear from the user's message and workspace.today; otherwise empty. Never assume a date.
+- Do not use delete_task for deleting notes, projects, or documents; return kind=clarify for unsupported destructive requests.
+- Never interpret "how much did I spend" or other questions as a write action.
+- Keep confidence between 0 and 1. If confidence is below 0.75, return kind=clarify.
+- For delete_task, do not bypass confirmation. The app will ask for confirmation.
+- For complete_task/update_task, the app will validate the target against the user's own saved records before changing anything.
+- Do not output markdown, explanations, or extra keys.`;
+    }
     const parts: Array<Record<string, unknown>> = [{ text: prompt }];
     if (validatedInline) {
       parts.push({ text: "The original file attached next is: " + validatedInline.name + ". Read it visually and use it as primary evidence for file-specific questions. Cite \"" + validatedInline.label + "\" when used." });
