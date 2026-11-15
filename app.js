@@ -911,7 +911,17 @@ async function convertDocumentToJSON(id){
  doc.jsonStatus='processing';doc.jsonError='';persist();render();
  try{
   const token=await getStudentBrainAIToken();
-  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText})});
+  // Send the original file as visual evidence as well as OCR text. OCR alone can
+  // lose Hindi glyphs, handwriting, table columns, and diagram labels.
+  let originalFile;
+  try{
+   const original=await getOriginalDocument(id),blob=original?.blob;
+   const mimeType=String(original?.type||doc.mimeType||(doc.type==='pdf'?'application/pdf':'')).toLowerCase();
+   if(blob&&blob.size>0&&blob.size<=3*1024*1024&&(['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType))){
+    originalFile={name:doc.name,mimeType,dataBase64:await fileToBase64(blob)};
+   }
+  }catch(fileError){console.warn("Original-file visual analysis unavailable; OCR text will be used.");}
+  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText,originalFile})});
   let payload={};try{payload=await response.json()}catch{}
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
