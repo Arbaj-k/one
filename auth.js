@@ -1,4 +1,4 @@
-/* One account authentication. A verified account is required to use the workspace. */
+/* One authentication is optional; guest workspaces remain available locally. */
 (() => {
   'use strict';
   const URL = 'https://tcthrfpkydcmenxwajfg.supabase.co';
@@ -25,16 +25,16 @@
         <div class="one-auth-brand"><span class="one-auth-mark">✦</span><div><strong>One</strong><small>Your personal assistant</small></div></div>
         
         <div class="one-auth-kicker">YOUR SPACE, YOUR DATA</div>
-        <h1 id="one-auth-title">${view==='signup'?'Create your account':view==='reset'?'Reset your password':view==='sent'?'Check your inbox':'Welcome back'}</h1>
-        <p class="one-auth-sub">${view==='signup'?'Create a secure account to access One across devices.':view==='reset'?'We’ll email you a secure password reset link.':view==='sent'?'Follow the link in your email to continue.':'Sign in to securely access your personal workspace.'}</p>
+        <h1 id="one-auth-title">${view==='signup'?'Create your account':view==='reset'?'Reset your password':view==='update'?'Choose a new password':view==='sent'?'Check your inbox':'Welcome back'}</h1>
+        <p class="one-auth-sub">${view==='signup'?'Create a secure account to access One across devices.':view==='reset'?'We’ll email you a secure password reset link.':view==='update'?'Choose a new password for your account.':view==='sent'?'Follow the link in your email to continue.':'Sign in to securely access your personal workspace.'}</p>
         ${view==='sent'?'<p class="one-auth-note">If the email does not arrive, check spam or request another link.</p>':`
         ${view!=='reset'?'<button id="one-google" class="one-auth-google" type="button"><span class="google-g">G</span> Continue with Google</button><div class="one-auth-divider"><span>or continue with email</span></div>':''}
         <form id="one-auth-form" novalidate>
           ${view==='signup'?'<label>Full name<input name="name" autocomplete="name" maxlength="80" placeholder="Your name" required></label>':''}
           <label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label>
-          ${view==='reset'?'':'<label>Password<div class="one-auth-password"><input name="password" type="password" autocomplete="'+(view==='signup'?'new-password':'current-password')+'" minlength="8" placeholder="At least 8 characters" required><button type="button" class="one-show-password" aria-label="Show password">Show</button></div></label>'}
-          ${view==='login'?'<button type="button" id="one-forgot" class="one-auth-link">Forgot password?</button>':view==='reset'?'<label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required></label>':''}
-          <button class="one-auth-submit" type="submit">${view==='signup'?'Create account':view==='reset'?'Send reset link':'Log in'} <span>→</span></button>
+          ${view==='reset'?'':view==='update'?'<label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required></label>':'<label>Password<div class="one-auth-password"><input name="password" type="password" autocomplete="'+(view==='signup'?'new-password':'current-password')+'" minlength="8" placeholder="At least 8 characters" required><button type="button" class="one-show-password" aria-label="Show password">Show</button></div></label>'}
+          ${view==='login'?'<button type="button" id="one-forgot" class="one-auth-link">Forgot password?</button>':''}
+          <button class="one-auth-submit" type="submit">${view==='signup'?'Create account':view==='reset'?'Send reset link':view==='update'?'Update password':'Log in'} <span>→</span></button>
         </form>`}
         <div id="one-auth-message" class="one-auth-message" role="status" aria-live="polite" hidden></div>
         <div class="one-auth-switch">${view==='login'?'New to One? <button id="one-switch" type="button">Create account</button>':view==='signup'?'Already have an account? <button id="one-switch" type="button">Log in</button>':view==='reset'?'<button id="one-switch" type="button">Back to log in</button>':'<button id="one-switch" type="button">Back to log in</button>'}</div>
@@ -52,7 +52,7 @@
     $('#one-continue-guest')?.addEventListener('click',close);
   }
   function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}
-  function open(next='login'){view=next;render();document.body.classList.add('one-auth-open','one-auth-required')}
+  function open(next='login'){view=next;render();document.body.classList.add('one-auth-open')}
   async function submit(e){
     e.preventDefault();const form=new FormData(e.currentTarget),email=String(form.get('email')||'').trim(),password=String(form.get('password')||''),name=String(form.get('name')||'').trim();
     const submitButton=$('.one-auth-submit');if(submitButton)submitButton.disabled=true;status('Please wait…');
@@ -66,10 +66,10 @@
         const {data,error}=await auth.auth.signInWithPassword({email,password});if(error)throw error;
         if(!data.user?.email_confirmed_at){await auth.auth.signOut();throw Error('Please verify your email using the link we sent you.')}
         session=data.session;await upsertProfile(data.user);close();paintUser(data.user);
-      }else if(view==='reset'&&location.hash.includes('type=recovery')){
+      }else if(view==='update'&&location.hash.includes('type=recovery')){
         const {error}=await auth.auth.updateUser({password});if(error)throw error;
         history.replaceState(null,'',location.pathname+location.search);view='login';render();status('Password updated. You can now log in.');
-      }else{
+      }else if(view==='reset'){
         const {error}=await auth.auth.resetPasswordForEmail(email,{redirectTo:REDIRECT});if(error)throw error;
         view='sent';render();status('Password reset email sent. Open the link to set a new password.');
       }
@@ -121,12 +121,12 @@
     }catch(error){console.warn("Operation failed; diagnostic details redacted.");status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
   }
   async function boot(){
-    document.body.classList.add('one-auth-required');
+    
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
       auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
       if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
-      if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
+      if(location.hash.includes('type=recovery')){open('update');status('Choose a new password.');}
     }catch(err){console.warn("Operation failed; diagnostic details redacted.");close();}
   }
   window.OneAuth={open,logout,getSession:()=>session,getUser:()=>session?.user||null};
