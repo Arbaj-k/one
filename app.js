@@ -838,12 +838,15 @@ async function retryDocumentOCR(id){
     for(let p=1;p<=pdf.numPages;p++){
      const pg=await pdf.getPage(p),ct=await pg.getTextContent();
      let pageText=ct.items.filter(x=>String(x.str||'').trim()).map(x=>x.str).join(' ');
-     if(shouldRunDocumentOCR(pageText)&&window.Tesseract){
+     if(shouldRunDocumentOCR(pageText)){
       try{
+       if(!window.Tesseract)await ensureOneDocumentLibraries(false,true);
+       if(window.Tesseract){
        const base=pg.getViewport({scale:1}),viewport=pg.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pg.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
        const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
+        }
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No readable text found.]')+'\n';
@@ -941,7 +944,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
  const list=Array.from(files||[]);if(!list.length)return;
  const valid=list.filter(file=>file&&file.size>0&&file.size<=12*1024*1024);
  const needsPdf=valid.some(file=>file.type==='application/pdf'||/\.pdf$/i.test(file.name));
- const needsOcr=valid.some(file=>file.type.startsWith('image/')||file.type==='application/pdf'||/\.pdf$/i.test(file.name));
+  const needsOcr=valid.some(file=>file.type.startsWith('image/'));
  const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');
  try{if(status)status.textContent='Loading document tools…';await ensureOneDocumentLibraries(needsPdf,needsOcr)}
  catch(error){toast(error.message||'Document tools could not load');if(status)status.textContent=error.message||'Document tools could not load';return}
@@ -988,7 +991,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
    data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete'});
-   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');await convertDocumentToJSON(id);await autoProcessDocumentInsights(id);
+   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');if(!ocrFailed){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else{toast('File saved, but no readable text was extracted. Retry OCR from Uploaded Items.')}
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
