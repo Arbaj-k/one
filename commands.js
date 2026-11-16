@@ -14,7 +14,7 @@
   const matches=[...input.matchAll(/(?:₹|rs\.?\s*)?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|hazaar|hazar|rupees?|rs\.?|रुपये|रुपए)?/gi)];
   for(const match of matches){
    const before=input.slice(0,match.index),after=input.slice(match.index+match[0].length);
-   if(/^\s*(?:am|pm|baje)\b/i.test(after)||/^\s*[:/]\s*\d/.test(after)||/(?:\bat|\btime|\bdate)\s*$/i.test(before))continue;
+   if(/^\s*(?:am|pm|baje)\b/i.test(after)||/^\s*[:/]\s*\d/.test(after)||/\d\s*\/\s*$/.test(before)||/(?:\bat|\btime|\bdate)\s*$/i.test(before))continue;
    const value=Number(match[1].replace(/,/g,''));
    if(!Number.isFinite(value))continue;
    return value*(/^(?:k|thousand|hazaar|hazar)$/i.test(match[2]||'')?1000:1);
