@@ -231,7 +231,7 @@ function mergeWorkspaceSnapshots(localSnapshot,remoteSnapshot){
  merged.schemaVersion=Math.max(Number(local.schemaVersion)||1,Number(remote.schemaVersion)||1);
  return migrateData(merged);
 }
-let workspaceChannel=null,cloudRefreshInFlight=null;
+let workspaceChannel=null;const cloudRefreshInFlight=new Map();
 function stopWorkspaceRealtime(){
  if(workspaceChannel&&cloudClient)cloudClient.removeChannel(workspaceChannel).catch(()=>{});
  workspaceChannel=null;
@@ -285,8 +285,8 @@ async function saveCloudSnapshot(snapshot,ownerId=cloudUser?.id){
 }
 async function refreshCloudWorkspace(ownerId=cloudUser?.id){
  if(!cloudReady||!cloudClient||!ownerId||ownerId!==cloudUser?.id||!navigator.onLine)return;
- if(cloudRefreshInFlight)return cloudRefreshInFlight;
- cloudRefreshInFlight=(async()=>{
+ if(cloudRefreshInFlight.has(ownerId))return cloudRefreshInFlight.get(ownerId);
+ const refreshPromise=(async()=>{
   const {data:row,error}=await cloudClient.from('user_workspaces').select('workspace_data,updated_at,revision').eq('user_id',ownerId).maybeSingle();
   if(error)throw error;
   if(ownerId!==cloudUser?.id)return;
@@ -301,8 +301,9 @@ async function refreshCloudWorkspace(ownerId=cloudUser?.id){
  })().catch(error=>{
   console.warn("Operation failed; diagnostic details redacted.");
   if(ownerId===cloudUser?.id)setCloudMode('error',error.message||'Could not restore cloud data.');
- }).finally(()=>{cloudRefreshInFlight=null});
- return cloudRefreshInFlight;
+ }).finally(()=>{cloudRefreshInFlight.delete(ownerId)});
+ cloudRefreshInFlight.set(ownerId,refreshPromise);
+ return refreshPromise;
 }
 function subscribeWorkspaceRealtime(ownerId){
  stopWorkspaceRealtime();
