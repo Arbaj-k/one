@@ -1415,7 +1415,7 @@ async function requestAskOneActionPlan(question){
  if(action==='create_reminder'){
   const title=clean(plan.title,180);
   const due=validDate(plan.due_date)?plan.due_date:'';
-  const repeat=['daily','weekly','none'].includes(plan.repeat_rule)?plan.repeat_rule:'none';
+  const repeat=['daily','weekly','monthly','none'].includes(plan.repeat_rule)?plan.repeat_rule:'none';
   const clock=clean(plan.reminder_time,5);
   if(!title)return {answer:'Kis cheez ka reminder set karna hai?',sources:['Task Briefing']};
   if(!due)return {answer:'Reminder ki date batao. Example: Kal subah 9 baje assignment yaad dilana.',sources:['Task Briefing']};
