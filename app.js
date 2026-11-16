@@ -1298,12 +1298,22 @@ async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  return {answer:result.answer.trim(),sources:Array.isArray(result.sources)?result.sources.filter(source=>typeof source==='string').slice(0,20):[]};
 }
 
+function isAskOneReadOnlyQuestion(question){
+ const q=String(question||'').trim();
+ if(!q)return false;
+ const explicitTaskCommand=/^\\s*(?:please\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|\\b(?:task|todo)\\s+(?:add|bana|create|make)\\s+(?:kar\\s+do|karo|do)\\b|\\b(?:task bana do|task add kar do|todo bana do)\\b/i.test(q);
+ if(explicitTaskCommand)return false;
+ return /[?？]\\s*$/.test(q)||/^\\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\\b/i.test(q);
+}
+
 async function requestAskOneActionPlan(question){
  const result=await requestStudentBrainAI(question,null,'action_plan');
  let plan;
  try{plan=JSON.parse(String(result.answer||'').replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,''))}
  catch{return null}
  if(!plan||!['action','clarify','none'].includes(plan.kind))return null;
+ // A question is read-only unless the user clearly issues an imperative task command.
+ if(isAskOneReadOnlyQuestion(question)&&plan.kind==='action'&&/^create_|^update_|^delete_/.test(String(plan.action||'')))return {kind:'none',sources:[]};
  if(plan.kind==='none')return {kind:'none',sources:[]};
  if(plan.kind==='clarify')return {answer:String(plan.clarifying_question||'Is command ke liye ek detail clear kar do.').slice(0,300),sources:['Ask One']};
  if(Number(plan.confidence)<0.75)return {answer:String(plan.clarifying_question||'Is action ko sahi samajhne ke liye thoda aur detail batao.'),sources:['Ask One']};
