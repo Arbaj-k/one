@@ -28,7 +28,7 @@
  function parseDate(text){const q=norm(text),d=new Date(today()+'T12:00:00');if(/\b(aaj|today)\b/.test(q))return today();if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);else{let m=q.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.toISOString().slice(0,10)}else{const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};let day=Object.keys(days).find(k=>q.includes(k));if(!day)return '';let delta=(days[day]-d.getDay()+7)%7;if(!delta||q.includes('agle'))delta=delta||7;d.setDate(d.getDate()+delta)}}return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
  function parseTime(text){
   const q=norm(text);
-  const match=q.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))\s*(am|pm)?\b|\b(\d{1,2})\s*(am|pm|baje)\b|\b(subah|morning|shaam|sham|evening|raat|night)\s+(\d{1,2})(?::(\d{2}))?\b/i);
+  const match=q.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))\s*(am|pm)?(?=\s|$)|\b(\d{1,2})\s*(am|pm|baje)(?=\s|$)|\b(subah|morning|shaam|sham|evening|raat|night)\s+(\d{1,2})(?::(\d{2}))?(?=\s|$)/i);
   if(!match)return '';
   let h=Number(match[1]||match[4]||match[7]),min=Number(match[2]||match[8]||0);
   const meridiem=String(match[3]||match[5]||'').toLowerCase();
