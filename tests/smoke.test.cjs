@@ -94,6 +94,10 @@ assert.ok(source.includes("previous=addDaysToDate(month+'-01',-1).slice(0,7)"), 
 assert.ok(source.includes("item.extractedText,item.summary,JSON.stringify(item.extractedJson||{})"), 'Workspace search should include extracted document text, summaries and structured data');
 assert.ok(source.includes("(data.expenses||[]).forEach(item=>add("), 'Workspace search should include money records');
 
+assert.ok(source.includes('const pageLimit=pdf.numPages'), 'PDF extraction must process every page, without a 100-page cap');
+assert.ok(!source.includes('Math.min(pdf.numPages,100)'), 'PDF extraction must not silently cap the page count');
+assert.ok(!source.includes('if(pdf.numPages>pageLimit)extracted+='), 'PDF extraction must not append a misleading partial-extraction warning');
+
 // Document vault: page-aware OCR, multilingual extraction, reviewable expiry dates,
  // note connections and reminders. AI summaries are intentionally absent.
 for (const token of [
@@ -113,8 +117,8 @@ for (const token of [
  'function normalizeDocumentDigits(value)',
  'function oneExtractExpiryCandidates(text)',
  "'confirm-expiry-candidate'",
- 'const pageLimit=Math.min(pdf.numPages,100)',
- 'if(pdf.numPages>pageLimit)extracted+=',
+ 'const pageLimit=pdf.numPages',
+ 'for(let p=1;p<=pdf.numPages;p++)',
  'ocrQuality:Math.round(documentTextQuality(usableText)*100)',
 ]) assert.ok(source.includes(token),'Document extraction feature missing: '+token);
 assert.ok(documentFunction.includes('Hindi (Devanagari), or mixed Hindi-English/Hinglish'),'Structured extraction prompt must support Hindi and Hinglish');
