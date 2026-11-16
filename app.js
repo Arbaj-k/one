@@ -1457,6 +1457,30 @@ async function requestAskOneActionPlan(question){
   const record={id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date,created:now,updated:now};
   return makeConfirm('expenses',record,'expenses','Udhaar saved: '+fmtMoney(amount)+' · '+person+'.',{moneyTab:'udhaar',expenseMonth:date.slice(0,7)});
  }
+ if(Array.isArray(plan.actions)&&plan.actions.length>1){
+  if(plan.actions.length>6)return {answer:'Ek request mein maximum 6 actions process kar sakta hoon. Isko chhote parts mein bhejo.',sources:[source]};
+  const records=[];
+  for(const item of plan.actions){
+   const type=clean(item?.action,40);
+   if(type==='create_task'){
+    const title=clean(item.title,180);if(!title)return {answer:'Task ka naam missing hai. Kuch save nahi kiya.',sources:[source]};
+    records.push({collection:'tasks',page:'planner',record:{id:uid(),title,due:validDate(item.due_date)?item.due_date:'',category:'Personal',priority:['Low','Medium','High'].includes(item.priority)?item.priority:'Medium',done:false,created:now,updated:now},success:'Task: '+title});
+   }else if(['add_expense','create_expense','add_income','create_income'].includes(type)){
+    const amount=Number(item.amount),description=clean(item.description,180);if(!Number.isFinite(amount)||amount<=0||!description)return {answer:'Transaction amount ya description missing hai. Kuch save nahi kiya.',sources:[source]};
+    const kind=/income/.test(type)?'income':'expense',date=validDate(item.date)?item.date:today();
+    records.push({collection:'expenses',page:'expenses',record:{id:uid(),amount:String(amount),description,category:clean(item.category,60)||'Other',date,kind,created:now,updated:now},success:(kind==='income'?'Income':'Expense')+' ₹'+amount+' · '+description});
+   }else if(type==='add_udhaar'){
+    const amount=Number(item.amount),person=clean(item.person||item.target,100),kind=['lent','borrowed','lent_repayment','borrowed_repayment'].includes(item.udhaar_type)?item.udhaar_type:'lent';
+    if(!Number.isFinite(amount)||amount<=0||!person)return {answer:'Udhaar ke liye amount aur person ka naam chahiye. Kuch save nahi kiya.',sources:[source]};
+    records.push({collection:'expenses',page:'expenses',record:{id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date:validDate(item.date)?item.date:today(),created:now,updated:now},success:'Udhaar ₹'+amount+' · '+person});
+   }else if(type==='create_note'){
+    const content=clean(item.content,4000);if(!content)return {answer:'Note content missing hai. Kuch save nahi kiya.',sources:[source]};
+    records.push({collection:'notes',page:'notes',record:{id:uid(),title:clean(item.title,120)||'Quick note',content,subject:'Quick note',tags:'Ask One',created:now,updated:now},success:'Note saved'});
+   }else return {answer:'AI ne unsupported multi-action ('+type+') diya. Koi change nahi kiya.',sources:[source]};
+  }
+  pendingAction={type:'create-batch',records,source,requestedAt:now};
+  return {answer:'Confirm '+records.length+' actions:\n'+records.map((r,i)=>(i+1)+'. '+r.success).join('\n')+'\nAbhi kuch save nahi hua.',sources:[source]};
+ }
  const findTask=target=>{
   const needle=clean(target,180).toLowerCase();if(!needle)return {error:'Task ka saved title batao.'};
   const matches=(data.tasks||[]).filter(t=>{const title=String(t.title||'').toLowerCase();return title===needle||title.includes(needle)||needle.includes(title)});
@@ -1808,6 +1832,24 @@ async function chatActionIntent(question){
   if(pending.requestedAt&&Date.now()-pending.requestedAt>2*60*1000){pendingAction=null;return {answer:'That confirmation expired after 5 minutes. No data was changed. Please send the request again.',sources:[pending.source||'Ask One']};}
   if(/^(?:yes|yes confirm|confirm|confirm delete|haan|ha|kar do|delete it|proceed)$/i.test(lower)){
    pendingAction=null;
+   if(pending.type==='create-batch'){
+    const allowed=new Set(['tasks','notes','expenses']),snapshots={};
+    for(const key of allowed)snapshots[key]=Array.isArray(data[key])?data[key].slice():[];
+    try{
+     if(!Array.isArray(pending.records)||!pending.records.length||pending.records.some(x=>!allowed.has(x.collection)||!x.record?.id))throw new Error('Invalid action batch');
+     for(const item of pending.records){
+      const list=data[item.collection]=Array.isArray(data[item.collection])?data[item.collection]:[],r=item.record;
+      const duplicate=list.some(x=>item.collection==='tasks'?String(x.title||'').toLowerCase()===String(r.title||'').toLowerCase()&&String(x.due||'')===String(r.due||''):item.collection==='notes'?String(x.content||'').trim().toLowerCase()===String(r.content||'').trim().toLowerCase():String(x.description||'').trim().toLowerCase()===String(r.description||'').trim().toLowerCase()&&Number(x.amount)===Number(r.amount)&&String(x.person||'').toLowerCase()===String(r.person||'').toLowerCase()&&String(x.date||'')===String(r.date||'')&&String(x.kind||'expense')===String(r.kind||'expense'));
+      if(duplicate)throw new Error('Duplicate detected: '+(r.title||r.description||r.content||'record'));
+      list.push(r);
+     }
+     persist();
+     for(const item of pending.records)if(!verify(item.collection,item.record))throw new Error('Save verification failed');
+    }catch(error){for(const key of allowed)data[key]=snapshots[key];persist();return {answer:(error.message||'Batch save failed')+'. Nothing was saved.',sources:[pending.source||'Ask One']};}
+    page=pending.records.some(x=>x.page==='expenses')?'expenses':pending.records[0].page||page;
+    const sync=await syncResult();render();
+    return {answer:'All '+pending.records.length+' actions saved and verified.'+sync,sources:[pending.source||'Ask One']};
+   }
    if(pending.type==='create-record'){
     const allowed={tasks:'Planner',notes:'Notes & Memory',projects:'Projects',expenses:'Money & Udhaar'};
     if(!allowed[pending.collection]||!pending.record)return {answer:'This action is no longer valid. No data was changed.',sources:[]};
