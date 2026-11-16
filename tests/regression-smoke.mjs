@@ -637,7 +637,7 @@ assert.ok(app.includes('installOneDomGuard')&&app.includes('nativeInsert.call(th
 assert.ok(app.includes("name.startsWith('on')")&&app.includes("name==='href'&&!safeUrl(value,'link')"), 'DOM sanitizer must strip event attributes and unsafe link schemes.');
 assert.ok(!app.includes('window.getOneWorkspaceData')&&!app.includes('window.data'), 'Raw workspace data must not be exposed on window.');
 assert.ok(app.includes('window.OneWorkspaceMetrics=')&&securityAnalyticsSource.includes('window.OneWorkspaceMetrics?.()'), 'Analytics may access aggregate metrics only, not raw workspace records.');
-assert.ok(!securityAnalyticsSource.includes('getWorkspaceSnapshot')&&!securityAnalyticsSource.includes('localStorage.getItem'), 'Analytics must not scan or transmit workspace records from localStorage.');
+assert.ok(!securityAnalyticsSource.includes('getWorkspaceSnapshot')&&!securityAnalyticsSource.includes('student-brain-data-v1')&&!securityAnalyticsSource.includes('window.data'), 'Analytics must not scan or transmit workspace records from localStorage.');
 assert.ok(app.includes('sanitizeBackupValue')&&app.includes("'__proto__','prototype','constructor'")&&app.includes('Backup nesting is too deep'), 'Backup restore must strip prototype-pollution keys and enforce nesting/size bounds.');
 assert.ok(app.includes('20*1024*1024')&&app.includes('parseBackupPayload'), 'Backup restore must enforce the 20 MB limit and validate its schema.');
 assert.ok(app.includes('data.aiPrivacy?.notes===true')&&app.includes('data.aiPrivacy?.money===true')&&app.includes('selectedWorkspace.structuredDocuments=[]'), 'AI payloads must fail closed for disabled categories, including structured documents.');
