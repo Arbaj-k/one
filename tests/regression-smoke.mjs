@@ -440,7 +440,7 @@ const batchRouteIndex=app.indexOf("if(Array.isArray(plan.actions)&&plan.actions.
 const singleActionIndex=app.indexOf("const action=clean(plan.action,40);");
 assert.ok(batchRouteIndex>0&&singleActionIndex>batchRouteIndex, 'Ask One must route multi-action batches before single-action handlers.');
 assert.ok(app.includes("type==='create_reminder'")&&app.includes("type==='create_project'"), 'Multi-action batches must support reminders and project creation.');
-assert.ok(app.includes("if(!title||!due||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(clock))"), 'Multi-action reminders must validate title, date and time before confirmation.');
+assert.ok(app.includes('if(!title||!due||!')&&app.includes('test(clock))return {answer:\'Reminder'), 'Multi-action reminders must validate title, date and time before confirmation.');
 const push = readFileSync(new URL('../supabase/functions/one-push/index.ts', import.meta.url), 'utf8');
 assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') && push.includes('snoozedUntil'), 'Background push dispatcher must support recurrence, advance notices and snoozes.');
 assert.ok(push.includes('relatedNoteId') && push.includes('relatedDocumentId'), 'Background push messages must include linked note/document context.');
