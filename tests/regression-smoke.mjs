@@ -17,7 +17,8 @@ assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file quest
 assert.ok(app.includes("if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent))return {kind:'none',sources:[]}"), 'File context alone must never trigger a workspace action.');
 
 assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
-assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('return explicitTaskCommand || explicitAction || explicitReminder;'), 'Task creation must require an imperative command at the start of the message.');
+assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('return explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;'), 'Ask One must support natural-language task intent without requiring slash syntax.');
+assert.ok(!/\/task|\/remind|\/list|\/done|\/delete/.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
