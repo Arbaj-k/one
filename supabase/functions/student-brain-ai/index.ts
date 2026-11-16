@@ -184,24 +184,52 @@ Rules:
       parts.push({ text: "The original file attached next is: " + validatedInline.name + ". Read it visually and use it as primary evidence for file-specific questions. Cite \"" + validatedInline.label + "\" when used." });
       parts.push({ inline_data: { mime_type: validatedInline.mimeType, data: validatedInline.data } });
     }
-    let aiResponse: Response;
-    try {
-      aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+    const primaryModel = "gemini-3.5-flash-lite";
+    const fallbackModel = "gemini-3.6-flash";
+    let usedModel = primaryModel;
+    const requestBody = JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1000, temperature: 0.2 },
+    });
+    async function callGemini(model: string): Promise<Response> {
+      return await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts }],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1000, temperature: 0.2 },
-        }),
+        body: requestBody,
         signal: AbortSignal.timeout(55000),
       });
+    }
+
+    let aiResponse: Response;
+    try {
+      aiResponse = await callGemini(primaryModel);
+      // A 5xx from Gemini is an upstream availability failure, not a user-data
+      // validation error. Fail over once to another currently supported stable
+      // Flash model; never fail over on auth, quota, or malformed-request errors.
+      if (aiResponse.status >= 500) {
+        console.warn("Gemini primary model returned an upstream error.", JSON.stringify({
+          model: primaryModel, httpStatus: aiResponse.status,
+        }));
+        await new Promise(resolve => setTimeout(resolve, 450));
+        usedModel = fallbackModel;
+        aiResponse = await callGemini(fallbackModel);
+      }
     } catch (upstreamError) {
       const reason = upstreamError instanceof Error ? upstreamError.name : "unknown";
-      console.warn("Operation failed; diagnostic details redacted.");
+      console.warn("Gemini request transport failed.", JSON.stringify({ model: usedModel, reason }));
       if (reason === "TimeoutError" || reason === "AbortError") {
-        return json({ error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504);
+        return json({ error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504, undefined, req);
       }
-      return json({ error: "Supabase could not connect to Gemini. Check Gemini API availability and retry.", code: "GEMINI_NETWORK" }, 502, undefined, req);
+      // A network failure may be transient or model-specific; try the alternate
+      // stable model once before returning an error.
+      try {
+        usedModel = fallbackModel;
+        aiResponse = await callGemini(fallbackModel);
+      } catch (fallbackError) {
+        const fallbackReason = fallbackError instanceof Error ? fallbackError.name : "unknown";
+        console.warn("Gemini fallback transport failed.", JSON.stringify({ model: fallbackModel, reason: fallbackReason }));
+        return json({ error: "Could not connect to Gemini after trying the backup model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502, undefined, req);
+      }
     }
 
     let aiResult: any = {};
@@ -210,9 +238,10 @@ Rules:
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
-      const providerMessage = typeof aiResult?.error?.message === "string" ? aiResult.error.message.slice(0, 500) : "No provider detail";
-      // Keep the provider diagnostic in Supabase logs only; never log or return the API key.
-      console.warn("Operation failed; diagnostic details redacted.");
+      const providerCode = typeof aiResult?.error?.status === "string" ? aiResult.error.status.slice(0, 80) : "UNKNOWN";
+      // Log only model + numeric status + provider code; never log prompts, files, keys,
+      // user content, or provider messages.
+      console.warn("Gemini provider returned an error.", JSON.stringify({ model: usedModel, httpStatus: status, providerCode }));
       if (status === 400) {
         return json({ error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502, undefined, req);
       }
@@ -239,7 +268,7 @@ Rules:
     const sourceList = Array.isArray(parsed.sources)
       ? [...new Set(parsed.sources.filter((source: unknown): source is string => typeof source === "string" && allowedSources.includes(source)))]
       : [];
-    return json({ answer, sources: sourceList.slice(0, 10), model: "gemini-3.5-flash-lite" }, undefined, req);
+    return json({ answer, sources: sourceList.slice(0, 10), model: usedModel }, undefined, req);
   } catch (error) {
     console.warn("Operation failed; diagnostic details redacted.");
     return json({ error: "Something went wrong while answering. Please retry." }, 500, undefined, req);
