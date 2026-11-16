@@ -1811,7 +1811,7 @@ async function chatActionIntent(question){
  }
  // Deterministic command routing: reminder/briefing requests must be handled
  // locally before document Q&A, while explicit "add task" remains a Planner task.
- const explicitTaskAddIntent=/\b(?:add|create|make)\s+(?:a\s+)?(?:new\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b|\b(?:task\s+bana\s+do|task\s+create\s+karo|task\s+add\s+kar\s+do|todo\s+bana\s+do)\b/i.test(lower);
+ const explicitTaskAddIntent=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:(?:can|could|would)\s+you\s+)(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar(?:o|na|\s+do)?|do)\b|^\s*(?:task bana do|task create karo|task add kar do|todo bana do)\b|^\s*(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b/i.test(lower);
  const reminderCommandIntent=/\b(?:remind\s+me|reminder|yaad\s+(?:dila(?:na|\s+dena|\s+do)?|rakhna)|mat\s+bhoolna|don't\s+let\s+me\s+forget|briefing|brief\s+me|bata\s+dena|batana|yaad\s+karwana)\b/i.test(lower);
  if(!pendingChatAction&&explicitTaskAddIntent&&!reminderCommandIntent){
   const due=parseDate();
