@@ -623,3 +623,28 @@ assert.ok(intentCode.includes('!explicitTaskAdd&&naturalReminder'), 'Reminder wo
 assert.ok(intentCode.includes('explicitTaskAdd&&!naturalReminder'), 'Explicit task-add wording must remain available.');
 assert.ok(intentCode.includes("category:'Briefing'"), 'Reminder commands must be saved as Task Briefing.');
 assert.ok(intentCode.includes("category:/assignment|submit/i.test(lower)?'Assignment'"), 'Explicit task adds must retain task categories.');
+
+
+// Defensive security hardening: CSP, DOM sinks, private workspace data, backups, logout and share target.
+const authSource=readFileSync(new URL('../auth.js',import.meta.url),'utf8');
+const analyticsSource=readFileSync(new URL('../analytics.js',import.meta.url),'utf8');
+const intelligenceSource=readFileSync(new URL('../workspace-intelligence.js',import.meta.url),'utf8');
+const serviceWorkerSource=readFileSync(new URL('../service-worker.js',import.meta.url),'utf8');
+const indexSource=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const pwaInitSource=readFileSync(new URL('../pwa-init.js',import.meta.url),'utf8');
+assert.ok(app.includes('installOneDomGuard')&&app.includes('nativeInsert.call(this,position'), 'All innerHTML and insertAdjacentHTML sinks must pass through the defensive DOM sanitizer.');
+assert.ok(app.includes("name.startsWith('on')")&&app.includes("name==='href'&&!safeUrl(value,'link')"), 'DOM sanitizer must strip event attributes and unsafe link schemes.');
+assert.ok(!app.includes('window.getOneWorkspaceData')&&!app.includes('window.data'), 'Raw workspace data must not be exposed on window.');
+assert.ok(app.includes('window.OneWorkspaceMetrics=')&&analyticsSource.includes('window.OneWorkspaceMetrics?.()'), 'Analytics may access aggregate metrics only, not raw workspace records.');
+assert.ok(!analyticsSource.includes('getWorkspaceSnapshot')&&!analyticsSource.includes('localStorage.getItem'), 'Analytics must not scan or transmit workspace records from localStorage.');
+assert.ok(app.includes('sanitizeBackupValue')&&app.includes("'__proto__','prototype','constructor'")&&app.includes('Backup nesting is too deep'), 'Backup restore must strip prototype-pollution keys and enforce nesting/size bounds.');
+assert.ok(app.includes('20*1024*1024')&&app.includes('parseBackupPayload'), 'Backup restore must enforce the 20 MB limit and validate its schema.');
+assert.ok(app.includes('data.aiPrivacy?.notes===true')&&app.includes('data.aiPrivacy?.money===true')&&app.includes('selectedWorkspace.structuredDocuments=[]'), 'AI payloads must fail closed for disabled categories, including structured documents.');
+assert.ok(app.includes("note?.isPrivate===true")&&intelligenceSource.includes("visibility==='private'"), 'Private notes must be excluded from AI retrieval and connected-knowledge context.');
+assert.ok(app.includes('people:data.aiPrivacy?.people===true')&&app.includes('selectedWorkspace.followUps=[]'), 'People/follow-up context must require its own explicit AI-sharing opt-in.');
+assert.ok(authSource.includes('flushCloudSync')&&authSource.includes('purgeUserLocalData'), 'Logout cleanup must wait for confirmed cloud sync before purging account-local data.');
+assert.ok(indexSource.includes('Content-Security-Policy')&&indexSource.includes("object-src 'none'")&&indexSource.includes("base-uri 'self'")&&!/<script>/.test(indexSource), 'Index must use a CSP meta policy and same-origin PWA bootstrap rather than inline script.');
+assert.ok(indexSource.includes('@2.119.0')&&indexSource.includes('crossorigin="anonymous"'), 'Supabase CDN version must be pinned and use anonymous CORS mode.');
+assert.ok(pwaInitSource.includes('serviceWorker.register'), 'PWA update and install bootstrap must remain available after CSP migration.');
+assert.ok(serviceWorkerSource.includes('safeShareUrl')&&serviceWorkerSource.includes('totalBytes<=20*1024*1024'), 'Share Target must reject unsafe URLs and cap aggregate file size.');
+assert.ok(serviceWorkerSource.includes("new URL(requested).origin===self.location.origin"), 'Notification clicks must not navigate users to external or unsafe origins.');
