@@ -14,6 +14,10 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   const context=await browser.newContext();
   const page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>{
+    window.Tesseract={recognize:async()=>({data:{text:'University library notice. Opening hours Monday to Friday, 9 AM to 5 PM. Contact the library desk for assistance.',confidence:96}})};
+    window.pdfjsLib={GlobalWorkerOptions:{},getDocument:()=>({promise:Promise.resolve({numPages:1,getPage:async()=>({getTextContent:async()=>({items:[{str:'University library notice. Opening hours Monday to Friday, 9 AM to 5 PM.',transform:[1,0,0,1,10,100]}]}),cleanup(){}})})})};
+  });
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
   await page.evaluate(()=>localStorage.setItem('student-brain-data-v1-guest',JSON.stringify({schemaVersion:2,notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[]})));
@@ -34,7 +38,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.tasks.some(t=>t.title==='Browser regression task'),'Task UI save must persist to workspace storage.');
 
-  // Return home before using the dashboard shortcut for Money & Udhaar.
+  // Exercise real image OCR and PDF text extraction through the upload form.\n  await page.locator('button[data-page="vault"]').first().click();\n  await page.locator('#document-upload').setInputFiles({name:'browser-ocr.png',mimeType:'image/png',buffer:Buffer.from('fake-png-fixture')});\n  const imageForm=page.locator('#edit-form');\n  await imageForm.locator('[name="name"]').fill('Browser OCR image');\n  await imageForm.locator('.modal-save-button').click();\n  await page.getByText('Browser OCR image',{exact:true}).waitFor({timeout:15000});\n  let documents=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')).documents);\n  assert.ok(documents.some(d=>d.name==='browser-ocr.png'&&d.mimeType==='image/png'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'Image upload must OCR text and save it with the normalized MIME type.');\n  await page.locator('#document-upload').setInputFiles({name:'browser-text.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fake fixture')});\n  const pdfForm=page.locator('#edit-form');\n  await pdfForm.locator('[name="name"]').fill('Browser OCR PDF');\n  await pdfForm.locator('.modal-save-button').click();\n  await page.getByText('Browser OCR PDF',{exact:true}).waitFor({timeout:15000});\n  documents=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')).documents);\n  assert.ok(documents.some(d=>d.name==='browser-text.pdf'&&d.mimeType==='application/pdf'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'PDF upload must extract text and save its MIME type.');\n\n  // Return home before using the dashboard shortcut for Money & Udhaar.
   await page.locator('.back-home-icon').click();
   // Exercise Money & Udhaar create form and verify the amount/category record.
   await page.locator('.stat-card[data-page="expenses"]').first().click();
