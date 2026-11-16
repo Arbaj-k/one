@@ -1306,6 +1306,10 @@ function isAskOneReadOnlyQuestion(question){
  return /[?？]\s*$/.test(q)||/^\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|tell me|explain|describe|help me understand|i want to know|what should i|how do i|how can i|should i|can i|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\b/i.test(q);
 }
 async function requestAskOneActionPlan(question){
+ const q=String(question||'').trim();
+ const explicitMutationAtStart=/^\\s*(?:(?:please|kindly)\\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark|remember|remind me|set (?:a )?reminder|yaad dila(?:na| do)?|yaad rakhna)\\b|^\\s*(?:task|todo|note|project|routine|expense|income)\\s+(?:add|bana|create|save|delete|remove|update|edit)\\b|^\\s*(?:mujhe|mere liye)\\s+(?:ek\\s+)?(?:task|todo|note|reminder)\\s+(?:add|bana|create|set)\\b/i.test(q);
+ const asksAboutAttachedContent=/\\b(?:this|that|these|those|attached|uploaded|file|pdf|image|document|screenshot|photo|iska|iske|iski|isme|isey|isse|yeh|ye|इसका|इसकी|इसके|इसमें|इसे|यह|ये)\\b/i.test(q);
+ if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent))return {kind:'none',sources:[]};
  const result=await requestStudentBrainAI(question,null,'action_plan');
  let plan;
  try{plan=JSON.parse(String(result.answer||'').replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,''))}
