@@ -44,7 +44,7 @@ assert.ok(app.includes('studentBrainAIClient=window.getOneSupabaseClient()') && 
 assert.ok(authSource.includes('client = window.getOneSupabaseClient()') && analyticsSource.includes('client=window.getOneSupabaseClient()'), 'Auth and analytics must reuse the shared Supabase client.');
 assert.ok(app.includes("params.get('route')") && app.includes("history.replaceState({sbPage:'analytics'},'','/one/analysis')"), 'Analysis must resolve from GitHub Pages route and query fallback.');
 assert.ok(notFoundSource.includes("params.set('route'") && notFoundSource.includes('location.hash'), '404 fallback must preserve query parameters and hash while redirecting.');
-assert.ok(serviceWorkerSource.includes('"./404.html"') && serviceWorkerSource.includes('"./supabase-client.js"') && serviceWorkerSource.includes('one-shell-v22'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
+assert.ok(serviceWorkerSource.includes('"./404.html"') && serviceWorkerSource.includes('"./supabase-client.js"') && serviceWorkerSource.includes('one-shell-v23'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
 assert.ok(app.includes("switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())"), 'Share inbox must be consumed after both sign-in and sign-out workspace changes.');
 assert.ok(analyticsSource.includes('function renderPersonalSummary(root)') && analyticsSource.includes("metric('Overdue tasks'") && analyticsSource.includes("metric('Total spending'"), 'Regular users and guests must see personal workspace analytics.');
 
