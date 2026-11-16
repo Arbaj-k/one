@@ -3,9 +3,9 @@
 (function(){
  const path=location.pathname;
  const base='/one/';
- const route=path.startsWith(base)?path.slice(base.length):path.replace(/^\\/+/, '');
+ const route=path.startsWith(base)?path.slice(base.length):path.slice(1);
  const params=new URLSearchParams(location.search);
- params.set('route',route.replace(/^\\/+|\\/+$/g,'')||'overview');
+ params.set('route',route.split('/').filter(Boolean).join('/')||'overview');
  location.replace(base+'?'+params.toString()+location.hash);
 })();
 </script><p>Opening One…</p></body></html>
