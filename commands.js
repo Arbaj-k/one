@@ -68,7 +68,9 @@
 // A weekday alone is a lookup filter, not a task or reminder.
 if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.intent=/\b(routine|habit|walk|exercise|meditation)\b/i.test(q)?'routines':'tasks';
   if(planSummary)det.intent='tasks';
-  let action=reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
+  const readVerb=/\b(?:show|list|display|tell|batao|dikhao|sunao|what|which|when|where|how|kitna|kitne|kitni|kya\s+(?:set|saved|scheduled|hai))\b/i.test(q);
+  const writeVerb=/\b(?:add|create|make|save|record|log|schedule|set|lagao|laga|banao|bana|jodo|daalo|dalo|yaad\s+dila)\b/i.test(q);
+  let action=readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
   const udhaarType=/\b(?:udhaar|lent|lend|gave|given|diye|diya|borrowed|borrow|liya|liye|repaid|repayment|settle|settled|paid back|wapas)\b/i.test(q)?(/\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
   const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||[])[1]||'';
@@ -95,6 +97,13 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
  function answer(text,source){return {answer:text,sources:[source||'Ask One']}}
  function executeCommand(query){const q=norm(query);if(pending&&Date.now()>pendingExpiresAt){pending=null;pendingExpiresAt=0;}if(pending&&!/^(?:haan|ha|yes|y|ok|okay|theek hai|theek|kar do|confirm|proceed|nahi|na|no|n|cancel|rehne do|mat karo|stop|\d+)$/i.test(q)){pending=null;pendingExpiresAt=0;}if(pending){const p=pending;if(p.choose){const n=Number(q);if(!Number.isInteger(n)||n<1||n>p.choose.length)return answer('List me se number reply karo, jaise 1 ya 2.');const item=p.choose[n-1];pending=null;if(p.action==='delete'){pending={apply:()=>{data[p.collection]=data[p.collection].filter(x=>x.id!==item.id);persist();render()},done:'Deleted '+(item.title||item.name||item.description)};return answer('Ye delete karna hai: "'+(item.title||item.name||item.description)+'"? Haan / Nahi bolo.')}if(p.action==='complete'&&p.collection==='tasks'){pending={apply:()=>{item.done=true;item.completedAt=Date.now();persist();render()},done:'Completed '+item.title};return answer('Mark "'+item.title+'" complete? Haan / Nahi bolo.')}return answer(item.title||item.name||item.description||'Selected item')}pending=null;if(/^(haan|ha|yes|y|ok|okay|theek hai|theek|confirm|kar do|proceed)$/.test(q)){p.apply();return answer(p.done,'Ask One')}if(/^(nahi|na|no|n|cancel|rehne do|mat karo|stop)$/.test(q))return answer('Cancelled. Koi change nahi kiya.');pending=p;return answer('Pending action ke liye Haan ya Nahi bolo.')}
  if(pendingReminderDraft&&/^(?:cancel|no|nahi|rehne do|mat karo|stop)$/i.test(q)){pendingReminderDraft=null;reminderDraftExpiresAt=0;return answer('Reminder draft cancelled. Koi reminder save nahi hua.','Task Briefing')}
+ const reminderLookup=/\b(?:reminders?|briefings?)\b/i.test(q)&&/\b(?:show|list|tell|what|which|when|batao|dikhao|kya|kaun|set|saved|scheduled|hai|hain)\b/i.test(q);
+ if(reminderLookup){
+  const rows=(data.tasks||[]).filter(item=>item.category==='Briefing'||item.isReminder===true||item.source==='reminder');
+  const active=rows.filter(item=>!item.done&&!item.paused).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))||String(a.reminderTime||'').localeCompare(String(b.reminderTime||'')));
+  const list=active.length?active.map((item,index)=>(index+1)+'. '+item.title+' · '+(item.due?dateFmt(item.due):'Date not set')+' at '+(item.reminderTime||'09:00')+((item.repeatRule&&item.repeatRule!=='none')?' · '+item.repeatRule:'')).join('\n'):'Abhi koi active reminder saved nahi hai.';
+  return answer('Your saved reminders:\n'+list,'Task Briefing');
+ }
  const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
  if(pendingReminderDraft&&Date.now()>reminderDraftExpiresAt)pendingReminderDraft=null;if(pendingReminderDraft&&/^(?:add|create|make|show|list|delete|remove|complete|mark|save|note|task|expense|income|udhaar|project|routine)\b/i.test(q)){pendingReminderDraft=null;}if(reminderCue||pendingReminderDraft){
   const combined=pendingReminderDraft?pendingReminderDraft+' '+query:query;
