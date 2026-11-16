@@ -34,7 +34,7 @@
     function canHandle(text) {
       const query = String(text || '').trim();
       if (!query) return false;
-      const explicitTaskCommand = /^\\s*(?:please\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|\\b(?:task|todo)\\s+(?:add|bana|create|make)\\s+(?:kar\\s+do|karo|do)\\b|\\b(?:task bana do|task add kar do|todo bana do)\\b/i.test(query);
+      const explicitTaskCommand = /^\\s*(?:please\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|(?:^|\\s)(?:(?:please|kindly)\\s+)?(?:can|could|would)\\s+you\\s+(?:please\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|\\b(?:task|todo)\\s+(?:add|bana|create|make)\\s+(?:kar\\s+do|karo|do)\\b|\\b(?:task bana do|task add kar do|todo bana do)\\b/i.test(query);
       const questionLike = /[?？]\\s*$/.test(query) || /^\\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\\b/i.test(query);
       if (questionLike && !explicitTaskCommand) return false;
       const parsed = legacy.parseCommand(query);
