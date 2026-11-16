@@ -23,13 +23,71 @@
       }
     };
 
+    let createDraft = null;
+    const isYes = value => /^(haan|ha|yes|y|ok|okay|theek|theek hai|confirm|proceed|kar do|save|set kar do)$/i.test(String(value||'').trim());
+    const isNo = value => /^(nahi|na|no|n|cancel|rehne do|mat karo|stop)$/i.test(String(value||'').trim());
+    const isCreateStart = value => {
+      const q=String(value||'').trim();
+      if (/^(?:task|reminder|todo)\\s*$/i.test(q)) return true;
+      return /^(?:(?:please|kindly)\\s+)?(?:add|create|make|set|schedule)\\b.*\\b(?:task|todo|reminder)\\b/i.test(q)
+        || /^(?:task|todo|reminder)\\s+(?:add|bana|create|make|set|laga)/i.test(q)
+        || /^(?:remind me|yaad dila)/i.test(q)
+        || /^(?:task add karo|task bana do|reminder set karo|reminder laga do)$/i.test(q);
+    };
+    const dateFrom = value => { const p=legacy.parseCommand(value); return p?.date || ''; };
+    const timeFrom = value => { const p=legacy.parseCommand(value); return p?.time || ''; };
+    const cleanTitle = value => {
+      const p=legacy.parseCommand(value);
+      return String(p?.title||'').trim();
+    };
+    function createFlow(value) {
+      const q=String(value||'').trim();
+      if (!createDraft) {
+        if (!isCreateStart(q)) return null;
+        const reminder=/\\b(?:remind(?:er)?|yaad dila|briefing)\\b/i.test(q);
+        createDraft={kind:reminder?'reminder':'task',title:cleanTitle(q),date:dateFrom(q),time:timeFrom(q),stage:''};
+      } else if (isNo(q)) { createDraft=null; return 'Cancelled. Kuch save nahi hua.'; }
+      else if (isYes(q)) {
+        if (!createDraft.title || !createDraft.date || !createDraft.time) return 'Pehle task/reminder ki saari details complete kar lete hain.';
+        const d=createDraft; createDraft=null;
+        const command=d.kind==='reminder'
+          ? 'remind me to '+d.title+' on '+d.date+' at '+d.time
+          : 'add task '+d.title+' due '+d.date+' at '+d.time;
+        const result=legacy.executeCommand(command);
+        if (result && typeof result.then==='function') return result.then(x=>x?.answer||'Saved.');
+        return result?.answer || 'Save nahi ho paya. Details dobara check karo.';
+      } else if (createDraft.stage==='title') {
+        createDraft.title=q;
+      } else if (createDraft.stage==='date') {
+        const date=dateFrom(q); if (!date) return 'Date samajh nahi aayi. Jaise: kal, Friday, ya 20/11 likho.';
+        createDraft.date=date;
+        const time=timeFrom(q); if (time) createDraft.time=time;
+      } else if (createDraft.stage==='time') {
+        const time=timeFrom(q); if (!time) return 'Time samajh nahi aaya. Jaise: 8 PM ya 20:00 likho.';
+        createDraft.time=time;
+      } else if (/\\b(?:edit|change|badlo)\\b/i.test(q)) {
+        return 'Kaunsi detail change karni hai—naam, date ya time?';
+      } else {
+        // A complete natural-language detail can fill missing fields.
+        const date=dateFrom(q),time=timeFrom(q);
+        if (date) createDraft.date=date;
+        if (time) createDraft.time=time;
+        if (!date && !time && !createDraft.title) createDraft.title=q;
+      }
+      if (!createDraft.title) { createDraft.stage='title'; return 'Kya task/reminder add karna hai? Naam ya kaam batao.'; }
+      if (!createDraft.date) { createDraft.stage='date'; return '“'+createDraft.title+'” kis date ko karna hai? Jaise: kal, Friday ya 20/11.'; }
+      if (!createDraft.time) { createDraft.stage='time'; return 'Kis time par? Jaise: 8 PM ya 20:00.'; }
+      createDraft.stage='confirm';
+      return (createDraft.kind==='reminder'?'Reminder':'Task')+' confirm karo:\\n• Kaam: '+createDraft.title+'\\n• Date: '+createDraft.date+'\\n• Time: '+createDraft.time+'\\n\\nSave kar doon? Haan / Nahi';
+    }
+
     function canHandle(text) {
       const query = String(text || '').trim();
       if (!query) return false;
 
       // Continue only an action that the user already explicitly started.
       // This includes YES/NO replies and the follow-up details for a reminder.
-      if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;
+      if (createDraft || legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;
 
       // Questions about a document's contents belong to the document/AI pipeline,
       // not the lightweight "show my files" command. Otherwise this adapter
