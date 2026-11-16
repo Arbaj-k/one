@@ -5,10 +5,11 @@ const app=fs.readFileSync('app.js','utf8');
 const start=app.indexOf('function mergeWorkspaceSnapshots(');
 const end=app.indexOf('let workspaceChannel=',start);
 assert.ok(start>=0&&end>start,'Workspace merge helpers must exist');
+const starter=()=>({schemaVersion:4,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],deletedRecords:[],deletedCloudDocuments:[]});
 const context={
  DATA_SCHEMA_VERSION:4,
- starter:()=>({schemaVersion:4,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],deletedRecords:[],deletedCloudDocuments:[]}),
- migrateData(raw){const next={...this.starter(),...(raw&&typeof raw==='object'?raw:{})};for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','deletedRecords','deletedCloudDocuments'])if(!Array.isArray(next[key]))next[key]=[];next.schemaVersion=4;return next;}
+ starter,
+ migrateData(raw){const next={...starter(),...(raw&&typeof raw==='object'?raw:{})};for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','deletedRecords','deletedCloudDocuments'])if(!Array.isArray(next[key]))next[key]=[];next.schemaVersion=4;return next;}
 };
 vm.runInNewContext(app.slice(start,end)+'\nthis.mergeWorkspaceSnapshots=mergeWorkspaceSnapshots;this.trackWorkspaceDeletionTombstones=trackWorkspaceDeletionTombstones;',context);
 const local={tasks:[{id:'local-new',title:'Local task',updated:200}],notes:[{id:'same',title:'Local version',updated:300}],deletedRecords:[{collection:'tasks',id:'deleted-task',deletedAt:400}]};
