@@ -140,7 +140,7 @@ assert.ok(!app.includes('GEMINI_API_KEY'), 'Gemini API secret must never be pres
 assert.ok(app.includes("const label='File: '+hit.doc.name"), 'Document citation labels should remain in the query-aware evidence builder.');
 assert.ok(app.includes('async function retryDocumentOCR('), 'Uploaded documents must support a retry/re-upload path.');
 assert.ok(app.includes('async function runImageOCR(file)'), 'Image OCR extraction must be available.');
-assert.ok(app.includes("const needsOcr=valid.some(file=>file.type.startsWith('image/'))")&&app.includes('if(shouldRunDocumentOCR(pageText))')&&app.includes('await ensureOneDocumentLibraries(false,true)'), 'Text PDFs must not depend on loading OCR; scanned pages should load OCR lazily.');
+assert.ok(app.includes("const needsOcr=valid.some(file=>normalizedDocumentMime(file).startsWith('image/'))")&&app.includes('if(shouldRunDocumentOCR(pageText))')&&app.includes('await ensureOneDocumentLibraries(false,true)'), 'Text PDFs must not depend on loading OCR; scanned pages should load OCR lazily.');
 assert.ok(app.includes('oneDocumentLibraries.ocr=null;throw error')&&app.includes('oneDocumentLibraries.pdf=null;throw error'), 'Failed PDF/OCR library downloads must be retryable without a page refresh.');
 assert.ok(app.includes('if(!ocrFailed){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}'), 'Unreadable uploads must be saved for retry without sending placeholder text to JSON conversion.');
 assert.ok(app.includes('const extractedJson=documentTextToJSON('), 'Uploaded document text must be normalized into JSON.');
