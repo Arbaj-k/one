@@ -549,7 +549,10 @@ assert.ok(homeOverview.includes('home-coming-up'), 'Upcoming tasks should remain
 
 // Ask One can schedule one-time and daily task briefings, and the briefing card sits immediately below Quick Capture.
 assert.ok(app.includes('const briefingIntent='), 'Ask One must understand briefing instructions.');
-assert.ok(app.includes("repeatRule:daily?'daily':'none'"), 'Daily briefing must use the recurring reminder scheduler.');
+assert.ok(app.includes("const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none'") && app.includes("repeatRule,priority:'Medium'"), 'Briefings and reminders must persist daily, weekly, and monthly recurrence rules.');
+assert.ok(app.includes("const monthly=/\\\\b(?:monthly|every month|each month|har mahine") && app.includes("new RegExp('\\\\\\\\b'+day+'\\\\\\\\b','i')"), 'Monthly recurrence and selected weekday reminders must be recognized.');
+const commandSource = readFileSync(new URL('../commands.js', import.meta.url), 'utf8');
+assert.ok(commandSource.includes("monthly?'monthly':'none'"), 'The offline reminder parser must recognize monthly recurrence.');
 assert.ok(app.includes("category:'Briefing'"), 'Briefings must be identifiable separately from ordinary tasks.');
 const overviewForBriefing=app.slice(app.indexOf('function overview(){'),app.indexOf('async function summarizeDocument'));
 assert.ok(overviewForBriefing.indexOf('quick-note-widget') < overviewForBriefing.indexOf('smart-briefing'), 'Task briefing must appear directly after Quick Capture.');
