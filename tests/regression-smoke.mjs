@@ -460,7 +460,7 @@ assert.ok(app.includes('file.size>5*1024*1024') && app.includes('File size limit
 assert.ok(app.includes('await saveOriginalDocument(id,file)') && app.includes('doc.originalName=file.name') && app.includes('doc.created=Date.now()'), 'Original file blobs must be stored in IndexedDB with metadata.');
 assert.ok(app.includes("data-action=\"open-uploaded-file\"") && app.includes("data-action=\"download-uploaded-file\"") && app.includes("data-action=\"rename-uploaded-file\""), 'Uploaded files must expose view, download and rename actions.');
 assert.ok(app.includes('function openUploadedFile(id,download=false){') && app.includes('function searchFiles(query){'), 'Files must be viewable and searchable.');
-assert.ok(app.includes("intent==='files'") && app.includes('fileResults:localAnswer.fileResults||[]'), 'Ask One must return clickable file search results.');
+assert.ok(app.includes("if(intent==='files')") && app.includes('fileResults:rows.map(file=>({id:file.id,name:file.name,type:file.type,tags:file.tags||[]}))'), 'Ask One must return file search results with stable file IDs.');
 assert.ok(app.includes('Is naam ki koi file nahi mili.'), 'Ask One must return the requested file-not-found message.');
 
 assert.ok(app.includes('class="document-more-menu"') && app.includes('>Download</button>') && app.includes('data-action="open-uploaded-file"'), 'Download must be tucked into the file overflow menu while View stays primary.');
