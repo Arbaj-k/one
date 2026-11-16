@@ -32,7 +32,9 @@
  function parseCommand(query){
   const q=norm(query),reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
   const recurrence=parseRecurrence(q);
-  const workTaskAdd=/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q)&&/\b(?:add|create|make|banao|bana|jodo|daalo|dalo|set|likho|save)\b/i.test(q);\n  const det=reminderCue||workTaskAdd?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const workTaskAdd=/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q)&&/\b(?:add|create|make|banao|bana|jodo|daalo|dalo|set|likho|save)\b/i.test(q);
+  const taskManagementCue=/\b(?:mark|complete|finish|done|delete|remove|edit|update)\b/i.test(q)&&/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q);
+  const det=reminderCue||workTaskAdd||taskManagementCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
@@ -52,7 +54,7 @@
   if(planSummary||weeklySpending||dailySpending||udhaarSummary)action='summary';
   const date=parseDate(query),time=parseTime(query);
   let title=q
-   .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|create|likho|save|task|tasks|todo|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|mere liye)\b/gi,' ')
+   .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|mere liye|mark|complete|finish|done|delete|remove|edit|update|submit)\b/gi,' ')
    .replace(/\b(?:today|aaj|tomorrow|kal|parso|parson|daily|every day|weekly|monthly|every week|every month|roz|roj|har roz|har din|subah|morning|evening|shaam|sham|raat|night|at|baje|am|pm|oclock)\b/gi,' ')
    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
