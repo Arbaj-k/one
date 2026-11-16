@@ -170,7 +170,7 @@ for (const token of [
   'const structuredDocuments=rankedJson.map(({doc})=>',
   'item.score>0||isDocumentContentQuestion(question)',
   '(targetDocId||documentQuestion)&&!matching.length',
-  'const documentQuestion=/\\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?)\\b',
+  'const documentQuestion=/\\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?|saved info(?:rmation)?|my knowledge|uploaded|saved file|saved document)\\b',
   'if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id)',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
   'function exportData()', 'function studyPlanner()', 'function projects()',
