@@ -446,7 +446,7 @@ assert.ok(app.includes('function askOneLevenshtein(a,b){') && app.includes('askO
 assert.ok(app.includes("tasks:['task','tasks','todo','to do','kaam'") && app.includes("notes:['note','notes','likha'") && app.includes("projects:['project','projects','milestone'") && app.includes("routines:['routine','routines','habit'") && app.includes("money:['paisa','paise','kharcha'"), 'Ask One must include English and Hindi/Hinglish keywords for all five sections.');
 assert.ok(app.includes("content:'Aap '+choices.join(' ya ')+' ke baare mein pooch rahe ho?'"), 'Ask One must clarify zero-score and tied intent matches.');
 assert.ok(app.includes('Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.'), 'Ask One must show the friendly no-result fallback.');
-assert.ok(app.includes('if(!detected.intent)') && app.includes('answerQuery(detected.intent,query)'), 'Ask One chat must route recognized queries to local saved-data answers.');
+assert.ok(app.includes('if(detected.intent){') && app.includes('answerQuery(detected.intent,query)'), 'Ask One chat must route recognized queries to local saved-data answers.');
 assert.ok(app.includes("filter(item=>!item.done)"), 'Ask One task intent must filter pending tasks.');
 assert.ok(app.includes("data.notes||[],query,ASK_ONE_INTENT_MAP.notes"), 'Ask One note intent must search saved notes.');
 assert.ok(app.includes("data.studySessions||[],query,ASK_ONE_INTENT_MAP.routines"), 'Ask One routine intent must search saved activity records.');
