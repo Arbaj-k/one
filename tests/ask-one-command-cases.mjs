@@ -11,7 +11,7 @@ const parser=window.OneCommands;
 assert.ok(parser,'local parser must expose OneCommands');
 
 const cases=[
- ['mere tasks batao','tasks'],['who owes me money?','money'],['aaj ka kharcha dikhao','money'],
+ ['mere tasks batao','tasks'],['pending task batao','tasks'],['pending tasks dikhao','tasks'],['reminder mai ky set hai batao','tasks'],['show my saved reminders','tasks'],['who owes me money?','money'],['aaj ka kharcha dikhao','money'],
  ['show my pending tasks','tasks'],['list all notes','notes'],['mere projects dikhao','projects'],
  ['daily routine batao','routines'],['show my PDFs','files'],['add task submit assignment tomorrow','tasks'],
  ['create a task to call Raj','tasks'],['kal maths homework complete karna hai','tasks'],
@@ -93,6 +93,17 @@ assert.equal(Number(commandData.expenses[0].amount),500);
 assert.equal(commandData.expenses[0].kind,'expense');
 assert.equal(commandData.expenses[0].category,'Food');
 assert.ok(persistCount>0,'expense save must call persistence');
+
+const pendingQuery=commandWindow.OneCommands.parseCommand('pending task batao');
+assert.equal(pendingQuery.action,'show','batao must never be confused with banao/add');
+const reminderQuery=commandWindow.OneCommands.executeCommand('reminder mai ky set hai batao');
+assert.match(reminderQuery.answer,/no active reminder/i,'read-only reminder query must list, not create a reminder');
+assert.equal(commandData.tasks.length,0,'read-only reminder lookup must not create a task');
+commandData.tasks.push({id:'r1',title:'Pay rent',category:'Briefing',due:'2026-11-20',reminderTime:'09:00',repeatRule:'monthly',done:false});
+const savedReminders=commandWindow.OneCommands.executeCommand('reminder mai ky set hai batao');
+assert.match(savedReminders.answer,/Pay rent/,'reminder lookup must show the saved reminder');
+assert.match(savedReminders.answer,/09:00/,'reminder lookup must show the scheduled time');
+assert.equal(commandData.tasks.length,1,'reminder lookup must remain read-only');
 const recurringResult=commandWindow.OneCommands.executeCommand('weekly reminder to pay rent every Monday');
 assert.equal(commandData.tasks.length,1,'weekly reminder command must create a task');
 assert.equal(commandData.tasks[0].repeatRule,'weekly');
