@@ -14,7 +14,7 @@ assert.ok(buildSource.indexOf('const contextProject=')>=0 && buildSource.indexOf
 assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('const asksProjects=')<buildSource.indexOf('const asksTasks='), 'Project intent must be initialized before task intent reads it.');
 // Mess/hostel meal schedules use a different structured schema from class timetables.
 const scheduleStart=app.indexOf('function savedTimetableJSON(doc,question=');
-const scheduleEnd=app.indexOf('\\nconst AI_STOP_WORDS',scheduleStart);
+const scheduleEnd=app.indexOf('\nconst AI_STOP_WORDS',scheduleStart);
 assert.ok(scheduleStart>=0&&scheduleEnd>scheduleStart,'Saved schedule selector must be available.');
 const savedScheduleJSON=vm.runInNewContext('(()=>{'+app.slice(scheduleStart,scheduleEnd)+';return savedTimetableJSON})()');
 const messDoc={name:'Hostel Mess Menu.pdf',type:'pdf',extractedJson:{document_type:'hostel_menu',title:'Weekly Mess Menu',structured_data:{days:[{day:'Tuesday',breakfast:['Poha','Tea'],lunch:['Dal','Rice'],dinner:['Roti','Paneer']}],weekly_menu:[{day:'Tuesday',meal:'Lunch',items:['Dal','Rice']}]},source_pages:[1]}};
