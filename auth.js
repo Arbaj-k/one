@@ -79,8 +79,8 @@
   async function google(){try{status('Opening Google…');const {error}=await getClient().auth.signInWithOAuth({provider:'google',options:{redirectTo:REDIRECT}});if(error)throw error}catch(err){status(err.message||'Google sign-in failed.',true)}}
   async function upsertProfile(user,name=''){
     if(!user)return;
-    const profile={id:user.id,display_name:name||user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'One user',avatar_url:user.user_metadata?.avatar_url||user.user_metadata?.picture||null,updated_at:new Date().toISOString()};
-    const {error}=await getClient().from('user_profiles').upsert(profile,{onConflict:'id'});if(error)console.warn("Operation failed; diagnostic details redacted.");
+    const profile={id:user.id,display_name:name||user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'One user',updated_at:new Date().toISOString()};
+    const {error}=await getClient().from('profiles').upsert(profile,{onConflict:'id'});if(error)console.warn("Operation failed; diagnostic details redacted.");
   }
   function paintUser(user){
     window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user}}));
