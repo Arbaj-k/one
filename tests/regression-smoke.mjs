@@ -423,6 +423,9 @@ assert.ok(app.includes("field('Repeat','repeatRule'") && app.includes("daily|Dai
 assert.ok(app.includes("field('Notify before','notifyBeforeMinutes'") && app.includes("10|10 minutes before") && app.includes("60|1 hour before") && app.includes("1440|1 day before"), 'Task reminders must support 10-minute, 1-hour and 1-day advance alerts.');
 assert.ok(app.includes("field('Related note (optional)','relatedNoteId'") && app.includes("field('Related document (optional)','relatedDocumentId'"), 'Reminders must link to existing notes and documents.');
 assert.ok(app.includes('function reminderOccurrenceOn(task,date)'), 'Local reminder checks must calculate recurring occurrences.');
+assert.ok(app.includes("if(!window.isSecureContext){toast('Notifications need a secure HTTPS connection.')"), 'Push setup must explain secure-context requirements.');
+assert.ok(app.includes("if(Number(test.sent||0)<1)throw new Error('Push service accepted the test, but no active device subscription received it.'"), 'Push setup must verify that at least one real subscription received the test request.');
+assert.ok(app.includes("if(subscribed?.ok!==true)throw new Error(subscribed?.error||'Push subscription could not be saved.')"), 'Push setup must verify subscription persistence before claiming success.');
 assert.ok(app.includes('function snoozeTaskReminder(taskId,minutes)'), 'Notification centre must support snoozing reminders.');
 assert.ok(app.includes("data-action=\"snooze-task-10\"") && app.includes("data-action=\"reschedule-notification-task\"") && app.includes("data-action=\"complete-notification-task\""), 'Notification centre must expose snooze, reschedule and complete actions.');
 assert.ok(app.includes("data-action=\"open-notification-note\"") && app.includes("data-action=\"open-notification-document\""), 'Notification centre must open linked notes and documents.');
