@@ -409,7 +409,7 @@ assert.ok(app.includes("const deleteTask=/\\b(?:delete|remove|hata do|delete kar
 assert.ok(app.includes("pending.type==='create-record'"), 'Ask One creates must pass through the shared confirmation handler.');
 assert.ok(app.includes('if(!verify(pending.collection,record))'), 'Ask One must verify persisted data after an explicitly confirmed create.');
 assert.ok(app.includes('Please confirm task:') && app.includes('Please confirm note:') && app.includes('Please confirm project:'), 'Ask One must show a clear confirmation before creating personal records.');
-assert.ok(app.includes('5*60*1000'), 'Ask One pending actions must expire after five minutes.');
+assert.ok(app.includes('2*60*1000'), 'Ask One pending actions must expire after two minutes.');
 
 // Existing saved notes can be turned into reminders from Ask One.
 assert.ok(app.includes('const noteReminderIntent='), 'Ask One must detect requests to set reminders for existing notes.');
