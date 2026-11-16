@@ -767,7 +767,7 @@ async function retryDocumentOCR(id){
     if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and retry.');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    if(pdf.numPages>100)throw new Error('This PDF has '+pdf.numPages+' pages. One currently extracts up to 100 pages; split the file and retry each part.');
+    
     for(let p=1;p<=pdf.numPages;p++){
      const pg=await pdf.getPage(p),ct=await pg.getTextContent();
      let pageText=ct.items.filter(x=>String(x.str||'').trim()).map(x=>x.str).join(' ');
@@ -867,7 +867,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
     if(!window.pdfjsLib)throw new Error('PDF reader did not load. Check your internet connection, refresh One, and retry.');else{
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-     const pageLimit=Math.min(pdf.numPages,100);
+     const pageLimit=pdf.numPages;
      for(let p=1;p<=pageLimit;p++){
      setProgress((p-1)/pdf.numPages*85,'Reading page '+p+' of '+pdf.numPages+' · '+file.name);
      const pdfPage=await pdf.getPage(p),content=await pdfPage.getTextContent();
@@ -883,7 +883,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
     }
-     if(pdf.numPages>pageLimit)extracted+='\n[Extraction limited to first '+pageLimit+' of '+pdf.numPages+' pages. Split the remaining pages into another file.]';
+     
     }
    }else{
     setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
