@@ -2097,7 +2097,7 @@ async function chatActionIntent(question){
   if(!title)return {answer:'Kis cheez ke baare mein batana hai? Example: Roz subah 9 baje project updates batana.',sources:['Ask One','Planner']};
   const duplicate=(data.tasks||[]).find(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&(t.repeatRule||'none')===repeatRule);
   if(duplicate)return {answer:'Ye briefing pehle se scheduled hai: '+title+'. Duplicate nahi banaya.',sources:['Planner']};
-  const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule:daily?'daily':'none',priority:'Medium',done:false,notes:'Created through Ask One voice/text briefing instruction.',created:Date.now(),updated:Date.now()};
+  const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule,priority:'Medium',done:false,notes:'Created through Ask One voice/text briefing instruction.',created:Date.now(),updated:Date.now()};
   pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:(repeatRule!=='none'?(repeatRule[0].toUpperCase()+repeatRule.slice(1)+' briefing'):'Scheduled briefing')+' saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Enable notifications for alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(repeatRule!=='none'?repeatRule:'one-time')+' briefing: '+title+' · '+(repeatRule!=='none'?'Repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Task briefing','Planner']};
  }
