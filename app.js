@@ -1095,12 +1095,16 @@ function aiRankDocumentChunks(chunks,question){
 }
 function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const intent=aiQueryIntent(question),maxDocs=limits.maxDocs??6,maxChunks=limits.maxChunks??24,maxChars=limits.maxChars??30000;
- const documentQuestion=/\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/iu.test(String(question||''));
- const candidates=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId)).map(doc=>{
+ const documentQuestion=/\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?|saved info(?:rmation)?|my knowledge|uploaded|saved file|saved document)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ|सेव|अपलोड)/iu.test(String(question||''));
+ const documentList=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId));
+ const candidates=documentList.map(doc=>{
   const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
+  // A saved document must remain discoverable even when the user's wording does not
+  // share OCR keywords (for example, short Hinglish questions like 'info batao').
+  // Fall back to the newest saved document only for explicit document/knowledge queries.
   if((targetDocId||documentQuestion)&&!matching.length){
-   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,targetDocId?12:8));
+   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,targetDocId?24:12));
    return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:1};
   }
   return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
