@@ -30,6 +30,7 @@ assert.ok(app.includes("action==='add_udhaar'") && app.includes("type==='create-
 assert.ok(app.includes("Date.now()-pending.requestedAt>2*60*1000"), 'Pending AI confirmations must expire after two minutes.');
 assert.ok(app.includes('data-action="confirm-pending-action"') && app.includes('data-action="cancel-pending-action"'), 'Pending confirmations must expose inline Confirm and Cancel controls.');
 
+execFileSync(process.execPath,[fileURLToPath(new URL('./ask-one-command-cases.mjs',import.meta.url))],{stdio:'inherit'});
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
