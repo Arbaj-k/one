@@ -24,7 +24,7 @@ assert.ok(commandAdapter.includes("remind(?:er)?\\b") && commandAdapter.includes
 assert.ok(!/\/task|\/remind|\/list|\/done|\/delete/.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
 
 const commandParser = readFileSync(new URL('../commands.js', import.meta.url), 'utf8');
-assert.ok(commandParser.includes(String.raw\`/\\b\\d[\\d,]*(?:\\.\\d+)?\\b/g\`)===false, 'Money description regex must not remain double escaped.');
+assert.ok(!/\/\\\\b\\\\d/.test(commandParser), 'Money description regex must not remain double escaped.');
 assert.ok(commandParser.includes("udhaarType") && commandParser.includes("p.udhaarType"), 'Local parser must retain Udhaar as a distinct money record type.');
 assert.ok(app.includes("action==='add_udhaar'") && app.includes("type==='create-batch'"), 'Structured AI actions must validate Udhaar and multi-action batches.');
 assert.ok(app.includes("Date.now()-pending.requestedAt>2*60*1000"), 'Pending AI confirmations must expire after two minutes.');
