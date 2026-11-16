@@ -48,12 +48,12 @@ let activeWorkspaceKey=KEY+'-guest';
 const LEGACY_OWNER_KEY=KEY+'-legacy-claimed-by';
 function workspaceStorageKey(){return activeWorkspaceKey;}
 function workspaceIndexedDBKey(){return 'workspace:'+activeWorkspaceKey;}
-const DATA_SCHEMA_VERSION=3;
-const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false}});
+const DATA_SCHEMA_VERSION=4;
+const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],deletedRecords:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false}});
 function migrateData(raw){
  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  const next={...starter(),...source};
- for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications'])if(!Array.isArray(next[key]))next[key]=[];
+ for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','deletedRecords'])if(!Array.isArray(next[key]))next[key]=[];
  next.aiPrivacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false,...(source.aiPrivacy&&typeof source.aiPrivacy==='object'?source.aiPrivacy:{})};
  next.schemaVersion=DATA_SCHEMA_VERSION;
  return next;
@@ -214,29 +214,62 @@ function writeLocalWorkspace(snapshot){
  return saveWorkspaceSnapshot(JSON.parse(serialized));
 }
 function mergeWorkspaceSnapshots(localSnapshot,remoteSnapshot){
- const local=migrateData(localSnapshot),remote=migrateData(remoteSnapshot),merged={...remote};
- const keys=new Set([...Object.keys(local),...Object.keys(remote)]);
- for(const key of keys){
-  if(Array.isArray(local[key])&&Array.isArray(remote[key])){
-   const records=new Map();
-   const stamp=item=>Math.max(Number(item?.updated)||0,Number(item?.created)||0,...['updated_at','updatedAt','modified_at','modifiedAt','created_at','createdAt'].map(k=>Date.parse(item?.[k]||'')||0));
-   for(const item of remote[key])records.set(item?.id??JSON.stringify(item),item);
-   for(const item of local[key]){
-    const id=item?.id??JSON.stringify(item),existing=records.get(id);
-    if(!existing||stamp(item)>stamp(existing))records.set(id,item);
-   }
-   merged[key]=Array.from(records.values());
-  }else if(!(key in merged))merged[key]=local[key];
+  const local=migrateData(localSnapshot),remote=migrateData(remoteSnapshot),merged={...remote};
+  const keys=new Set([...Object.keys(local),...Object.keys(remote)]);
+  for(const key of keys){
+   if(key==='deletedRecords')continue;
+   if(Array.isArray(local[key])&&Array.isArray(remote[key])){
+    const records=new Map();
+    const stamp=item=>Math.max(Number(item?.updated)||0,Number(item?.created)||0,...['updated_at','updatedAt','modified_at','modifiedAt','created_at','createdAt'].map(k=>Date.parse(item?.[k]||'')||0));
+    for(const item of remote[key])records.set(item?.id??JSON.stringify(item),item);
+    for(const item of local[key]){
+     const id=item?.id??JSON.stringify(item),existing=records.get(id);
+     if(!existing||stamp(item)>stamp(existing))records.set(id,item);
+    }
+    merged[key]=Array.from(records.values());
+   }else if(!(key in merged))merged[key]=local[key];
+  }
+  const tombstones=new Map();
+  for(const item of [...(remote.deletedRecords||[]),...(local.deletedRecords||[])]){
+   if(!item||typeof item.collection!=='string'||typeof item.id!=='string'||!item.id)continue;
+   const key=item.collection+':'+item.id,existing=tombstones.get(key);
+   if(!existing||Number(item.deletedAt||0)>Number(existing.deletedAt||0))tombstones.set(key,item);
+  }
+  merged.deletedRecords=Array.from(tombstones.values());
+  for(const tombstone of merged.deletedRecords){
+   if(Array.isArray(merged[tombstone.collection]))merged[tombstone.collection]=merged[tombstone.collection].filter(record=>record?.id!==tombstone.id);
+  }
+  merged.schemaVersion=Math.max(Number(local.schemaVersion)||1,Number(remote.schemaVersion)||1);
+  return migrateData(merged);
  }
- merged.schemaVersion=Math.max(Number(local.schemaVersion)||1,Number(remote.schemaVersion)||1);
- return migrateData(merged);
-}
+ function trackWorkspaceDeletionTombstones(previousRaw,nextSnapshot){
+  const next=migrateData(nextSnapshot);
+  if(!previousRaw)return next;
+  let previous;
+  try{previous=migrateData(JSON.parse(previousRaw))}catch(_){return next}
+  const collections=['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','followUps'];
+  const tombstones=new Map();
+  for(const item of next.deletedRecords||[])if(item?.collection&&item?.id)tombstones.set(item.collection+':'+item.id,item);
+  const deletedAt=Date.now();
+  for(const collection of collections){
+   const currentIds=new Set((next[collection]||[]).map(record=>record?.id).filter(Boolean));
+   for(const record of previous[collection]||[]){
+    if(!record?.id||currentIds.has(record.id))continue;
+    const key=collection+':'+record.id;
+    if(!tombstones.has(key))tombstones.set(key,{collection,id:record.id,deletedAt});
+   }
+  }
+  next.deletedRecords=Array.from(tombstones.values());
+  return next;
+ }
 let workspaceChannel=null;const cloudRefreshInFlight=new Map();
 function stopWorkspaceRealtime(){
  if(workspaceChannel&&cloudClient)cloudClient.removeChannel(workspaceChannel).catch(()=>{});
  workspaceChannel=null;
 }
 function persist(){
+  let previousRaw=null;try{previousRaw=localStorage.getItem(workspaceStorageKey())}catch(_){}
+  data=trackWorkspaceDeletionTombstones(previousRaw,data);
   const snapshot=JSON.stringify(data);
  try{
   localStorage.setItem(workspaceStorageKey(),snapshot);
@@ -263,26 +296,53 @@ function queueCloudSave(){
  return syncQueue;
 }
 async function saveCloudSnapshot(snapshot,ownerId=cloudUser?.id){
- try{
-  if(!navigator.onLine)throw Error('Device is offline; changes are saved locally and will sync when online.');
-  if(!ownerId||ownerId!==cloudUser?.id||!cloudClient)return;
-  const {error}=await cloudClient.from('user_workspaces').upsert({
-   user_id:ownerId,workspace_data:migrateData(snapshot),schema_version:DATA_SCHEMA_VERSION,updated_at:new Date().toISOString()
-  },{onConflict:'user_id'});
-  if(error)throw error;
-  if(ownerId!==cloudUser?.id)return;
-  cloudRetryDelay=1500;lastSyncedAt=new Date().toISOString();
-  try{localStorage.removeItem(workspaceStorageKey()+'-pending-cloud')}catch{}
-  setCloudMode('synced');
- }catch(err){
-  console.warn("Operation failed; diagnostic details redacted.");
-  if(ownerId!==cloudUser?.id)return;
-  setCloudMode(navigator.onLine?'error':'offline',err.message);
-  if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
-  cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudUser?.id===ownerId&&navigator.onLine)queueCloudSave()},cloudRetryDelay);
-  cloudRetryDelay=Math.min(cloudRetryDelay*2,60000);
+  try{
+   if(!navigator.onLine)throw Error('Device is offline; changes are saved locally and will sync when online.');
+   if(!ownerId||ownerId!==cloudUser?.id||!cloudClient)return;
+   // Optimistic revision checks prevent two devices from silently overwriting
+   // each other's workspace snapshots. Re-read and merge after a concurrent write.
+   for(let attempt=0;attempt<5;attempt++){
+    if(ownerId!==cloudUser?.id)return;
+    const {data:remote,error:readError}=await cloudClient.from('user_workspaces')
+     .select('workspace_data,revision').eq('user_id',ownerId).maybeSingle();
+    if(readError)throw readError;
+    const merged=remote?mergeWorkspaceSnapshots(snapshot,remote.workspace_data||{}):migrateData(snapshot);
+    const updatedAt=new Date().toISOString();
+    if(remote){
+     const expectedRevision=Number(remote.revision)||1;
+     const {data:updated,error:updateError}=await cloudClient.from('user_workspaces')
+      .update({workspace_data:merged,schema_version:DATA_SCHEMA_VERSION,revision:expectedRevision+1,updated_at:updatedAt})
+      .eq('user_id',ownerId).eq('revision',expectedRevision).select('revision').maybeSingle();
+     if(updateError)throw updateError;
+     if(!updated)continue;
+    }else{
+     const {error:insertError}=await cloudClient.from('user_workspaces').insert({
+      user_id:ownerId,workspace_data:merged,schema_version:DATA_SCHEMA_VERSION,revision:1,updated_at:updatedAt
+     });
+     if(insertError?.code==='23505')continue;
+     if(insertError)throw insertError;
+    }
+    if(ownerId!==cloudUser?.id)return;
+    const mergedCurrent=mergeWorkspaceSnapshots(data,merged);
+    if(JSON.stringify(mergedCurrent)!==JSON.stringify(data)){
+     data=mergedCurrent;
+     await writeLocalWorkspace(data);
+    }
+    cloudRetryDelay=1500;lastSyncedAt=updatedAt;
+    try{localStorage.removeItem(workspaceStorageKey()+'-pending-cloud')}catch{}
+    setCloudMode('synced');
+    return;
+   }
+   throw new Error('Your workspace changed on another device. Sync could not settle after five attempts; retry shortly.');
+  }catch(err){
+   console.warn("Operation failed; diagnostic details redacted.");
+   if(ownerId!==cloudUser?.id)return;
+   setCloudMode(navigator.onLine?'error':'offline',err.message);
+   if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
+   cloudRetryTimer=setTimeout(()=>{if(cloudReady&&cloudUser?.id===ownerId&&navigator.onLine)queueCloudSave()},cloudRetryDelay);
+   cloudRetryDelay=Math.min(cloudRetryDelay*2,60000);
+  }
  }
-}
 async function refreshCloudWorkspace(ownerId=cloudUser?.id){
  if(!cloudReady||!cloudClient||!ownerId||ownerId!==cloudUser?.id||!navigator.onLine)return;
  if(cloudRefreshInFlight.has(ownerId))return cloudRefreshInFlight.get(ownerId);
