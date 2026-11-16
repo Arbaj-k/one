@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     if (body?.originalFile !== undefined && body?.originalFile !== null) {
       const candidate = body.originalFile;
       const visualMime = textValue(candidate?.mimeType, 80).toLowerCase();
-      const visualData = textValue(candidate?.dataBase64, 4_194_304);
+      const visualData = typeof candidate?.dataBase64 === "string" ? candidate.dataBase64 : "";
       if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(visualMime) ||
           !visualData || !/^[A-Za-z0-9+/]+={0,2}$/.test(visualData) || visualData.length > 4_194_304) {
         return json({ error: "The attached original file is invalid or exceeds the 3 MB visual-analysis limit." }, 400, undefined, req);
