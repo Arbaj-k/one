@@ -1,3 +1,47 @@
+/* Defensive DOM sink guard: keep the existing template UI while removing executable markup and unsafe URL schemes. */
+(function installOneDomGuard(){
+ 'use strict';
+ const descriptor=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+ if(!descriptor?.get||!descriptor?.set||Element.prototype.__oneDomGuard)return;
+ const nativeSet=descriptor.set,nativeGet=descriptor.get,nativeInsert=Element.prototype.insertAdjacentHTML;
+ const safeUrl=(value,kind)=>{
+  const raw=String(value||'').trim();
+  if(!raw||/^(?:javascript|vbscript|data):/i.test(raw))return false;
+  try{const url=new URL(raw,location.href);if(!['http:','https:'].includes(url.protocol))return false;
+   if(kind==='form'&&url.origin!==location.origin)return false;
+   return true;
+  }catch(_){return false}
+ };
+ function clean(root){
+  root.querySelectorAll('script,iframe,object,embed,base,meta,link,foreignObject').forEach(node=>node.remove());
+  root.querySelectorAll('*').forEach(node=>{
+   for(const attr of [...node.attributes]){
+    const name=attr.name.toLowerCase(),value=attr.value;
+    if(name.startsWith('on')||name==='srcdoc'||name==='srcset'||name==='xlink:href'){node.removeAttribute(attr.name);continue}
+    if(name==='href'&&!safeUrl(value,'link')){node.removeAttribute(attr.name);continue}
+    if(name==='action'||name==='formaction'){if(!safeUrl(value,'form'))node.removeAttribute(attr.name);continue}
+    if(['src','poster'].includes(name)){
+     if(!safeUrl(value,'resource')&&!/^(?:data:image\/(?:png|jpeg|gif|webp|svg\+xml);|blob:)/i.test(value)){node.removeAttribute(attr.name);continue}
+    }
+    if(name==='style'&&/(?:url\s*\(|expression\s*\(|@import|behavior\s*:|-moz-binding)/i.test(value))node.removeAttribute(attr.name);
+   }
+   if(node.tagName==='A'&&node.target==='_blank'){node.rel='noopener noreferrer'}
+  });
+ }
+ Object.defineProperty(Element.prototype,'innerHTML',{...descriptor,set(value){
+  const template=document.createElement('template');
+  nativeSet.call(template,String(value??''));
+  clean(template.content);
+  this.replaceChildren(template.content.cloneNode(true));
+ }});
+ Element.prototype.insertAdjacentHTML=function(position,value){
+  const template=document.createElement('template');
+  nativeSet.call(template,String(value??''));clean(template.content);
+  return nativeInsert.call(this,position,nativeGet.call(template));
+ };
+ Object.defineProperty(Element.prototype,'__oneDomGuard',{value:true});
+ window.OneSafeUrl=value=>{try{const url=new URL(String(value||''),location.href);return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password?url.href:''}catch(_){return ''}};
+})();
 const KEY='student-brain-data-v1';
 let activeWorkspaceUserId=null;
 let activeWorkspaceKey=KEY+'-guest';
@@ -16,8 +60,6 @@ function migrateData(raw){
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
 let data=loadData(),page='overview',chatBusy=false,pendingAction=null;
-window.getOneWorkspaceData=()=>data;
-window.data=data;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
@@ -195,8 +237,7 @@ function stopWorkspaceRealtime(){
  workspaceChannel=null;
 }
 function persist(){
- window.data=data;
- const snapshot=JSON.stringify(data);
+  const snapshot=JSON.stringify(data);
  try{
   localStorage.setItem(workspaceStorageKey(),snapshot);
   localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot);
@@ -323,7 +364,7 @@ function quickCaptureVoice(){
  try{recognition.start()}catch(error){toast('Could not start voice capture');if(button){button.disabled=false;button.textContent='🎙 Voice'}}
 }
 async function handleOneSharedCapture(capture){
- const text=String(capture.text||'').trim(),url=String(capture.url||'').trim(),title=String(capture.title||'').trim(),files=Array.isArray(capture.files)?capture.files:[];
+ const text=String(capture.text||'').slice(0,12000).trim(),url=window.OneSafeUrl?.(capture.url)||'',title=String(capture.title||'').slice(0,300).trim(),files=Array.isArray(capture.files)?capture.files:[];
  if(files.length){
   for(const item of files){
    if(!item?.blob||item.size>12*1024*1024){toast('Shared file is empty or over 12 MB');continue}
@@ -1269,7 +1310,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    }catch(fileError){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
- const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
+ const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  // Avoid flooding general questions with unrelated personal notes.
  const notes=rankedNotes
   .filter(item=>terms.length>0&&item.score>0)
@@ -1323,18 +1364,18 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
 }
 async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
- const privacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,...(data.aiPrivacy||{})};
+ const privacy={notes:data.aiPrivacy?.notes===true,tasks:data.aiPrivacy?.tasks===true,projects:data.aiPrivacy?.projects===true,documents:data.aiPrivacy?.documents===true,money:data.aiPrivacy?.money===true,memories:data.aiPrivacy?.memories===true};
  const selectedWorkspace={...context.workspace};
  if(!privacy.notes)selectedWorkspace.notes=[];
  if(!privacy.tasks)selectedWorkspace.tasks=[];
  if(!privacy.projects)selectedWorkspace.projects=[];
- if(!privacy.documents){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[]}
+ if(!privacy.documents){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[];selectedWorkspace.structuredDocuments=[]}
  if(!privacy.money)selectedWorkspace.expenses=[];
  if(!privacy.memories)selectedWorkspace.memories=[];
  if(!privacy.tasks)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,dailyPlan:undefined};
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
- const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.money||!['Money & Udhaar','Study sessions'].includes(source))&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
+ const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.money||source!=='Money & Udhaar')&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
  const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
@@ -1748,7 +1789,7 @@ async function openUploadedFile(id,download=false){
 }
 function openFileMetadataDialog(file){
  if(!file)return;
- if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}
+ if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}if(!(['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||/\.(?:pdf|jpe?g|png|webp)$/i.test(file.name))){toast('Only PDF, JPG, PNG and WEBP files are supported.');return}
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const preview=isPdf?'<div class="file-upload-preview"><span style="font-size:30px">📄</span><span>'+esc(file.name)+'</span></div>':'<div class="file-upload-preview"><img alt="Selected file preview" src="'+URL.createObjectURL(file)+'" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:10px"><span>'+esc(file.name)+'</span></div>';
  window.pendingOneFile=file;formType='fileMeta';editing=null;
@@ -2305,23 +2346,41 @@ function action(name,id,extra){if(name!=='open-quick-add'&&name!=='quick-add-upl
 function confirmDelete(key,id){const item=data[key].find(x=>x.id===id);if(!item)return;if(confirm(`Delete "${item.title||item.name||item.description}"? This cannot be undone.`)){data[key]=data[key].filter(x=>x.id!==id);persist();render();toast('Deleted')}}
 function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid backup');if(!confirm('Restore this backup and replace current workspace data?'))return;data={...starter(),...parsed};persist();page='overview';render();toast('Backup restored')}catch(e){toast('Invalid Student Brain backup file')}};reader.readAsText(f)}
 function exportData(){try{const payload={app:'Student Brain',backupVersion:1,exportedAt:new Date().toISOString(),data:migrateData(data)},blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='student-brain-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup downloaded')}catch(err){console.warn("Operation failed; diagnostic details redacted.");toast('Could not create backup. Check browser storage and try again.')}}
+function sanitizeBackupValue(value,depth=0){
+ if(depth>24)throw Error('Backup nesting is too deep.');
+ if(value===null||typeof value==='boolean'||typeof value==='number')return value;
+ if(typeof value==='string'){if(value.length>2*1024*1024)throw Error('A backup field is too large.');return value}
+ if(Array.isArray(value)){if(value.length>50000)throw Error('Backup contains too many records.');return value.map(item=>sanitizeBackupValue(item,depth+1))}
+ if(typeof value==='object'){
+  const out=Object.create(null);
+  for(const [key,item] of Object.entries(value)){if(['__proto__','prototype','constructor'].includes(key))continue;if(key.length>160)continue;out[key]=sanitizeBackupValue(item,depth+1)}
+  return out;
+ }
+ throw Error('Backup contains an unsupported data type.');
+}
 function parseBackupPayload(parsed){
- const payload=parsed?.app==='Student Brain'&&parsed?.data?parsed.data:parsed;
- if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.notes)||!Array.isArray(payload.tasks))throw Error('This file is not a valid Student Brain backup.');
- for(const key of ['projects','expenses','messages','studySessions','documents','memories'])if(payload[key]!==undefined&&!Array.isArray(payload[key]))throw Error('Backup data looks damaged ('+key+'). No data was changed.');
+ const clean=sanitizeBackupValue(parsed);
+ const payload=clean?.app==='Student Brain'&&clean?.data?clean.data:clean;
+ if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.notes)||!Array.isArray(payload.tasks))throw Error('This file is not a valid One backup.');
+ const collections=['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','followUps'];
+ for(const key of collections){
+  if(payload[key]!==undefined&&!Array.isArray(payload[key]))throw Error('Backup data looks damaged ('+key+'). No data was changed.');
+  if(Array.isArray(payload[key])&&payload[key].some(record=>!record||typeof record!=='object'||Array.isArray(record)))throw Error('Backup contains an invalid '+key+' record.');
+ }
+ if(payload.aiPrivacy!==undefined&&(!payload.aiPrivacy||typeof payload.aiPrivacy!=='object'||Array.isArray(payload.aiPrivacy)||Object.values(payload.aiPrivacy).some(value=>typeof value!=='boolean')))throw Error('Backup AI privacy settings are invalid.');
  return migrateData(payload);
 }
 function updateRestorePreview(){
  const file=document.querySelector('#restore-file')?.files?.[0],preview=document.querySelector('#restore-preview');if(!preview)return;
  if(!file){preview.textContent='No backup selected. Current workspace data will remain unchanged until you confirm.';return}
- if(file.size>20*1024*1024){preview.textContent='File exceeds the 20 MB restore limit. No data has changed.';return}
+ if(file.size>20*1024*1024){preview.textContent='File exceeds the 20 MB restore limit. No data has changed.';return}if(file.type&&file.type!=='application/json'&&!/\.json$/i.test(file.name)){preview.textContent='Choose a JSON backup file. No data has changed.';return}
  const reader=new FileReader();
  reader.onload=()=>{try{const parsed=JSON.parse(reader.result),payload=parseBackupPayload(parsed);preview.textContent='Valid backup · '+(parsed?.exportedAt?'Created '+new Date(parsed.exportedAt).toLocaleString():'No export date')+' · '+payload.notes.length+' notes · '+payload.tasks.length+' tasks · '+payload.expenses.length+' money records. Restore replaces current data after confirmation.'}catch(err){preview.textContent=(err.message||'Invalid backup')+' No data has changed.'}};
  reader.onerror=()=>{preview.textContent='Could not read this file. Select it again.'};reader.readAsText(file);
 }
 function restoreData(){
  const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}
- if(f.size>20*1024*1024){toast('Backup too large (20 MB maximum)');return}
+ if(f.size>20*1024*1024){toast('Backup too large (20 MB maximum)');return}if(f.type&&f.type!=='application/json'&&!/\.json$/i.test(f.name)){toast('Choose a JSON backup file');return}
  const reader=new FileReader();
  reader.onload=()=>{try{
   const parsed=JSON.parse(reader.result),next=parseBackupPayload(parsed);
@@ -2671,12 +2730,23 @@ function switchAccountWorkspace(user){
    try{await activateCloudWorkspace(nextUserId)}
    catch(error){console.warn("Operation failed; diagnostic details redacted.");cloudReady=false;cloudUser=null;setCloudMode('error','Saved locally. Cloud sync could not start: '+(error.message||'Unknown error'))}
   }else setCloudMode('offline','Guest data is saved only on this device. Sign in to sync across devices.');
-  window.data=data;
-  render();
+    render();
  });
  return workspaceSwitchQueue;
 }
-window.OneWorkspace={purgeUserLocalData};
+window.OneWorkspace={
+ purgeUserLocalData,
+ async flushCloudSync(){
+  if(!cloudReady||!cloudUser||!cloudClient||!navigator.onLine)return false;
+  await queueCloudSave();await syncQueue;
+  return cloudMode==='synced';
+ }
+};
+window.OneWorkspaceMetrics=()=>{
+ const tasks=Array.isArray(data.tasks)?data.tasks:[],notes=Array.isArray(data.notes)?data.notes:[],docs=Array.isArray(data.documents)?data.documents:[],expenses=Array.isArray(data.expenses)?data.expenses:[];
+ const todayKey=today();
+ return {completed:tasks.filter(t=>t.done||t.completedAt).length,overdue:tasks.filter(t=>!t.done&&t.due&&t.due<todayKey).length,notes:notes.length,documents:docs.length,spending:expenses.filter(e=>(e.kind||'expense')==='expense').reduce((sum,e)=>sum+Math.max(0,Number(e.amount)||0),0)};
+};
 window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())});
 initCloud();
 requestWorkspaceStoragePersistence();
