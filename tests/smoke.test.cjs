@@ -136,7 +136,7 @@ assert.ok(source.includes('function upcomingUdhaar()'), 'Upcoming Udhaar summary
 assert.ok(!source.slice(source.indexOf('function overview(){'),source.indexOf('async function summarizeDocument')).includes('upcomingUdhaar()'), 'Home dashboard must keep repayment reminders out of its layout.');
 assert.ok(source.includes('Daily briefing'), 'Today dashboard daily briefing is missing');
 assert.ok(source.includes('const reminderIntent='), 'Natural-language reminders are missing');
-assert.ok(source.includes('const actionResult=await chatActionIntent(query);'), 'Ask One text messages must run through the action-command handler before AI routing');
+assert.ok(source.includes('actionResult=await chatActionIntent(query);'), 'Ask One text messages must await action handling before read-only routing');
 assert.ok(source.includes('(?:add|create|make)\\s+(?:kar|karo|kar\\s+do)'), 'Hinglish add-task commands must be recognized');
 assert.ok(source.includes("const taskType=/\\bassignment\\b/i.test(raw)?'Assignment'"), 'Task parser must preserve Assignment type in the task title');
 
