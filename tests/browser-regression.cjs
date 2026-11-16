@@ -46,14 +46,14 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await imageForm.locator('.modal-save-button').click();
   await page.getByRole('heading',{name:'Browser OCR image',exact:true}).waitFor({timeout:15000});
   let documents=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')).documents);
-  assert.ok(documents.some(d=>d.name==='browser-ocr.png'&&d.mimeType==='image/png'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'Image upload must OCR text and save it with the normalized MIME type.');
+  assert.ok(documents.some(d=>d.name==='Browser OCR image'&&d.originalName==='browser-ocr.png'&&d.mimeType==='image/png'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'Image upload must OCR text and save it with the normalized MIME type.');
   await page.locator('#document-upload').setInputFiles({name:'browser-text.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fake fixture')});
   const pdfForm=page.locator('#edit-form');
   await pdfForm.locator('[name="name"]').fill('Browser OCR PDF');
   await pdfForm.locator('.modal-save-button').click();
   await page.getByRole('heading',{name:'Browser OCR PDF',exact:true}).waitFor({timeout:15000});
   documents=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')).documents);
-  assert.ok(documents.some(d=>d.name==='browser-text.pdf'&&d.mimeType==='application/pdf'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'PDF upload must extract text and save its MIME type.');
+  assert.ok(documents.some(d=>d.name==='Browser OCR PDF'&&d.originalName==='browser-text.pdf'&&d.mimeType==='application/pdf'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'PDF upload must extract text and save its MIME type.');
 
   // Return home before using the dashboard shortcut for Money & Udhaar.
   await page.locator('.back-home-icon').click();
