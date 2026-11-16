@@ -50,9 +50,11 @@
       else if (isYes(q)) {
         if (!createDraft.title || !createDraft.date || !createDraft.time) return 'Pehle task/reminder ki saari details complete kar lete hain.';
         const d=createDraft; createDraft=null;
+        const [year,month,day]=d.date.split('-');
+        const localDate=day+'/'+month+'/'+year;
         const command=d.kind==='reminder'
-          ? 'remind me to '+d.title+' on '+d.date+' at '+d.time
-          : 'add task '+d.title+' due '+d.date+' at '+d.time;
+          ? 'remind me to '+d.title+' on '+localDate+' at '+d.time
+          : 'add task '+d.title+' due '+localDate+' at '+d.time;
         const result=legacy.executeCommand(command);
         if (result && typeof result.then==='function') return result.then(x=>x?.answer||'Saved.');
         return result?.answer || 'Save nahi ho paya. Details dobara check karo.';
