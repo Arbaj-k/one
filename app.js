@@ -2486,6 +2486,7 @@ const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
 function taskReminderStorageKey(){return TASK_REMINDER_KEY+'-'+(activeWorkspaceUserId||'guest');}
 function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return Date.UTC(y,m-1,d,hh||0,mm||0)-330*60000}
 async function enableTaskReminders(){
+ if(!window.isSecureContext){toast('Notifications need a secure HTTPS connection.');return}
  if(!('Notification' in window)){toast('This browser does not support notifications');return}
  try{
   const permission=await Notification.requestPermission();
@@ -2493,9 +2494,9 @@ async function enableTaskReminders(){
   toast('In-app reminders enabled');
   await checkTaskReminders();
   if(cloudReady&&cloudUser?.id&&'PushManager' in window&&navigator.serviceWorker){
-   try{await enableAndroidPush();toast('Android push notifications connected')}
-   catch(error){console.warn("Operation failed; diagnostic details redacted.");toast('In-app reminders enabled. Push setup needs server configuration.')}
-  }else toast('In-app reminders enabled. Sign in to connect Android push.');
+   try{await enableAndroidPush();toast('Device push notifications connected')}
+   catch(error){console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'In-app reminders enabled. Device push setup is not ready.')}
+  }else toast('In-app reminders enabled. Sign in to connect device push.');
  }catch(err){toast('Could not enable notifications')}
 }
 function base64UrlToBytes(value){
@@ -2510,13 +2511,16 @@ async function enableAndroidPush(){
  if(sessionError||!sessionData.session?.access_token)throw new Error('Your One session is not ready. Sign in again.');
  const {data:config,error:configError}=await cloudClient.functions.invoke('one-push',{body:{action:'config'}});
  if(configError)throw configError;
- if(!config?.publicKey)throw new Error(config?.error||'Push server is not configured yet.');
+ if(!config?.publicKey||config.configured===false)throw new Error(config?.error||'Push server is not configured yet.');
  let subscription=await registration.pushManager.getSubscription();
  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(config.publicKey)});
- const {error}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
- if(error)throw error;
- const test=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
- if(test.error)console.warn("Operation failed; diagnostic details redacted.");
+ const {data:subscribed,error:subscribeError}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
+ if(subscribeError)throw subscribeError;
+ if(subscribed?.ok!==true)throw new Error(subscribed?.error||'Push subscription could not be saved.');
+ const {data:test,error:testError}=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
+ if(testError)throw testError;
+ if(test?.ok!==true)throw new Error(test?.error||'Push test request failed.');
+ if(Number(test.sent||0)<1)throw new Error('Push service accepted the test, but no active device subscription received it. Check VAPID configuration and browser support.');
  return subscription;
 }
 async function checkTaskReminders(){
