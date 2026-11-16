@@ -26,7 +26,8 @@
   const dayKey=Object.keys(days).find(day=>q.split(' ').includes(day));
   const daily=/\b(daily|every day|roz|roj|har roz|har din)\b/i.test(q);
   const weekly=!!dayKey||/\b(weekly|every week|har hafte|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|har somvar|har mangalvar|har budhvar|har guruwar|har shukravar|har shanivar|har ravivar)\b/i.test(q);
-  return {repeatRule:daily?'daily':weekly?'weekly':'none',repeatDay:dayKey?days[dayKey]:null};
+  const monthly=/\b(monthly|every month|each month|har mahine|mahine me ek baar|mahine mein ek baar)\b/i.test(q);
+  return {repeatRule:daily?'daily':weekly?'weekly':monthly?'monthly':'none',repeatDay:dayKey?days[dayKey]:null};
  }
  function parseCommand(query){
   const q=norm(query),reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
