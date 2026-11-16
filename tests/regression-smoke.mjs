@@ -13,15 +13,24 @@ const buildSource=app.slice(buildStart,buildEnd);
 assert.ok(buildSource.indexOf('const contextProject=')>=0 && buildSource.indexOf('const contextProject=')<buildSource.indexOf('if(!targetDocId&&contextProject)'), 'Project context must be initialized before linked-document retrieval.');
 assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('const asksProjects=')<buildSource.indexOf('const asksTasks='), 'Project intent must be initialized before task intent reads it.');
 const commandAdapter = readFileSync(new URL('../one-commands.js', import.meta.url), 'utf8');
-assert.ok(commandAdapter.includes('if (readOnly) return false;'), 'Ask One must never run mutating commands for informational questions.');
+assert.ok(commandAdapter.includes('if (readOnly && !localSection') && commandAdapter.includes('return localSection || explicitTaskCommand'), 'Local read/query commands must remain routable even when phrased as questions.');
 assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file questions must be routed to read-only answers.');
 assert.ok(app.includes("if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent))return {kind:'none',sources:[]}"), 'File context alone must never trigger a workspace action.');
 
 assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
-assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('return explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;'), 'Ask One must support natural-language task intent without requiring slash syntax.');
+assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('legacy.executeCommand(commandText)'), 'Ask One must support natural-language commands through the authoritative local executor.');
 assert.ok(commandAdapter.includes("if (explicitReminder) {") && commandAdapter.includes("result = legacy.executeCommand(commandText);"), 'Reminder requests must bypass generic addTask callbacks and use the reminder-aware handler.');
 assert.ok(commandAdapter.includes("remind(?:er)?\\b") && commandAdapter.includes("schedule)\\s+"), 'Reminder routing must recognize reminder wording and schedule/create/add reminder phrases.');
 assert.ok(!/\/task|\/remind|\/list|\/done|\/delete/.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
+
+const commandParser = readFileSync(new URL('../commands.js', import.meta.url), 'utf8');
+assert.ok(!/\/\\\\b\\\\d/.test(commandParser), 'Money description regex must not remain double escaped.');
+assert.ok(commandParser.includes("udhaarType") && commandParser.includes("p.udhaarType"), 'Local parser must retain Udhaar as a distinct money record type.');
+assert.ok(app.includes("action==='add_udhaar'") && app.includes("type==='create-batch'"), 'Structured AI actions must validate Udhaar and multi-action batches.');
+assert.ok(app.includes("Date.now()-pending.requestedAt>2*60*1000"), 'Pending AI confirmations must expire after two minutes.');
+assert.ok(app.includes('data-action="confirm-pending-action"') && app.includes('data-action="cancel-pending-action"'), 'Pending confirmations must expose inline Confirm and Cancel controls.');
+
+execFileSync(process.execPath,[fileURLToPath(new URL('./ask-one-command-cases.mjs',import.meta.url))],{stdio:'inherit'});
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -35,7 +44,7 @@ assert.ok(app.includes('studentBrainAIClient=window.getOneSupabaseClient()') && 
 assert.ok(authSource.includes('client = window.getOneSupabaseClient()') && analyticsSource.includes('client=window.getOneSupabaseClient()'), 'Auth and analytics must reuse the shared Supabase client.');
 assert.ok(app.includes("params.get('route')") && app.includes("history.replaceState({sbPage:'analytics'},'','/one/analysis')"), 'Analysis must resolve from GitHub Pages route and query fallback.');
 assert.ok(notFoundSource.includes("params.set('route'") && notFoundSource.includes('location.hash'), '404 fallback must preserve query parameters and hash while redirecting.');
-assert.ok(serviceWorkerSource.includes('"./404.html"') && serviceWorkerSource.includes('"./supabase-client.js"') && serviceWorkerSource.includes('one-shell-v22'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
+assert.ok(serviceWorkerSource.includes('"./404.html"') && serviceWorkerSource.includes('"./supabase-client.js"') && serviceWorkerSource.includes('one-shell-v23'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
 assert.ok(app.includes("switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())"), 'Share inbox must be consumed after both sign-in and sign-out workspace changes.');
 assert.ok(analyticsSource.includes('function renderPersonalSummary(root)') && analyticsSource.includes("metric('Overdue tasks'") && analyticsSource.includes("metric('Total spending'"), 'Regular users and guests must see personal workspace analytics.');
 
@@ -125,7 +134,7 @@ assert.ok(app.includes("category:/assignment|homework/i.test(lower)"), 'Explicit
 assert.ok(app.includes('reminder (?:for|laga do|set karo|set kar do)') && app.includes('yaad dila do'), 'Ask One must understand natural Hindi/Hinglish reminder phrases.');
 assert.ok(app.includes('shaam|sham|evening|raat|night'), 'Ask One must interpret evening/night reminder times.');
 assert.ok(app.includes('clockMatch=raw.match'), 'Ask One must accept 24-hour reminder times.');
-assert.ok(app.includes('pendingChatAction={type:\'create-record\',collection:\'tasks\''), 'Chat reminders must use the confirmed, duplicate-safe Planner task save flow.');
+assert.ok(app.includes('pendingAction={type:\'create-record\',collection:\'tasks\''), 'Chat reminders must use the confirmed, duplicate-safe Planner task save flow.');
 assert.ok(!app.includes('GEMINI_API_KEY'), 'Gemini API secret must never be present in browser code.');
 assert.ok(app.includes("const label='File: '+hit.doc.name"), 'Document citation labels should remain in the query-aware evidence builder.');
 assert.ok(app.includes('async function retryDocumentOCR('), 'Uploaded documents must support a retry/re-upload path.');
@@ -208,7 +217,7 @@ for (const feature of [
   assert.ok(app.includes(feature), `Regression guard missing: ${feature}`);
 }
 
-assert.ok(!html.includes('data-page="memory"'), 'Removed navigation must not reintroduce the Personal Memory menu entry.');
+assert.ok(html.includes('id="one-more-nav"') && html.includes('data-page="memory"'), 'Personal Memory must remain accessible from the mobile More drawer, not the primary navigation.');
 assert.ok(app.includes('memory:personalMemory'), 'Personal Memory page must remain available internally after navigation cleanup.');
 
 const dashboardStart=app.indexOf('function overview(){');
@@ -371,7 +380,7 @@ assert.ok(app.includes("loans:()=>{window.moneyTab='udhaar';return expenses()}")
 assert.ok(app.includes("field('Due date (udhaar)','dueDate'"), 'Udhaar entries must support due dates.');
 assert.ok(app.includes("'loan-repayment':()=>"), 'Loan tracker must support repayment entry.');
 assert.ok(app.includes('window.loanPersonFilter'), 'Loan history must be filterable by person.');
-assert.ok(!html.includes('data-page="expenses"') && !html.includes('data-page="loans"'), 'Money Spending navigation entry must stay hidden in the navigation-free shell.');
+assert.ok(html.includes('data-page="expenses"') && !html.includes('data-page="loans"'), 'Money Spending must be accessible from the unified workspace navigation without a duplicate Loans page.');
 assert.ok(app.includes("projects,expenses,loans:()=>{window.moneyTab='udhaar';return expenses()}"), 'Money Spending page must remain available internally after navigation cleanup.');
 assert.ok(app.includes('save-money-budget') && app.includes('moneyBudgets'), 'Monthly budgets must persist in workspace data.');
 assert.ok(app.includes('Monthly reports') && app.includes('Spending by category'), 'Money reports must include category breakdown.');
@@ -400,7 +409,7 @@ assert.ok(app.includes("const deleteTask=/\\b(?:delete|remove|hata do|delete kar
 assert.ok(app.includes("pending.type==='create-record'"), 'Ask One creates must pass through the shared confirmation handler.');
 assert.ok(app.includes('if(!verify(pending.collection,record))'), 'Ask One must verify persisted data after an explicitly confirmed create.');
 assert.ok(app.includes('Please confirm task:') && app.includes('Please confirm note:') && app.includes('Please confirm project:'), 'Ask One must show a clear confirmation before creating personal records.');
-assert.ok(app.includes('5*60*1000'), 'Ask One pending actions must expire after five minutes.');
+assert.ok(app.includes('2*60*1000'), 'Ask One pending actions must expire after two minutes.');
 
 // Existing saved notes can be turned into reminders from Ask One.
 assert.ok(app.includes('const noteReminderIntent='), 'Ask One must detect requests to set reminders for existing notes.');
@@ -504,7 +513,7 @@ assert.ok(app.includes('No tasks scheduled.') && app.includes('No money activity
 // Planner summary navigation and completion timestamp regressions.
 assert.ok(app.includes('data-action="planner-view" data-id="All" aria-label="Show all open tasks"'), 'Open task summary must open all open tasks.');
 assert.ok(app.includes("view==='Completed'?data.tasks.filter(t=>t.done)"), 'Completed view must list completed tasks.');
-assert.ok(app.includes('t.completedAt=Date.now()'), 'Completing a task must record its completion timestamp.');
+assert.ok(app.includes('task.completedAt=now'), 'Completing a task must record its completion timestamp.');
 assert.ok(app.includes('task-completed-at'), 'Completed tasks must display their completion time.');
 assert.ok(app.includes("'planner-view':()=>{window.plannerView=id"), 'Planner view controls must be interactive.');
 assert.ok(css.includes('.planner-summary>button') && css.includes('.task-completed-at'), 'Planner summary and completion timestamp styles are missing.');

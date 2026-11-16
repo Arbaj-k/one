@@ -9,14 +9,6 @@
     return;
   }
 
-  const ACTION_FOR = {
-    add: { tasks: 'addTask', notes: 'addNote', projects: 'addProject', routines: 'addRoutine', money: 'addExpense' },
-    show: { tasks: 'show', notes: 'show', projects: 'show', routines: 'show', money: 'show', files: 'show' },
-    complete: { tasks: 'completeTask' },
-    delete: { tasks: 'remove', notes: 'remove', projects: 'remove', routines: 'remove', money: 'remove' },
-    edit: { tasks: 'editTask', notes: 'editNote', projects: 'editProject', routines: 'editRoutine' }
-  };
-
   function create(config) {
     const cfg = config || {};
     let recognition = null;
@@ -39,11 +31,11 @@
       // This includes YES/NO replies and the follow-up details for a reminder.
       if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;
 
-      // Ask One is primarily a Q&A surface. Mentioning a task, assignment,
-      // reminder, or an action verb inside a question must never execute it.
-      const readOnly = /[?？]\s*$|^\s*(?:what|what's|whats|which|who|when|where|why|how|tell me|explain|describe|help me understand|i want to know|i am asking|can you explain|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|batao|samjhao|समझाओ|बताओ|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\b/i.test(query)
-        || /\b(?:how do i|how can i|what does|what is|what are|meaning of|difference between|about|ke baare mein|kaise karte|kaise karu|kyu hota|kya hota)\b/i.test(query);
-      if (readOnly) return false;
+      // Local query commands remain routable even when phrased as questions.
+      const parsed = legacy.parseCommand(query);
+      const localSection = !!parsed?.section;
+      const readOnly = /^\s*(?:what|what's|whats|which|who|when|where|why|how|explain|describe|help me understand|can you explain|kya|kaise|kyun|kyu|kab|kahan|samjhao|समझाओ|क्या|कैसे|क्यों|कब|कहाँ)\b/i.test(query);
+      if (readOnly && !localSection && !legacy.hasPending?.() && !legacy.hasPendingReminder?.()) return false;
 
       // Natural-language task intent: no special syntax or slash commands.
       const explicitTaskCommand = /^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b|^\s*(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar\s+do|karo|do)\b|^\s*(?:task bana do|task add kar do|todo bana do|assignment add kar do|homework add kar do)\b|^\s*(?:mujhe|mere liye)\s+(?:ek\s+)?(?:task|todo|assignment)\s+(?:add|bana)\s+(?:kar\s+do|karo|do)\b/i.test(query);
@@ -57,7 +49,7 @@
       const taskManagement = /^\s*(?:(?:show|list|display)\s+(?:me\s+)?(?:my\s+)?(?:all\s+)?tasks\b|(?:mere\s+)?tasks?\s+(?:dikhao|batao|list|show)\b|(?:mark|complete|finish|done)\s+(?:the\s+)?(?:task\s+)?(.+?)\s+(?:as\s+)?(?:done|complete|completed)\b|(?:delete|remove|hatao)\s+(?:the\s+)?(?:task|todo)?\s*.+)/i.test(query);
       const implicitTaskIntent = /^(?=.*(?:\b(?:kal|tomorrow|today|aaj|parso|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?|subah|shaam|sham|raat)\b))(?=.*\b(?:jaana hai|jana hai|karna hai|karni hai|karne hain|submit karna|call karna|need to|have to|got to|should|must|remind me to)\b).+/i.test(query)
         || /^\s*(?:i need to|i have to|i should|i must|mujhe .+\b(?:karna|karni|jana|jaana) hai)\b/i.test(query);
-      return explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;
+      return localSection || explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;
     }
     async function run(input) {
       const text = String(input || '').trim();
@@ -87,20 +79,8 @@
           const names = { tasks: 'Tasks', notes: 'Notes', projects: 'Projects', routines: 'Routines', money: 'Money', files: 'Files', scan: 'Scan' };
           result = { answer: 'Aap ' + parsed.matched.map(key => names[key] || key).join(' ya ') + ' ke baare mein pooch rahe ho?', sources: ['Ask One'] };
         } else {
-          let actionName = ACTION_FOR[parsed?.action]?.[parsed?.section];
-          if (parsed?.section === 'money' && parsed?.action === 'add' && /\b(income|salary|kamai|received|credited|aayi|aaya)\b/i.test(text)) actionName = 'addIncome';
-          const callback = actionName && cfg.actions && cfg.actions[actionName];
-          if (typeof callback === 'function') {
-            const args = {
-              title: parsed.title, text: parsed.title, amount: parsed.amount,
-              label: parsed.title, due: parsed.date, time: parsed.time,
-              kind: parsed.section, query: text
-            };
-            result = await callback({...args,query:commandText});
-            if (!result) result = legacy.executeCommand(commandText);
-          } else {
-            result = legacy.executeCommand(commandText);
-          }
+          // One authoritative executor owns all local mutations and persistence.
+          result = legacy.executeCommand(commandText);
           }
         }
         if (result && typeof result.then === 'function') result = await result;
