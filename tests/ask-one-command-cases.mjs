@@ -37,6 +37,17 @@ for(const [phrase,expected] of cases){
 const pay=parser.parseCommand('500 rupees chai pe kharcha add karo');
 assert.equal(pay.amount,500);
 assert.ok(!parserSource.includes('/\\\\b\\\\d'), 'money regex must use real word-boundary tokens');
+
+const timedReminder=parser.parseCommand('remind me to pay rent tomorrow at 8pm');
+assert.equal(timedReminder.time,'20:00','8pm must parse as a reminder time');
+const clockReminder=parser.parseCommand('remind me to call Raj on 20/11 at 18:30');
+assert.equal(clockReminder.date,'2026-11-20','day/month dates must not be mistaken for clock values');
+assert.equal(clockReminder.time,'18:30','24-hour clock values must parse when explicitly written');
+const dateOnlyTask=parser.parseCommand('add task submit report due 20/11');
+assert.equal(dateOnlyTask.time,'','a date such as 20/11 must not become a time');
+const timeOnlyExpense=parser.parseCommand('add expense 5pm taxi');
+assert.equal(timeOnlyExpense.amount,0,'clock values must not be saved as expense amounts');
+
 const reminder=parser.parseCommand('remind me to Pay 500 to Raj tomorrow at 8pm');
 assert.match(reminder.title,/pay 500 to raj/i,'reminder titles must preserve names, amounts and prepositions');
 const chapter=parser.parseCommand('remind me to Read chapter 4 tomorrow at 8pm');
