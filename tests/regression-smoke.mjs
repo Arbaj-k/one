@@ -34,23 +34,23 @@ execFileSync(process.execPath,[fileURLToPath(new URL('./ask-one-command-cases.mj
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
-const authSource = readFileSync(new URL('../auth.js', import.meta.url), 'utf8');
-const analyticsSource = readFileSync(new URL('../analytics.js', import.meta.url), 'utf8');
+const securityAuthSource = readFileSync(new URL('../auth.js', import.meta.url), 'utf8');
+const securityAnalyticsSource = readFileSync(new URL('../analytics.js', import.meta.url), 'utf8');
 const sharedClientSource = readFileSync(new URL('../supabase-client.js', import.meta.url), 'utf8');
 const notFoundSource = readFileSync(new URL('../404.html', import.meta.url), 'utf8');
-const serviceWorkerSource = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
+const securityServiceWorkerSource = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
 assert.ok(sharedClientSource.includes("storageKey:'one-auth-session-v1'") && sharedClientSource.includes('window.getOneSupabaseClient'), 'All modules must use the shared Supabase singleton.');
 assert.ok(app.includes('studentBrainAIClient=window.getOneSupabaseClient()') && app.includes('cloudClient=window.getOneSupabaseClient()'), 'AI and cloud sync must reuse the shared Supabase client.');
-assert.ok(authSource.includes('client = window.getOneSupabaseClient()') && analyticsSource.includes('client=window.getOneSupabaseClient()'), 'Auth and analytics must reuse the shared Supabase client.');
+assert.ok(securityAuthSource.includes('client = window.getOneSupabaseClient()') && securityAnalyticsSource.includes('client=window.getOneSupabaseClient()'), 'Auth and analytics must reuse the shared Supabase client.');
 assert.ok(app.includes("params.get('route')") && app.includes("history.replaceState({sbPage:'analytics'},'','/one/analysis')"), 'Analysis must resolve from GitHub Pages route and query fallback.');
 assert.ok(notFoundSource.includes("params.set('route'") && notFoundSource.includes('location.hash'), '404 fallback must preserve query parameters and hash while redirecting.');
-assert.ok(serviceWorkerSource.includes('"./404.html"') && serviceWorkerSource.includes('"./supabase-client.js"') && serviceWorkerSource.includes('one-shell-v23'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
+assert.ok(securityServiceWorkerSource.includes('"./404.html"') && securityServiceWorkerSource.includes('"./supabase-client.js"') && securityServiceWorkerSource.includes('one-shell-v23'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
 assert.ok(app.includes("switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())"), 'Share inbox must be consumed after both sign-in and sign-out workspace changes.');
-assert.ok(analyticsSource.includes('function renderPersonalSummary(root)') && analyticsSource.includes("metric('Overdue tasks'") && analyticsSource.includes("metric('Total spending'"), 'Regular users and guests must see personal workspace analytics.');
+assert.ok(securityAnalyticsSource.includes('function renderPersonalSummary(root)') && securityAnalyticsSource.includes("metric('Overdue tasks'") && securityAnalyticsSource.includes("metric('Total spending'"), 'Regular users and guests must see personal workspace analytics.');
 
-assert.ok(authSource.includes('one-continue-guest') && authSource.includes('Continue without signing in'), 'Authentication must offer an explicit local guest path.');
-assert.ok(authSource.includes("function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}"), 'Closing authentication must reveal the local workspace without a session.');
-assert.ok(!authSource.includes("else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));open('login')}"), 'Signed-out users must not be forced into a blocking login overlay.');
+assert.ok(securityAuthSource.includes('one-continue-guest') && securityAuthSource.includes('Continue without signing in'), 'Authentication must offer an explicit local guest path.');
+assert.ok(securityAuthSource.includes("function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}"), 'Closing authentication must reveal the local workspace without a session.');
+assert.ok(!securityAuthSource.includes("else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));open('login')}"), 'Signed-out users must not be forced into a blocking login overlay.');
 
 
 // Syntax validation catches startup-breaking parse errors.
@@ -626,25 +626,25 @@ assert.ok(intentCode.includes("category:/assignment|submit/i.test(lower)?'Assign
 
 
 // Defensive security hardening: CSP, DOM sinks, private workspace data, backups, logout and share target.
-const authSource=readFileSync(new URL('../auth.js',import.meta.url),'utf8');
-const analyticsSource=readFileSync(new URL('../analytics.js',import.meta.url),'utf8');
-const intelligenceSource=readFileSync(new URL('../workspace-intelligence.js',import.meta.url),'utf8');
-const serviceWorkerSource=readFileSync(new URL('../service-worker.js',import.meta.url),'utf8');
-const indexSource=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const pwaInitSource=readFileSync(new URL('../pwa-init.js',import.meta.url),'utf8');
+const securityAuthSource=readFileSync(new URL('../auth.js',import.meta.url),'utf8');
+const securityAnalyticsSource=readFileSync(new URL('../analytics.js',import.meta.url),'utf8');
+const securityIntelligenceSource=readFileSync(new URL('../workspace-intelligence.js',import.meta.url),'utf8');
+const securityServiceWorkerSource=readFileSync(new URL('../service-worker.js',import.meta.url),'utf8');
+const securityIndexSource=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const securityPwaInitSource=readFileSync(new URL('../pwa-init.js',import.meta.url),'utf8');
 assert.ok(app.includes('installOneDomGuard')&&app.includes('nativeInsert.call(this,position'), 'All innerHTML and insertAdjacentHTML sinks must pass through the defensive DOM sanitizer.');
 assert.ok(app.includes("name.startsWith('on')")&&app.includes("name==='href'&&!safeUrl(value,'link')"), 'DOM sanitizer must strip event attributes and unsafe link schemes.');
 assert.ok(!app.includes('window.getOneWorkspaceData')&&!app.includes('window.data'), 'Raw workspace data must not be exposed on window.');
-assert.ok(app.includes('window.OneWorkspaceMetrics=')&&analyticsSource.includes('window.OneWorkspaceMetrics?.()'), 'Analytics may access aggregate metrics only, not raw workspace records.');
-assert.ok(!analyticsSource.includes('getWorkspaceSnapshot')&&!analyticsSource.includes('localStorage.getItem'), 'Analytics must not scan or transmit workspace records from localStorage.');
+assert.ok(app.includes('window.OneWorkspaceMetrics=')&&securityAnalyticsSource.includes('window.OneWorkspaceMetrics?.()'), 'Analytics may access aggregate metrics only, not raw workspace records.');
+assert.ok(!securityAnalyticsSource.includes('getWorkspaceSnapshot')&&!securityAnalyticsSource.includes('localStorage.getItem'), 'Analytics must not scan or transmit workspace records from localStorage.');
 assert.ok(app.includes('sanitizeBackupValue')&&app.includes("'__proto__','prototype','constructor'")&&app.includes('Backup nesting is too deep'), 'Backup restore must strip prototype-pollution keys and enforce nesting/size bounds.');
 assert.ok(app.includes('20*1024*1024')&&app.includes('parseBackupPayload'), 'Backup restore must enforce the 20 MB limit and validate its schema.');
 assert.ok(app.includes('data.aiPrivacy?.notes===true')&&app.includes('data.aiPrivacy?.money===true')&&app.includes('selectedWorkspace.structuredDocuments=[]'), 'AI payloads must fail closed for disabled categories, including structured documents.');
-assert.ok(app.includes("note?.isPrivate===true")&&intelligenceSource.includes("visibility==='private'"), 'Private notes must be excluded from AI retrieval and connected-knowledge context.');
+assert.ok(app.includes("note?.isPrivate===true")&&securityIntelligenceSource.includes("visibility==='private'"), 'Private notes must be excluded from AI retrieval and connected-knowledge context.');
 assert.ok(app.includes('people:data.aiPrivacy?.people===true')&&app.includes('selectedWorkspace.followUps=[]'), 'People/follow-up context must require its own explicit AI-sharing opt-in.');
-assert.ok(authSource.includes('flushCloudSync')&&authSource.includes('purgeUserLocalData'), 'Logout cleanup must wait for confirmed cloud sync before purging account-local data.');
-assert.ok(indexSource.includes('Content-Security-Policy')&&indexSource.includes("object-src 'none'")&&indexSource.includes("base-uri 'self'")&&!/<script>/.test(indexSource), 'Index must use a CSP meta policy and same-origin PWA bootstrap rather than inline script.');
-assert.ok(indexSource.includes('@2.119.0')&&indexSource.includes('crossorigin="anonymous"'), 'Supabase CDN version must be pinned and use anonymous CORS mode.');
-assert.ok(pwaInitSource.includes('serviceWorker.register'), 'PWA update and install bootstrap must remain available after CSP migration.');
-assert.ok(serviceWorkerSource.includes('safeShareUrl')&&serviceWorkerSource.includes('totalBytes<=20*1024*1024'), 'Share Target must reject unsafe URLs and cap aggregate file size.');
-assert.ok(serviceWorkerSource.includes("new URL(requested).origin===self.location.origin"), 'Notification clicks must not navigate users to external or unsafe origins.');
+assert.ok(securityAuthSource.includes('flushCloudSync')&&securityAuthSource.includes('purgeUserLocalData'), 'Logout cleanup must wait for confirmed cloud sync before purging account-local data.');
+assert.ok(securityIndexSource.includes('Content-Security-Policy')&&securityIndexSource.includes("object-src 'none'")&&securityIndexSource.includes("base-uri 'self'")&&!/<script>/.test(securityIndexSource), 'Index must use a CSP meta policy and same-origin PWA bootstrap rather than inline script.');
+assert.ok(securityIndexSource.includes('@2.119.0')&&securityIndexSource.includes('crossorigin="anonymous"'), 'Supabase CDN version must be pinned and use anonymous CORS mode.');
+assert.ok(securityPwaInitSource.includes('serviceWorker.register'), 'PWA update and install bootstrap must remain available after CSP migration.');
+assert.ok(securityServiceWorkerSource.includes('safeShareUrl')&&securityServiceWorkerSource.includes('totalBytes<=20*1024*1024'), 'Share Target must reject unsafe URLs and cap aggregate file size.');
+assert.ok(securityServiceWorkerSource.includes("new URL(requested).origin===self.location.origin"), 'Notification clicks must not navigate users to external or unsafe origins.');
