@@ -28,9 +28,9 @@
     const isNo = value => /^(nahi|na|no|n|cancel|rehne do|mat karo|stop)$/i.test(String(value||'').trim());
     const isCreateStart = value => {
       const q=String(value||'').trim();
-      if (/^(?:task|reminder|todo)\\s*$/i.test(q)) return true;
-      return /^(?:(?:please|kindly)\\s+)?(?:add|create|make|set|schedule)\\b.*\\b(?:task|todo|reminder)\\b/i.test(q)
-        || /^(?:task|todo|reminder)\\s+(?:add|bana|create|make|set|laga)/i.test(q)
+      if (/^(?:task|reminder|todo)\s*$/i.test(q)) return true;
+      return /^(?:(?:please|kindly)\s+)?(?:add|create|make|set|schedule)\b.*\b(?:task|todo|reminder)\b/i.test(q)
+        || /^(?:task|todo|reminder)\s+(?:add|bana|create|make|set|laga)/i.test(q)
         || /^(?:remind me|yaad dila)/i.test(q)
         || /^(?:task add karo|task bana do|reminder set karo|reminder laga do)$/i.test(q);
     };
@@ -44,7 +44,7 @@
       const q=String(value||'').trim();
       if (!createDraft) {
         if (!isCreateStart(q)) return null;
-        const reminder=/\\b(?:remind(?:er)?|yaad dila|briefing)\\b/i.test(q);
+        const reminder=/\b(?:remind(?:er)?|yaad dila|briefing)\b/i.test(q);
         createDraft={kind:reminder?'reminder':'task',title:cleanTitle(q),date:dateFrom(q),time:timeFrom(q),stage:''};
       } else if (isNo(q)) { createDraft=null; return 'Cancelled. Kuch save nahi hua.'; }
       else if (isYes(q)) {
@@ -67,7 +67,7 @@
       } else if (createDraft.stage==='time') {
         const time=timeFrom(q); if (!time) return 'Time samajh nahi aaya. Jaise: 8 PM ya 20:00 likho.';
         createDraft.time=time;
-      } else if (/\\b(?:edit|change|badlo)\\b/i.test(q)) {
+      } else if (/\b(?:edit|change|badlo)\b/i.test(q)) {
         return 'Kaunsi detail change karni hai—naam, date ya time?';
       } else {
         // A complete natural-language detail can fill missing fields.
@@ -80,7 +80,7 @@
       if (!createDraft.date) { createDraft.stage='date'; return '“'+createDraft.title+'” kis date ko karna hai? Jaise: kal, Friday ya 20/11.'; }
       if (!createDraft.time) { createDraft.stage='time'; return 'Kis time par? Jaise: 8 PM ya 20:00.'; }
       createDraft.stage='confirm';
-      return (createDraft.kind==='reminder'?'Reminder':'Task')+' confirm karo:\\n• Kaam: '+createDraft.title+'\\n• Date: '+createDraft.date+'\\n• Time: '+createDraft.time+'\\n\\nSave kar doon? Haan / Nahi';
+      return (createDraft.kind==='reminder'?'Reminder':'Task')+' confirm karo:\n• Kaam: '+createDraft.title+'\n• Date: '+createDraft.date+'\n• Time: '+createDraft.time+'\n\nSave kar doon? Haan / Nahi';
     }
 
     function canHandle(text) {
