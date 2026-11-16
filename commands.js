@@ -9,9 +9,34 @@
  const fuzzy=(q,w)=>{const n=norm(w);if(n.includes(' '))return q.includes(n);return q.split(' ').some(t=>t===n||(t.length>2&&n.length>2&&(t.includes(n)||n.includes(t)||lev(t,n)<=1)))};
  function detectIntent(query){const q=norm(query),scores={};for(const [k,words] of Object.entries(KEYWORDS.section)){scores[k]=words.reduce((s,w)=>s+(q.split(' ').includes(norm(w))?2:q.includes(norm(w))?1:q.split(' ').some(t=>t.length>2&&lev(t,norm(w))<=1)?1:0),0)}const hi=Math.max(0,...Object.values(scores)),wins=Object.keys(scores).filter(k=>scores[k]===hi&&hi>0);return {intent:wins.length===1?wins[0]:null,ambiguous:wins.length>1,matched:wins,scores}}
  const numberMap={ek:1,do:2,teen:3,char:4,chaar:4,paanch:5,panch:5,chhe:6,saat:7,aath:8,nau:9,das:10,bees:20,pachaas:50,sau:100,hundred:100,hazaar:1000,hajar:1000,thousand:1000,lakh:100000};
- function parseAmount(text){let m=text.match(/(?:₹|rs\.?\s*)?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|hazaar|hazar|rupees?|rs\.?|रुपये|रुपए)?/i);if(m){let n=Number(m[1].replace(/,/g,''));return n*(m[2]&&/^(k|thousand|hazaar|hazar)$/i.test(m[2])?1000:1)}let total=0,cur=0,found=false;for(const t of norm(text).split(' ')){if(numberMap[t]!=null){found=true;const n=numberMap[t];if(n>=100){cur=(cur||1)*n;if(n>=1000){total+=cur;cur=0}}else cur+=n}}return found?total+cur:0}
+ function parseAmount(text){
+  const input=String(text||'');
+  const matches=[...input.matchAll(/(?:₹|rs\.?\s*)?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|hazaar|hazar|rupees?|rs\.?|रुपये|रुपए)?/gi)];
+  for(const match of matches){
+   const before=input.slice(0,match.index),after=input.slice(match.index+match[0].length);
+   if(/^\s*(?:am|pm|baje)\b/i.test(after)||/^\s*[:/]\s*\d/.test(after)||/(?:\bat|\btime|\bdate)\s*$/i.test(before))continue;
+   const value=Number(match[1].replace(/,/g,''));
+   if(!Number.isFinite(value))continue;
+   return value*(/^(?:k|thousand|hazaar|hazar)$/i.test(match[2]||'')?1000:1);
+  }
+  let total=0,cur=0,found=false;
+  for(const token of norm(input).split(' ')){
+   if(numberMap[token]!=null){found=true;const n=numberMap[token];if(n>=100){cur=(cur||1)*n;if(n>=1000){total+=cur;cur=0}}else cur+=n}
+  }
+  return found?total+cur:0;
+ }
  function parseDate(text){const q=norm(text),d=new Date(today()+'T12:00:00');if(/\b(aaj|today)\b/.test(q))return today();if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);else{let m=q.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.toISOString().slice(0,10)}else{const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};let day=Object.keys(days).find(k=>q.includes(k));if(!day)return '';let delta=(days[day]-d.getDay()+7)%7;if(!delta||q.includes('agle'))delta=delta||7;d.setDate(d.getDate()+delta)}}return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
- function parseTime(text){const q=norm(text);let m=q.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)?\b/);if(!m)return '';let h=+m[1],min=+(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;if(/\b(shaam|evening|raat)\b/.test(q)&&h<12)h+=12;if(/\b(subah|morning)\b/.test(q)&&h===12)h=0;return h<24&&min<60?String(h).padStart(2,'0')+':'+String(min).padStart(2,'0'):''}
+ function parseTime(text){
+  const q=norm(text);
+  const match=q.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))\s*(am|pm)?\b|\b(\d{1,2})\s*(am|pm|baje)\b|\b(subah|morning|shaam|sham|evening|raat|night)\s+(\d{1,2})(?::(\d{2}))?\b/i);
+  if(!match)return '';
+  let h=Number(match[1]||match[4]||match[7]),min=Number(match[2]||match[8]||0);
+  const meridiem=String(match[3]||match[5]||'').toLowerCase();
+  const period=String(match[6]||'').toLowerCase();
+  if(meridiem==='pm'||/^(shaam|sham|evening|raat|night)$/.test(period)){if(h<12)h+=12}
+  if(meridiem==='am'||/^(subah|morning)$/.test(period)){if(h===12)h=0}
+  return h<24&&min<60?String(h).padStart(2,'0')+':'+String(min).padStart(2,'0'):'';
+ }
  function autoExpenseCategory(text){
   const q=norm(text);
   if(/\b(chai|tea|coffee|breakfast|lunch|dinner|food|restaurant|grocery|groceries|pizza|snack|khana|nashta|sabzi|doodh)\b/.test(q))return 'Food';
