@@ -54,7 +54,7 @@
   if(planSummary||weeklySpending||dailySpending||udhaarSummary)action='summary';
   const date=parseDate(query),time=parseTime(query);
   let title=q
-   .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|mere liye|mark|complete|finish|done|delete|remove|edit|update|submit|do)\b/gi,' ')
+   .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|mere liye|mark|complete|finish|done|delete|remove|edit|update|do)\b/gi,' ')
    .replace(/\b(?:today|aaj|tomorrow|kal|parso|parson|daily|every day|weekly|monthly|every week|every month|roz|roj|har roz|har din|subah|morning|evening|shaam|sham|raat|night|at|baje|am|pm|oclock)\b/gi,' ')
    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
