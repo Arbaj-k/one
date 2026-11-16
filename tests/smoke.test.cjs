@@ -125,6 +125,8 @@ for (const token of [
  'ocrQuality:Math.round(documentTextQuality(usableText)*100)',
 ]) assert.ok(source.includes(token),'Document extraction feature missing: '+token);
 assert.ok(documentFunction.includes('Hindi (Devanagari), or mixed Hindi-English/Hinglish'),'Structured extraction prompt must support Hindi and Hinglish');
+assert.ok(documentFunction.includes('inline_data: { mime_type: visual.mimeType, data: visual.dataBase64 }'),'Document JSON must use original PDF/image bytes as visual evidence when provided.');
+assert.ok(documentFunction.includes('visualData.length > 4_194_304'),'Document JSON must reject oversized visual payloads without truncating them.');
 assert.ok(documentFunction.includes('image/webp'),'Structured extraction must accept WEBP images');
 assert.ok(documentExtractor.includes("type:'expiry'")&&documentExtractor.includes("type:'deadline'")&&documentExtractor.includes("type:'amount'"),'Structured extraction must classify expiry, deadline and amount fields');
 assert.ok(documentExtractor.includes('facts,tables,timetable,line_records'),'Structured facts must be retained alongside tables and timetable data');
