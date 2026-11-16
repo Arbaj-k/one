@@ -25,7 +25,7 @@
     const d=getWorkspaceSnapshot(),tasks=Array.isArray(d.tasks)?d.tasks:[],notes=Array.isArray(d.notes)?d.notes:[],docs=Array.isArray(d.documents)?d.documents:[],expenses=Array.isArray(d.expenses)?d.expenses:[];
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata'}).format(new Date());
     const completed=tasks.filter(t=>t.done||t.completedAt).length,overdue=tasks.filter(t=>!t.done&&t.due&&t.due<today).length;
-    const spending=expenses.reduce((sum,e)=>sum+Math.max(0,Number(e.amount)||0),0);
+    const spending=expenses.filter(e=>(e.kind||'expense')==='expense').reduce((sum,e)=>sum+Math.max(0,Number(e.amount)||0),0);
     const metric=(label,value,note)=>'<article class="card"><span class="stat-label">'+label+'</span><div class="stat-number">'+(typeof value==='number'?value.toLocaleString('en-IN'):value)+'</div><span class="stat-note">'+note+'</span></article>';
     root.innerHTML='<div class="eyebrow">YOUR WORKSPACE</div><h2>Personal Workspace Analysis</h2><p class="muted">A private summary calculated from data saved in this workspace. No admin permission is needed.</p><div class="grid stats one-analytics-stats">'+metric('Tasks completed',completed,'Completed tasks')+metric('Overdue tasks',overdue,'Open tasks past their due date')+metric('Notes',notes.length,'Saved notes')+metric('Uploaded documents',docs.length,'Files in your workspace')+metric('Total spending','₹'+spending.toLocaleString('en-IN'),'Recorded expense amounts')+'</div><p class="muted" style="font-size:11px;margin-top:14px">Personal insights are calculated on this device from your workspace records. Admin product analytics remain restricted to authorized administrators.</p>';
   }
