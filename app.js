@@ -1228,17 +1228,21 @@ function extractTimetableData(text){
 function isTimetableQuestion(question){
  return /\b(?:time\s*table|timetable|class\s+(?:time\s*)?table|class\s+schedule|lecture\s+schedule|weekly\s+schedule|periods?|lectures?|class(?:es)?|which\s+subject|what\s+subject|my\s+classes|class\s+today|college\s+schedule|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|(?:समय\s*सारणी|टाइम\s*टेबल|कक्षा\s*का?\s*समय|क्लास\s*टाइम|आज\s*की\s*क्लास)/iu.test(String(question||''));
 }
-function savedTimetableJSON(doc){
+function savedTimetableJSON(doc,question=''){
  const root=doc?.extractedJson||{},structured=root.structured_data||{};
+ const context=[question,doc?.name,doc?.originalName,root.document_type,root.title].join(' ').toLowerCase();
+ const mealContext=/\\b(?:mess|menu|meal|breakfast|lunch|dinner|snack|hostel|food)\\b|(?:मेस|भोजन|नाश्ता|दोपहर का खाना|रात का खाना)/iu.test(context)||/hostel_menu|meal_menu|weekly_menu/i.test(String(root.document_type||''));
  const timetable=structured.timetable??structured.time_table??structured.class_timetable??structured.schedule??null;
+ const directMenuKeys=Object.keys(structured).filter(key=>/(?:menu|meal|mess|breakfast|lunch|dinner|weekly|daily|day)/i.test(key));
  const tables=Array.isArray(structured.tables)?structured.tables:[];
- const timetableTables=tables.filter(table=>{
-  const headers=(table?.columns||table?.headers||[]).join(' ').toLowerCase();
-  return /subject|course|class|day|time|period|lecture|room|faculty/.test(headers);
+ const scheduleTables=tables.filter(table=>{
+  const headers=(table?.columns||table?.headers||[]).map(value=>typeof value==='string'?value:(value?.name||value?.label||'')).join(' ').toLowerCase();
+  return /subject|course|class|day|time|period|lecture|room|faculty/.test(headers)||(mealContext&&/day|meal|menu|breakfast|lunch|dinner|snack|food|dish|item/.test(headers));
  });
+ const structuredMenu=mealContext&&(directMenuKeys.length>0||/hostel_menu|meal_menu|weekly_menu/i.test(String(root.document_type||'')));
  const meaningful=Array.isArray(timetable)?timetable.length>0:!!timetable;
- if(!meaningful&&!timetableTables.length)return '';
- return JSON.stringify({document_type:root.document_type||root.documentType||'timetable',timetable,tables:timetableTables,pages:root.source_pages||root.pages||[]});
+ if(!meaningful&&!scheduleTables.length&&!structuredMenu)return '';
+ return JSON.stringify({document_type:root.document_type||root.documentType||'timetable_or_menu',title:root.title||doc?.name||'',timetable,menu_data:structuredMenu?structured:null,tables:scheduleTables,pages:root.source_pages||root.pages||[]});
 }
 const AI_STOP_WORDS=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','exam','paper','test','hai','kya','bata','do','or','to','a','an','as','at','by','it','be','summarize','summary','explain','ka','ki','ke','ko','se','mein','mera','meri','mere','btao','batao','dikhao','konsa','kaunsa','kab','kahan','kitna','kitne','hoga','hogi','tha','thi','the','please']);
 const AI_QUERY_SYNONYMS={
@@ -1370,7 +1374,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  // OCR chunks contain no matching words or an older upload has sparse extracted text.
  if(isTimetableQuestion(question)){
   const timetableCandidates=(targetDocId?allDocs.filter(doc=>doc.id===targetDocId):allDocs)
-   .map(doc=>({doc,json:savedTimetableJSON(doc),score:(savedTimetableJSON(doc)?100:0)+aiTextScore([doc.name,doc.originalName,doc.tags,doc.note,doc.extractedText].join(' '),terms)}))
+   .map(doc=>({doc,json:savedTimetableJSON(doc,question),score:(savedTimetableJSON(doc,question)?100:0)+aiTextScore([doc.name,doc.originalName,doc.tags,doc.note,doc.extractedText].join(' '),terms)}))
    .filter(item=>item.json).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||0)-Number(a.doc.createdAt||a.doc.created||0));
   const selected=timetableCandidates.slice(0,targetDocId?1:2);
   for(const item of selected){
@@ -1816,7 +1820,7 @@ function resolveAskDocumentId(question,targetDocId){
    if(day&&normalizedEvidence.includes(day))score+=12;
    const rows=typeof extractTimetableData==='function'?extractTimetableData(evidence):[];
    score+=Math.min(rows.length,12)*2;
-   if(savedTimetableJSON(doc))score+=40;
+   if(savedTimetableJSON(doc,question))score+=40;
    if(/timetable|time.?table|class.?schedule|lecture.?schedule/i.test([doc.name,doc.originalName,doc.tags,doc.note].join(' ')))score+=16;
   }
   return {doc,score,created:Number(doc.createdAt||doc.created||0)};
