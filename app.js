@@ -49,11 +49,11 @@ const LEGACY_OWNER_KEY=KEY+'-legacy-claimed-by';
 function workspaceStorageKey(){return activeWorkspaceKey;}
 function workspaceIndexedDBKey(){return 'workspace:'+activeWorkspaceKey;}
 const DATA_SCHEMA_VERSION=4;
-const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],deletedRecords:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false}});
+const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],deletedRecords:[],deletedCloudDocuments:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false}});
 function migrateData(raw){
  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  const next={...starter(),...source};
- for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','deletedRecords'])if(!Array.isArray(next[key]))next[key]=[];
+ for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','deletedRecords','deletedCloudDocuments'])if(!Array.isArray(next[key]))next[key]=[];
  next.aiPrivacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false,...(source.aiPrivacy&&typeof source.aiPrivacy==='object'?source.aiPrivacy:{})};
  next.schemaVersion=DATA_SCHEMA_VERSION;
  return next;
@@ -129,6 +129,50 @@ async function getOriginalDocument(id){
 async function removeOriginalDocument(id){
  try{const db=await openAIFileDB();await new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}catch(err){console.warn("Operation failed; diagnostic details redacted.")}
 }
+
+function normalizedDocumentMime(file){
+ const name=String(file?.name||'').toLowerCase(),type=String(file?.type||'').toLowerCase();
+ if(type==='application/pdf'||name.endsWith('.pdf'))return 'application/pdf';
+ if(type==='image/png'||name.endsWith('.png'))return 'image/png';
+ if(type==='image/webp'||name.endsWith('.webp'))return 'image/webp';
+ if(type==='image/jpeg'||type==='image/jpg'||/\.(?:jpe?g)$/.test(name))return 'image/jpeg';
+ return type;
+}
+async function syncOriginalDocumentToCloud(record,file){
+ if(!record||!file)throw new Error('Original document is unavailable.');
+ if(!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine){record.cloudUploadStatus='pending';return false}
+ const ownerId=cloudUser.id,mimeType=normalizedDocumentMime(file);
+ if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType))throw new Error('Unsupported document type for cloud storage.');
+ const safeName=String(record.originalName||file.name||'document').normalize('NFKC').replace(/[^\p{L}\p{N}._-]+/gu,'_').replace(/^\.+/,'').slice(0,120)||'document';
+ const storagePath=ownerId+'/'+record.id+'/'+safeName;
+ const {error:uploadError}=await cloudClient.storage.from('one-user-documents').upload(storagePath,file,{upsert:true,contentType:mimeType,cacheControl:'3600'});
+ if(uploadError)throw uploadError;
+ const {error:metadataError}=await cloudClient.from('user_documents').upsert({user_id:ownerId,storage_path:storagePath,file_name:String(record.originalName||file.name||safeName).slice(0,255),mime_type:mimeType,byte_size:file.size,extracted_text:String(record.extractedText||'').slice(0,180000),metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||file.name||safeName).slice(0,255),type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending'}},{onConflict:'storage_path'});
+ if(metadataError){try{await cloudClient.storage.from('one-user-documents').remove([storagePath])}catch(_){}throw metadataError}
+ if(ownerId!==cloudUser?.id)return false;
+ record.storagePath=storagePath;record.cloudUploadStatus='synced';record.cloudUploadedAt=Date.now();record.cloudUploadError='';record.updated=Date.now();persist();return true;
+}
+async function syncPendingDocumentFiles(){
+ if(!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine)return;
+ for(const record of (data.documents||[])){
+  if(!record?.id||record.storagePath||record.cloudUploadStatus==='uploading')continue;
+  let stored;try{stored=await getOriginalDocument(record.id)}catch(_){}
+  if(!stored?.blob)continue;
+  record.cloudUploadStatus='uploading';
+  try{await syncOriginalDocumentToCloud(record,stored.blob)}
+  catch(error){record.cloudUploadStatus='pending';record.cloudUploadError=String(error.message||'Cloud upload failed').slice(0,300);console.warn('Document cloud sync failed; details redacted.')}
+ }
+}
+async function syncPendingDocumentDeletes(){
+ if(!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine)return;
+ for(const item of (Array.isArray(data.deletedCloudDocuments)?data.deletedCloudDocuments:[])){
+  if(!item?.storagePath||item.ownerId!==cloudUser.id)continue;
+  const {error:storageError}=await cloudClient.storage.from('one-user-documents').remove([item.storagePath]);if(storageError)throw storageError;
+  const {error:metadataError}=await cloudClient.from('user_documents').delete().eq('user_id',cloudUser.id).eq('storage_path',item.storagePath);if(metadataError)throw metadataError;
+  data.deletedCloudDocuments=data.deletedCloudDocuments.filter(entry=>entry.storagePath!==item.storagePath);persist();
+ }
+}
+
 async function fileToBase64(blob){
  return new Promise((resolve,reject)=>{
   const reader=new FileReader();reader.onload=()=>{const value=String(reader.result||''),comma=value.indexOf(',');resolve(comma>=0?value.slice(comma+1):'')};reader.onerror=()=>reject(reader.error||new Error('Could not read original file.'));reader.readAsDataURL(blob);
@@ -389,6 +433,8 @@ async function activateCloudWorkspace(userId){
  if(sessionData.session?.user?.id!==userId)throw new Error('Your sign-in session is not ready for cloud sync. Please sign in again.');
  cloudUser=sessionData.session.user;cloudReady=true;setCloudMode('loading');
  await refreshCloudWorkspace(userId);
+ await syncPendingDocumentDeletes();
+ await syncPendingDocumentFiles();
  subscribeWorkspaceRealtime(userId);
 }
 function initCloud(){
@@ -398,7 +444,7 @@ function initCloud(){
   setCloudMode('offline','Guest workspaces are device-only. Sign in to enable secure cloud sync.');
  }catch(error){console.warn("Operation failed; diagnostic details redacted.");setCloudMode('error',error.message)}
 }
-window.addEventListener('online',()=>{if(cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
+window.addEventListener('online',()=>{if(cloudReady&&cloudUser){refreshCloudWorkspace(cloudUser.id).then(()=>syncPendingDocumentDeletes()).then(()=>syncPendingDocumentFiles()).catch(error=>console.warn('Cloud recovery sync failed; details redacted.'))}});
 window.addEventListener('focus',()=>{if(cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cloudReady&&cloudUser)refreshCloudWorkspace(cloudUser.id)});
 
@@ -889,7 +935,7 @@ async function retryDocumentOCR(id){
   if(file.size>12*1024*1024){toast('File is over 12 MB');return}
   try{
    let extracted='';
-   const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+   const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';
    if(isPdf){
     if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and retry.');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1004,7 +1050,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
  const list=Array.from(files||[]);if(!list.length)return;
  const valid=list.filter(file=>file&&file.size>0&&file.size<=12*1024*1024);
  const needsPdf=valid.some(file=>file.type==='application/pdf'||/\.pdf$/i.test(file.name));
-  const needsOcr=valid.some(file=>file.type.startsWith('image/'));
+  const needsOcr=valid.some(file=>normalizedDocumentMime(file).startsWith('image/'));
  const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');
  try{if(status)status.textContent='Loading document tools…';await ensureOneDocumentLibraries(needsPdf,needsOcr)}
  catch(error){toast(error.message||'Document tools could not load');if(status)status.textContent=error.message||'Document tools could not load';return}
@@ -1053,8 +1099,8 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    const extractedText=readableText||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
-   data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete'});
-   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');if(!ocrFailed){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else{toast('File saved, but no readable text was extracted. Retry OCR from Uploaded Items.')}
+   const documentRecord={id,name:file.name,originalName:file.name,type:isPdf?'pdf':'image',mimeType,size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete',cloudUploadStatus:'pending'};data.documents.push(documentRecord);
+   persist();if(cloudReady&&cloudUser){documentRecord.cloudUploadStatus='uploading';try{await syncOriginalDocumentToCloud(documentRecord,file)}catch(uploadError){documentRecord.cloudUploadStatus='pending';documentRecord.cloudUploadError=String(uploadError.message||'Cloud upload failed').slice(0,300);persist();toast('File saved locally. Cloud upload will retry when connected.')}}if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');if(!ocrFailed){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else{toast('File saved, but no readable text was extracted. Retry OCR from Uploaded Items.')}
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
@@ -1824,7 +1870,7 @@ function searchFiles(query){
 }
 async function saveFile(file,metadata){
  if(!file||!metadata)throw new Error('Choose a file and enter its name.');
- if(file.size>5*1024*1024)throw new Error('File size limit is 5 MB. Choose a smaller file.');
+ if(file.size>12*1024*1024)throw new Error('File size limit is 12 MB. Choose a smaller file.');
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const validImage=['image/jpeg','image/png','image/webp'].includes(file.type)||/\.(jpe?g|png|webp)$/i.test(file.name);
  if(!isPdf&&!validImage)throw new Error('Only PDF, JPG, PNG and WEBP files are supported.');
@@ -1844,13 +1890,24 @@ function renameFile(id,metadata){
 }
 async function deleteFile(id){
  const record=(data.documents||[]).find(item=>item.id===id);if(!record)return false;
- await removeOriginalDocument(id);data.documents=data.documents.filter(item=>item.id!==id);persist();return true;
+ if(record.storagePath){
+  data.deletedCloudDocuments=Array.isArray(data.deletedCloudDocuments)?data.deletedCloudDocuments:[];
+  if(!data.deletedCloudDocuments.some(item=>item.storagePath===record.storagePath))data.deletedCloudDocuments.push({storagePath:record.storagePath,ownerId:String(record.storagePath).split('/')[0],documentId:id,deletedAt:Date.now()});
+ }
+ await removeOriginalDocument(id);data.documents=data.documents.filter(item=>item.id!==id);persist();
+ if(cloudReady&&cloudUser?.id&&navigator.onLine)try{await syncPendingDocumentDeletes()}catch(error){toast('File removed here. Cloud deletion is queued until sync succeeds.')}
+ return true;
 }
 async function openUploadedFile(id,download=false){
  const record=(data.documents||[]).find(item=>item.id===id);if(!record)return;
  const previewWindow=download?null:window.open('about:blank','_blank');
- const stored=await getOriginalDocument(id);if(!stored?.blob){previewWindow?.close();toast('Original file is not available on this device.');return}
- const url=URL.createObjectURL(stored.blob);
+ let stored=await getOriginalDocument(id),blob=stored?.blob||null;
+ if(!blob&&record.storagePath&&cloudReady&&cloudUser?.id&&cloudClient){
+  try{const {data:cloudBlob,error}=await cloudClient.storage.from('one-user-documents').download(record.storagePath);if(error)throw error;blob=cloudBlob;if(blob)await saveOriginalDocument(id,blob)}
+  catch(error){previewWindow?.close();toast(error.message||'Could not download this account cloud file.');return}
+ }
+ if(!blob){previewWindow?.close();toast('Original file is not available on this device or in this account cloud storage.');return}
+ const url=URL.createObjectURL(blob);
  if(download){const link=document.createElement('a');link.href=url;link.download=record.originalName||record.name||'file';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);return}
  if(previewWindow)previewWindow.location.href=url;else{const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.click()}
  setTimeout(()=>URL.revokeObjectURL(url),60000);
