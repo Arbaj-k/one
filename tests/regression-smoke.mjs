@@ -15,10 +15,9 @@ const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'u
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const authSource = readFileSync(new URL('../auth.js', import.meta.url), 'utf8');
-assert.ok(!authSource.includes('one-guest'), 'Guest mode must be removed from authentication.');
-assert.ok(authSource.includes("open('login')"), 'Signed-out users must be forced to the login screen.');
-assert.ok(authSource.includes("document.body.classList.add('one-auth-required')"), 'Workspace must remain hidden until authentication succeeds.');
-assert.ok(!authSource.includes('continue using One as a guest'), 'Login screen must not advertise guest access.');
+assert.ok(authSource.includes('one-continue-guest') && authSource.includes('Continue without signing in'), 'Authentication must offer an explicit local guest path.');
+assert.ok(authSource.includes("function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}"), 'Closing authentication must reveal the local workspace without a session.');
+assert.ok(!authSource.includes("else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));open('login')}"), 'Signed-out users must not be forced into a blocking login overlay.');
 
 
 // Syntax validation catches startup-breaking parse errors.
