@@ -13,15 +13,23 @@ const buildSource=app.slice(buildStart,buildEnd);
 assert.ok(buildSource.indexOf('const contextProject=')>=0 && buildSource.indexOf('const contextProject=')<buildSource.indexOf('if(!targetDocId&&contextProject)'), 'Project context must be initialized before linked-document retrieval.');
 assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('const asksProjects=')<buildSource.indexOf('const asksTasks='), 'Project intent must be initialized before task intent reads it.');
 const commandAdapter = readFileSync(new URL('../one-commands.js', import.meta.url), 'utf8');
-assert.ok(commandAdapter.includes('if (readOnly) return false;'), 'Ask One must never run mutating commands for informational questions.');
+assert.ok(commandAdapter.includes('if (readOnly && !localSection') && commandAdapter.includes('return localSection || explicitTaskCommand'), 'Local read/query commands must remain routable even when phrased as questions.');
 assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file questions must be routed to read-only answers.');
 assert.ok(app.includes("if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent))return {kind:'none',sources:[]}"), 'File context alone must never trigger a workspace action.');
 
 assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
-assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('return explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;'), 'Ask One must support natural-language task intent without requiring slash syntax.');
+assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('legacy.executeCommand(commandText)'), 'Ask One must support natural-language commands through the authoritative local executor.');
 assert.ok(commandAdapter.includes("if (explicitReminder) {") && commandAdapter.includes("result = legacy.executeCommand(commandText);"), 'Reminder requests must bypass generic addTask callbacks and use the reminder-aware handler.');
 assert.ok(commandAdapter.includes("remind(?:er)?\\b") && commandAdapter.includes("schedule)\\s+"), 'Reminder routing must recognize reminder wording and schedule/create/add reminder phrases.');
 assert.ok(!/\/task|\/remind|\/list|\/done|\/delete/.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
+
+const commandParser = readFileSync(new URL('../commands.js', import.meta.url), 'utf8');
+assert.ok(commandParser.includes(String.raw\`/\\b\\d[\\d,]*(?:\\.\\d+)?\\b/g\`)===false, 'Money description regex must not remain double escaped.');
+assert.ok(commandParser.includes("udhaarType") && commandParser.includes("p.udhaarType"), 'Local parser must retain Udhaar as a distinct money record type.');
+assert.ok(app.includes("action==='add_udhaar'") && app.includes("type==='create-batch'"), 'Structured AI actions must validate Udhaar and multi-action batches.');
+assert.ok(app.includes("Date.now()-pending.requestedAt>2*60*1000"), 'Pending AI confirmations must expire after two minutes.');
+assert.ok(app.includes('data-action="confirm-pending-action"') && app.includes('data-action="cancel-pending-action"'), 'Pending confirmations must expose inline Confirm and Cancel controls.');
+
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
