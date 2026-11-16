@@ -1990,6 +1990,16 @@ function aiAnswer(question){
   const borrowed=expenses.filter(e=>e.kind==='borrowed').reduce((sum,e)=>sum+Number(e.amount||0),0)-expenses.filter(e=>e.kind==='borrowed_repayment').reduce((sum,e)=>sum+Number(e.amount||0),0);
   return {answer:'Saved records show expenses of '+fmt(total)+', people owe you '+fmt(lent)+', and you owe others '+fmt(borrowed)+'. These totals use your saved Money & Udhaar records.',sources:['Money & Udhaar']};
  }
+ const asksTasks=/\b(task|tasks|todo|to-do|pending|overdue|deadline|planner)\b/i.test(raw),asksProjects=/\b(project|projects|milestone)\b/i.test(raw),asksRoutines=/\b(routine|routines|habit|habits)\b/i.test(raw),asksNotes=/\b(note|notes|memory|memories)\b/i.test(raw),asksFiles=/\b(file|files|document|documents|pdf|timetable|image|upload)\b/i.test(raw);
+ if(asksTasks||asksProjects||asksRoutines||asksNotes||asksFiles){
+  const parts=[];
+  if(asksTasks){const rows=(data.tasks||[]).filter(t=>!t.done).slice(0,10);parts.push('TASKS\n'+(rows.length?rows.map((t,i)=>(i+1)+'. '+t.title+(t.due?' · '+dateFmt(t.due):'')).join('\n'):'No pending tasks.'))}
+  if(asksProjects){const rows=data.projects||[];parts.push('PROJECTS\n'+(rows.length?rows.map(p=>p.name||p.title).join('\n'):'No saved projects.'))}
+  if(asksRoutines){const rows=data.routines||[];parts.push('ROUTINES\n'+(rows.length?rows.map(p=>p.title).join('\n'):'No saved routines.'))}
+  if(asksNotes){const rows=[...(data.notes||[]),...(data.memories||[])].slice(0,12);parts.push('NOTES & MEMORY\n'+(rows.length?rows.map(n=>(n.title||'Saved note')+': '+String(n.content||'').slice(0,500)).join('\n'):'No saved notes or memories.'))}
+  if(asksFiles){const rows=data.documents||[];parts.push('DOCUMENTS\n'+(rows.length?rows.map(d=>(d.name||'Document')+': '+String(d.extractedText||'').slice(0,900)).join('\n'):'No saved documents.'))}
+  return {answer:parts.join('\n\n'),sources:['Local workspace']};
+ }
  if(/\b(task|tasks|todo|to-do|pending|overdue|deadline|planner)\b/i.test(raw)){
   const tasks=(data.tasks||[]).filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
   return {answer:tasks.length?'Your pending tasks:\n'+tasks.slice(0,15).map((t,i)=>(i+1)+'. '+t.title+' — '+(t.due?(t.due<today()?'OVERDUE · ':'Due ')+dateFmt(t.due):'No due date')+' · '+(t.priority||'Medium')).join('\n'):'You have no pending tasks saved right now.',sources:['Tasks & Planner']};
@@ -2405,11 +2415,8 @@ async function sendChat(question,targetDocId=null){
  // Show the sent message immediately, before command routing or any AI/network wait.
  if(page==='ask'){render();scrollChatToBottom();}
  let actionResult=null;
- if(window.OneCommands?.create){
-  const handled=await window.ensureOneCommandCenter().run(query);
-  if(handled)return;
- }
- // Process an outstanding confirmation first; otherwise let semantic planning run before legacy keyword rules.
+ // One authoritative Ask One pipeline: pending confirmations/local actions first,
+ // then the AI action planner, then AI Q&A with a local cross-collection fallback.
  if(pendingAction)actionResult=await chatActionIntent(query);
   if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
@@ -2432,7 +2439,7 @@ async function sendChat(question,targetDocId=null){
    const planned=await requestAskOneActionPlan(query);
    if(planned?.kind==='none')semanticReadOnly=true;
    else if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}
-  }catch(error){console.warn('Ask One action planning unavailable; continuing with read-only answer.');}
+  }catch(error){console.warn('Ask One action planning failed:',error);}
  }
  // Do not let legacy keyword heuristics override an AI-classified question or document query.
  if(!actionResult&&!semanticReadOnly&&!isDocumentContentQuestion(query))actionResult=await chatActionIntent(query);
@@ -2445,19 +2452,8 @@ async function sendChat(question,targetDocId=null){
    data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources||[]});
    persist();render();scrollChatToBottom();return;
   }
-  if(detected.ambiguous){
-   const labels={tasks:'Tasks',notes:'Notes',projects:'Projects',routines:'Routines',money:'Money',files:'Uploaded Items'};
-   const choices=detected.matched.map(key=>labels[key]||key);
-   data.messages.push({role:'assistant',content:'Aap '+choices.join(' ya ')+' ke baare mein pooch rahe ho?',sources:[]});
-   persist();render();scrollChatToBottom();return;
-  }
-  if(!semanticReadOnly){
-   const tokens=askOneNormalize(query);
-   if(tokens.length){
-    data.messages.push({role:'assistant',content:'Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.',sources:[]});
-    persist();render();scrollChatToBottom();return;
-   }
-  }
+  // Multi-section questions are valid queries, not ambiguity errors.
+  // Continue to Gemini/local retrieval instead of terminating the conversation.
  }
  if(!targetDocId){
   const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
@@ -2472,7 +2468,8 @@ async function sendChat(question,targetDocId=null){
  catch(error){
   console.warn("Operation failed; diagnostic details redacted.");
   const fallback=aiAnswer(query),hasFallback=Array.isArray(fallback.sources)&&fallback.sources.length>0;
-  data.messages.push({role:'assistant',content:(hasFallback?fallback.answer+'\n\n':'')+'AI connection: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing the local search fallback above.':'\nYour saved data is still stored locally. Retry after the AI setup issue is fixed.'),sources:hasFallback?fallback.sources:[]});
+  const signIn=!cloudUser?' Sign in for Gemini AI replies.':'';
+  data.messages.push({role:'assistant',content:(hasFallback?fallback.answer+'\n\n':'')+'AI unavailable: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing local results from your saved workspace.':'\nYour saved data remains available locally.')+signIn,sources:hasFallback?fallback.sources:[]});
  }finally{chatBusy=false;persist();render();scrollChatToBottom()}
 }
 
