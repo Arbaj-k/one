@@ -336,6 +336,13 @@ assert.ok(targeted.evidence.length > 0 && targeted.evidence.every(hit => hit.doc
 const hi = vm.runInContext("aiQueryIntent('AEC ka exam kab hai?')", retrievalSandbox);
 assert.ok(hi.subject.includes('aec') && hi.date, 'Hindi/Hinglish subject/date intent should be detected.');
 assert.ok(vm.runInContext("extractTimetableData(testDocs[0].extractedText).some(row => row.course === 'AEC' && row.start === '08:30 AM' && row.end === '10:00 AM')", retrievalSandbox), 'Structured timetable extraction must preserve exact start/end times.');
+assert.ok(vm.runInContext("isTimetableQuestion('Mera class time table saved hai?')", retrievalSandbox), 'Hinglish saved class timetable questions must enter timetable retrieval.');
+assert.ok(vm.runInContext("isTimetableQuestion('Aaj meri kaunsi class hai?')", retrievalSandbox), 'Class schedule questions must enter timetable retrieval.');
+retrievalSandbox.savedScheduleDoc = {id:'weekly',name:'My Class Timetable.pdf',extractedJson:{document_type:'timetable',structured_data:{timetable:[{day:'Monday',subject:'Data Structures',start_time:'09:00 AM',end_time:'10:00 AM'}]}}};
+const savedScheduleJSON = vm.runInContext("savedTimetableJSON(savedScheduleDoc)", retrievalSandbox);
+assert.ok(savedScheduleJSON.includes('Data Structures') && savedScheduleJSON.includes('Monday'), 'Persisted weekly timetable JSON must be discoverable even without OCR text.');
+assert.ok(app.includes("Saved structured timetable: "), 'Saved timetable JSON must be injected directly into Ask One document evidence.');
+assert.ok(app.includes("if(savedTimetableJSON(doc))score+=40"), 'Documents with saved timetable JSON must rank above unrelated uploads.');
 assert.doesNotThrow(() => new Function(app.slice(retrievalStart, retrievalEnd)), 'Retrieval helpers must remain valid JavaScript.');
 assert.ok(app.includes("timetable:extractTimetableData(doc.extractedText||'')"), 'Structured timetable rows must be included in AI context.');
 assert.match(app, /const taskSummary='Save this task\\?/,'Voice task creation must confirm its summary before saving.');
