@@ -24,12 +24,17 @@ assert.ok(source.includes('const asksTasks=overviewIntent||'), 'Ask One task con
 assert.ok(source.includes('const asksMoney=overviewIntent||'), 'Ask One money context must be intent-gated');
 assert.ok(source.includes('function isDocumentContentQuestion(question)'), 'Document Q&A intent detection is missing');
 assert.ok(source.includes('if(!targetDocId&&asksTimetableContext)'), 'Timetable questions must explicitly select the latest uploaded document before generic intent routing');
-assert.ok(source.includes('const asksTimetable=/\\\\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)'), 'Timetable questions must use uploaded document context even when the user does not mention PDF/image');
-assert.ok(source.includes('(hasUploadedDocuments&&asksTimetable)'), 'Uploaded timetable questions must bypass Tasks/Notes clarification');
+assert.ok(source.includes('const asksTimetable=/\\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)'), 'Timetable questions must use uploaded document context even when the user does not mention PDF/image');
+assert.ok(source.includes('(hasUploadedDocuments&&(asksTimetable||'), 'Uploaded timetable and referenced-document questions must bypass Tasks/Notes clarification');
 assert.ok(source.includes('pdf|image|photo|document|file)\\s+(?:se|mein|me|ka|ki|ke|ko|par|about|from)'), 'Hindi/Hinglish document references must trigger document Q&A');
-assert.ok(source.includes('return (mentionsFile&&asksContent&&!isFileLookup)||(hasUploadedDocuments&&asksTimetable);'), 'Document and contextual timetable questions must route to document evidence');
+assert.ok(source.includes('return (mentionsFile&&asksContent&&!isFileLookup)||(hasUploadedDocuments&&(asksTimetable||((refersToCurrentFile||asksDocumentField)&&asksContent&&!strongWorkspaceIntent)));'), 'Document and contextual timetable questions must route to document evidence without stealing workspace commands');
 assert.ok(source.includes('const expenses=asksMoney?'), 'Unrelated money records must not be sent to AI');
 assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routine records must not be sent to AI');
+assert.ok(source.includes('function isAskOneReadOnlyQuestion(question)'), 'Ask One must identify read-only questions before action planning');
+assert.ok(source.includes("if(isAskOneReadOnlyQuestion(question)&&plan.kind==='action'"), 'Question-shaped prompts must not be converted into AI write actions');
+assert.ok(source.includes('const explicitTaskAddIntent=/^\\\\s*'), 'Task creation must require an explicit command at the start of the message');
+assert.ok(fs.readFileSync('one-commands.js','utf8').includes('if (questionLike && !explicitTaskCommand) return false;'), 'Question-like messages must bypass local command execution');
+
 
 // Universal retrieval must not fall back to unrelated records when a query has no match.
 assert.ok(source.includes('else selectedTasks=matches.map(item=>item.task).slice(0,40);'), 'Task retrieval must return only matched records');
