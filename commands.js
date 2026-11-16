@@ -82,7 +82,7 @@
  }
  const p=parseCommand(query),s=p.section;if(!s)return null;
  const collection={tasks:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
- const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','pending','complete','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please'].includes(t));
+ const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','pending','complete','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please','mere','mera','meri','my','all','aaj','today','who','owes','me','ka','ki','ke'].includes(t));
  const rows=arr().map(x=>{const hay=norm([x.title,x.name,x.description,x.content,x.note,x.tags,x.subject].flat().join(' '));return {x,score:terms.reduce((n,t)=>n+(hay.split(' ').includes(t)?2:hay.includes(t)?1:0),0)}}).filter(x=>!terms.length||x.score>0).sort((a,b)=>b.score-a.score).map(x=>x.x);
  if(p.action==='add'){
   if(s==='scan'){const picker=document.createElement('input');picker.type='file';picker.accept='image/*';picker.capture='environment';picker.onchange=()=>{const file=picker.files?.[0];if(file)openFileMetadataDialog(file)};picker.click();return answer('Camera scan khul gaya. Document ki photo lo, phir save karo.','Scan')}if(s==='files'){openUploadForm();return answer('File picker khul gaya. PDF ya photo choose karo.','Uploaded Items')}
