@@ -19,6 +19,8 @@ assert.ok(app.includes("if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q
 
 assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
 assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('return explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;'), 'Ask One must support natural-language task intent without requiring slash syntax.');
+assert.ok(commandAdapter.includes("if (explicitReminder) {") && commandAdapter.includes("result = legacy.executeCommand(commandText);"), 'Reminder requests must bypass generic addTask callbacks and use the reminder-aware handler.');
+assert.ok(commandAdapter.includes("remind(?:er)?\\\\b") && commandAdapter.includes("schedule)\\\\s+"), 'Reminder routing must recognize reminder wording and schedule/create/add reminder phrases.');
 assert.ok(!/\/task|\/remind|\/list|\/done|\/delete/.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
