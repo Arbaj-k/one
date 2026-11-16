@@ -967,13 +967,16 @@ async function processUploadedDocuments(files,sourceNoteId=null){
      setProgress((p-1)/pdf.numPages*85,'Reading page '+p+' of '+pdf.numPages+' · '+file.name);
      const pdfPage=await pdf.getPage(p),content=await pdfPage.getTextContent();
      let pageText=content.items.filter(i=>String(i.str||'').trim()).map(i=>({text:i.str,x:i.transform?.[4]||0,y:i.transform?.[5]||0})).sort((a,b)=>Math.abs(b.y-a.y)>3?b.y-a.y:a.x-b.x).reduce((rows,it)=>{let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it);return rows},[]).sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
-     if(shouldRunDocumentOCR(pageText)&&window.Tesseract){
+     if(shouldRunDocumentOCR(pageText)){
       try{
+       if(!window.Tesseract)await ensureOneDocumentLibraries(false,true);
+       if(window.Tesseract){
        setProgress((p-1)/pdf.numPages*85,'OCR scanning page '+p+' of '+pdf.numPages+' · '+file.name);
        const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
        const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
+        }
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
      extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No selectable text detected on this page.]')+'\n';pdfPage.cleanup?.();
