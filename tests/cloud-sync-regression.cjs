@@ -2,6 +2,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const app=fs.readFileSync('app.js','utf8');
+const auth=fs.readFileSync('auth.js','utf8');
 const start=app.indexOf('function mergeWorkspaceSnapshots(');
 const end=app.indexOf('let workspaceChannel=',start);
 assert.ok(start>=0&&end>start,'Workspace merge helpers must exist');
@@ -35,5 +36,5 @@ has(".eq('revision',expectedRevision)","Workspace snapshot writes must use optim
 has("const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';","Document OCR must use normalized MIME values");
 has("const needsPdf=valid.some(file=>normalizedDocumentMime(file)==='application/pdf');","PDF library loading must recognize extension-only PDFs");
 has("doc.mimeType=mimeType;","OCR retry must preserve the normalized MIME type");
-has("from('profiles').upsert(profile","Authentication must upsert the deployed profiles table");
+assert.ok(auth.includes("from('profiles').upsert(profile"),'Authentication must upsert the deployed profiles table');
 console.log('Cloud sync regression passed: concurrent merge, deletion tombstones, private document upload/download/delete, retry hooks, MIME handling and profile schema.');
