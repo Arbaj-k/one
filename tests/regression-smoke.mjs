@@ -15,6 +15,19 @@ const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'u
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const authSource = readFileSync(new URL('../auth.js', import.meta.url), 'utf8');
+const analyticsSource = readFileSync(new URL('../analytics.js', import.meta.url), 'utf8');
+const sharedClientSource = readFileSync(new URL('../supabase-client.js', import.meta.url), 'utf8');
+const notFoundSource = readFileSync(new URL('../404.html', import.meta.url), 'utf8');
+const serviceWorkerSource = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
+assert.ok(sharedClientSource.includes("storageKey:'one-auth-session-v1'") && sharedClientSource.includes('window.getOneSupabaseClient'), 'All modules must use the shared Supabase singleton.');
+assert.ok(app.includes('studentBrainAIClient=window.getOneSupabaseClient()') && app.includes('cloudClient=window.getOneSupabaseClient()'), 'AI and cloud sync must reuse the shared Supabase client.');
+assert.ok(authSource.includes('client = window.getOneSupabaseClient()') && analyticsSource.includes('client=window.getOneSupabaseClient()'), 'Auth and analytics must reuse the shared Supabase client.');
+assert.ok(app.includes("params.get('route')") && app.includes("history.replaceState({sbPage:'analytics'},'','/one/analysis')"), 'Analysis must resolve from GitHub Pages route and query fallback.');
+assert.ok(notFoundSource.includes("params.set('route'") && notFoundSource.includes('location.hash'), '404 fallback must preserve query parameters and hash while redirecting.');
+assert.ok(serviceWorkerSource.includes('"./404.html"') && serviceWorkerSource.includes('"./supabase-client.js"') && serviceWorkerSource.includes('one-shell-v20'), 'Service worker must precache the route fallback and shared client with a bumped cache version.');
+assert.ok(app.includes("switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())"), 'Share inbox must be consumed after both sign-in and sign-out workspace changes.');
+assert.ok(analyticsSource.includes('function renderPersonalSummary(root)') && analyticsSource.includes("metric('Overdue tasks'") && analyticsSource.includes("metric('Total spending'"), 'Regular users and guests must see personal workspace analytics.');
+
 assert.ok(authSource.includes('one-continue-guest') && authSource.includes('Continue without signing in'), 'Authentication must offer an explicit local guest path.');
 assert.ok(authSource.includes("function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}"), 'Closing authentication must reveal the local workspace without a session.');
 assert.ok(!authSource.includes("else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));open('login')}"), 'Signed-out users must not be forced into a blocking login overlay.');
