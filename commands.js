@@ -2,7 +2,7 @@
 (() => {
  const KEYWORDS={
   action:{add:['add','jodo','daalo','dalo','banao','create','likho','save','remember','note karo','lagao','set','remind','reminder','yaad dilao','yaad dilana'],show:['dikhao','batao','show','list','kya hai','kitna','kitni','kitne','search','dhundo','find','open','kholo'],edit:['badlo','change','update','edit','rename'],delete:['delete','hatao','mita do','remove'],complete:['complete','done','mark','finished','ho gaya','khatam','finish']},
-  section:{tasks:['task','tasks','todo','to do','assignment','assignments','homework','exam','exams','kaam','remind','reminder','yaad dilao','yaad dilana'],notes:['note','notes','memo','idea','likha'],projects:['project','projects','milestone','progress'],routines:['routine','routines','habit','daily','roz','subah','raat'],money:['paisa','paise','kharcha','kharch','expense','expenses','income','budget','balance','spent','salary','udhaar','money','received','credited','earned','paid','lent','borrowed','repayment','settle','settled','lent','borrowed','received','paid'],files:['file','files','pdf','photo','image','document','bill','receipt'],scan:['scan','scanner']}
+  section:{tasks:['task','tasks','todo','to do','kaam','remind','reminder','yaad dilao','yaad dilana'],notes:['note','notes','memo','idea','likha'],projects:['project','projects','milestone','progress'],routines:['routine','routines','habit','daily','roz','subah','raat'],money:['paisa','paise','kharcha','kharch','expense','expenses','income','budget','balance','spent','salary','udhaar','money','received','credited','earned','paid','lent','borrowed','repayment','settle','settled','lent','borrowed','received','paid'],files:['file','files','pdf','photo','image','document','bill','receipt'],scan:['scan','scanner']}
  };
  const norm=s=>String(s||'').toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}\s₹./-]/gu,' ').replace(/\s+/g,' ').trim();
  const lev=(a,b)=>{if(Math.abs(a.length-b.length)>1)return 2;let r=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let n=[i];for(let j=1;j<=b.length;j++)n[j]=Math.min(n[j-1]+1,r[j]+1,r[j-1]+(a[i-1]===b[j-1]?0:1));if(Math.min(...n)>1)return 2;r=n;}return r[b.length]};
@@ -32,7 +32,7 @@
  function parseCommand(query){
   const q=norm(query),reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
   const recurrence=parseRecurrence(q);
-  const det=reminderCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const workTaskAdd=/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q)&&/\b(?:add|create|make|banao|bana|jodo|daalo|dalo|set|likho|save)\b/i.test(q);\n  const det=reminderCue||workTaskAdd?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
