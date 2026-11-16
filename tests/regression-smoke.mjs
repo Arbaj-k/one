@@ -562,7 +562,7 @@ assert.ok(tasksScreen.includes("renderGroup('Completed',done,'completed')"), 'Co
 
 // Ask One briefing commands must be handled locally before AI document retrieval, with working regexes and India-local dates.
 const briefingCode=app.slice(app.indexOf('const briefingIntent='),app.indexOf('const reminderIntent=',app.indexOf('const briefingIntent=')));
-assert.ok(briefingCode.includes('/\\\\b(?:brief me|briefing|roz|daily'), 'Briefing intent must use real word-boundary regexes.');
+assert.ok(briefingCode.includes('/\\b(?:brief me|briefing|roz|daily'), 'Briefing intent must use real word-boundary regexes.');
 assert.ok(!briefingCode.includes('\\\\\\\\b'), 'Briefing regexes must not be double escaped.');
 assert.ok(briefingCode.includes("category:'Briefing'"), 'Briefing commands must create a local briefing task.');
 assert.ok(app.includes("timezone:'Asia/Kolkata'"), 'AI must receive the authoritative India-local date context.');
