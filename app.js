@@ -891,8 +891,8 @@ async function loadOneScript(src){
 }
 async function ensureOneDocumentLibraries(needsPdf,needsOcr){
  const jobs=[];
- if(needsPdf&&!window.pdfjsLib)jobs.push(oneDocumentLibraries.pdf||(oneDocumentLibraries.pdf=loadOneScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js')));
- if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js')));
+ if(needsPdf&&!window.pdfjsLib)jobs.push(oneDocumentLibraries.pdf||(oneDocumentLibraries.pdf=loadOneScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').catch(error=>{oneDocumentLibraries.pdf=null;throw error})));
+ if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js').catch(error=>{oneDocumentLibraries.ocr=null;throw error})));
  await Promise.all(jobs);
  if(needsPdf&&!window.pdfjsLib)throw new Error('PDF reader did not initialize. Retry the upload.');
  if(needsOcr&&!window.Tesseract)throw new Error('OCR engine did not initialize. Retry the upload.');
