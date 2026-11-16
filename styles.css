@@ -1898,7 +1898,7 @@ body.one-auth-required{overflow:hidden!important}
 
 /* Ask One: keep long conversations usable without pushing the composer off-screen. */
 .chat-shell.has-messages{min-height:min(76vh,820px);min-height:min(76dvh,820px)}
-.chat-shell.has-messages .chat-messages{flex:1 1 auto;min-height:180px;max-height:calc(100dvh - 340px);overflow-y:auto;overscroll-behavior:contain;overflow-anchor: none}
+.chat-shell.has-messages .chat-messages{flex:1 1 auto;min-height:180px;max-height:calc(100dvh - 340px);overflow-y:auto;overscroll-behavior:contain;overflow-anchor:auto;scrollbar-gutter:stable}
 .chat-shell.has-messages .chat-form{flex:0 0 auto}
 .chat-shell.has-messages .voice-controls,
 .chat-shell.has-messages .one-command-history,
