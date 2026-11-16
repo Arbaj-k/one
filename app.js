@@ -1,3 +1,47 @@
+/* Defensive DOM sink guard: keep the existing template UI while removing executable markup and unsafe URL schemes. */
+(function installOneDomGuard(){
+ 'use strict';
+ const descriptor=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+ if(!descriptor?.get||!descriptor?.set||Element.prototype.__oneDomGuard)return;
+ const nativeSet=descriptor.set,nativeGet=descriptor.get,nativeInsert=Element.prototype.insertAdjacentHTML;
+ const safeUrl=(value,kind)=>{
+  const raw=String(value||'').trim();
+  if(!raw||/^(?:javascript|vbscript|data):/i.test(raw))return false;
+  try{const url=new URL(raw,location.href);if(!['http:','https:'].includes(url.protocol))return false;
+   if(kind==='form'&&url.origin!==location.origin)return false;
+   return true;
+  }catch(_){return false}
+ };
+ function clean(root){
+  root.querySelectorAll('script,iframe,object,embed,base,meta,link,foreignObject').forEach(node=>node.remove());
+  root.querySelectorAll('*').forEach(node=>{
+   for(const attr of [...node.attributes]){
+    const name=attr.name.toLowerCase(),value=attr.value;
+    if(name.startsWith('on')||name==='srcdoc'||name==='srcset'||name==='xlink:href'){node.removeAttribute(attr.name);continue}
+    if(name==='href'&&!safeUrl(value,'link')){node.removeAttribute(attr.name);continue}
+    if(name==='action'||name==='formaction'){if(!safeUrl(value,'form'))node.removeAttribute(attr.name);continue}
+    if(['src','poster'].includes(name)){
+     if(!safeUrl(value,'resource')&&!/^(?:data:image\/(?:png|jpeg|gif|webp|svg\+xml);|blob:)/i.test(value)){node.removeAttribute(attr.name);continue}
+    }
+    if(name==='style'&&/(?:url\s*\(|expression\s*\(|@import|behavior\s*:|-moz-binding)/i.test(value))node.removeAttribute(attr.name);
+   }
+   if(node.tagName==='A'&&node.target==='_blank'){node.rel='noopener noreferrer'}
+  });
+ }
+ Object.defineProperty(Element.prototype,'innerHTML',{...descriptor,set(value){
+  const template=document.createElement('template');
+  nativeSet.call(template,String(value??''));
+  clean(template.content);
+  this.replaceChildren(template.content.cloneNode(true));
+ }});
+ Element.prototype.insertAdjacentHTML=function(position,value){
+  const template=document.createElement('template');
+  nativeSet.call(template,String(value??''));clean(template.content);
+  return nativeInsert.call(this,position,nativeGet.call(template));
+ };
+ Object.defineProperty(Element.prototype,'__oneDomGuard',{value:true});
+ window.OneSafeUrl=value=>{try{const url=new URL(String(value||''),location.href);return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password?url.href:''}catch(_){return ''}};
+})();
 const KEY='student-brain-data-v1';
 let activeWorkspaceUserId=null;
 let activeWorkspaceKey=KEY+'-guest';
@@ -5,19 +49,17 @@ const LEGACY_OWNER_KEY=KEY+'-legacy-claimed-by';
 function workspaceStorageKey(){return activeWorkspaceKey;}
 function workspaceIndexedDBKey(){return 'workspace:'+activeWorkspaceKey;}
 const DATA_SCHEMA_VERSION=3;
-const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true}});
+const starter=()=>({schemaVersion:DATA_SCHEMA_VERSION,notes:[],tasks:[],projects:[],routines:[],people:[],expenses:[],moneyBudgets:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[],aiPrivacy:{notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false}});
 function migrateData(raw){
  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  const next={...starter(),...source};
  for(const key of ['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications'])if(!Array.isArray(next[key]))next[key]=[];
- next.aiPrivacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,...(source.aiPrivacy&&typeof source.aiPrivacy==='object'?source.aiPrivacy:{})};
+ next.aiPrivacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,people:false,...(source.aiPrivacy&&typeof source.aiPrivacy==='object'?source.aiPrivacy:{})};
  next.schemaVersion=DATA_SCHEMA_VERSION;
  return next;
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
 let data=loadData(),page='overview',chatBusy=false,pendingAction=null;
-window.getOneWorkspaceData=()=>data;
-window.data=data;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
@@ -195,8 +237,7 @@ function stopWorkspaceRealtime(){
  workspaceChannel=null;
 }
 function persist(){
- window.data=data;
- const snapshot=JSON.stringify(data);
+  const snapshot=JSON.stringify(data);
  try{
   localStorage.setItem(workspaceStorageKey(),snapshot);
   localStorage.setItem(workspaceStorageKey()+'-last-good',snapshot);
@@ -323,7 +364,7 @@ function quickCaptureVoice(){
  try{recognition.start()}catch(error){toast('Could not start voice capture');if(button){button.disabled=false;button.textContent='🎙 Voice'}}
 }
 async function handleOneSharedCapture(capture){
- const text=String(capture.text||'').trim(),url=String(capture.url||'').trim(),title=String(capture.title||'').trim(),files=Array.isArray(capture.files)?capture.files:[];
+ const text=String(capture.text||'').slice(0,12000).trim(),url=window.OneSafeUrl?.(capture.url)||'',title=String(capture.title||'').slice(0,300).trim(),files=Array.isArray(capture.files)?capture.files:[];
  if(files.length){
   for(const item of files){
    if(!item?.blob||item.size>12*1024*1024){toast('Shared file is empty or over 12 MB');continue}
@@ -761,7 +802,7 @@ function expenses(){
  return moneyTabs(tab)+titleBlock('EVERYDAY MONEY','Money Spending',tab==='income'?'Track salary, refunds and other money received.':'Track everyday expenses and spending in one place.',btn('+ Add transaction','new-expense',true))+'<div class="grid stats money-summary-grid">'+expenseStat('Spending this month',money(spent),month,'₹','expense')+expenseStat('You are owed',money(lent),'Lent less received repayments','↗','lent')+expenseStat('You owe others',money(borrowed),'Borrowed less repayments','↙','borrowed')+'<div class="card"><span class="stat-label">Income this month</span><div class="stat-number">'+money(income)+'</div><small class="stat-note">Money received this month</small></div></div><div class="toolbar"><input id="expense-month" type="month" class="search" style="max-width:210px" value="'+esc(month)+'">'+btn('Show all','all-expenses')+'</div><div class="card"><div class="list">'+(records.length?records.map(e=>'<div class="list-item"><div class="list-icon">₹</div><div class="list-copy"><b>'+esc(e.description)+'</b><small>'+esc(kind(e)==='income'?'Income received':'Expense')+' · '+esc(e.category||'Other')+' · '+dateFmt(e.date)+'</small></div><b>'+money(e.amount)+'</b><button class="btn small" data-action="edit-expense" data-id="'+e.id+'">Edit</button><button class="btn small danger" data-action="delete-expense" data-id="'+e.id+'">×</button></div>').join(''):empty('No '+(tab==='income'?'income':'spending')+' records for this month. Add your first transaction.','₹'))+'</div></div>';
 }function ask(){const hasMessages=data.messages.length>0;return `<section class="chat-shell ${hasMessages?"has-messages":"is-empty"}" aria-label="Ask One chat"><header class="chat-intro"><button type="button" class="chat-back" data-page="overview" aria-label="Back to Today" title="Back to Today">←</button><div class="chat-brand-mark" aria-hidden="true">✦</div><div class="chat-intro-copy"><div class="eyebrow">YOUR PERSONAL ASSISTANT</div><h2>Ask One</h2><p>Ask about your saved notes, files, tasks, projects and money.</p></div><span class="chat-context-pill"><span aria-hidden="true">●</span> Saved context</span></header>${!hasMessages?`<div class="chat-welcome"><p>What would you like to know?</p><div class="suggestions"><button class="suggestion" data-question="Summarize my notes">Summarize my notes</button><button class="suggestion" data-question="What subjects have I saved?">My saved subjects</button><button class="suggestion" data-question="What should I work on next?">What should I work on next?</button><button class="suggestion" data-question="Who owes me money?">Who owes me money?</button><button class="suggestion" data-question="How much do I owe others?">How much do I owe others?</button></div></div>`:``}<div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions text">${data.messages.map((m,i)=>`<article class="chat-message-row ${m.role==='user'?'from-user':'from-one'}"><div class="bubble ${m.role==='user'?'user':'assistant'}"><div class="bubble-content">${formatChatText(m.content)}</div>${m.fileResults?.length?`<div class="chat-file-results">${m.fileResults.map(file=>`<button class="vault-search-result" type="button" data-action="open-uploaded-file" data-id="${esc(file.id)}"><span><b>${esc(file.name)}</b><small>${esc(file.type.toUpperCase())} · ${esc(file.tags.join(', '))}</small></span><span>Open ↗</span></button>`).join('')}</div>`:''}${m.pendingAction?'<div class="chat-confirm-actions">'+(m.pendingDraft?'':'<button type="button" class="btn primary small" data-action="confirm-pending-action">Confirm</button>')+'<button type="button" class="btn small" data-action="cancel-pending-action">Cancel</button></div>':''}${m.sources?.length?`<span class="source">Sources: ${m.sources.map(esc).join(', ')}</span>`:``}</div></article>`).join('')}</div>${chatBusy?'<div class="bubble assistant typing-indicator" role="status" aria-live="polite"><span>One is thinking</span><span class="typing-dots" aria-hidden="true"> ···</span></div>':''}<form class="chat-form" id="chat-form"><input id="chat-input" aria-label="Message One" placeholder="Message One…" autocomplete="off"><button class="btn primary chat-send" type="submit" ${chatBusy?'disabled':''}><span>${chatBusy?'Thinking…':'Send'}</span><span aria-hidden="true">↗</span></button></form>${window.OneCommands?.history().length?`<div class="one-command-history" aria-label="Recent Ask One commands"><small>Recent</small>${window.OneCommands.history().map(q=>`<button type="button" data-one-command-replay="${esc(q)}" title="Run again">${esc(q)}</button>`).join('')}</div>`:''}<div class="chat-note">Your message and relevant saved passages may be sent to Google Gemini to generate a reply. Google free-tier content may be used to improve Google products. Avoid sharing sensitive information and verify important answers with original sources.</div></section>`}
 function personalMemory(){const memories=data.memories||[];return `${titleBlock('PERSONAL MEMORY','Personal memory','Save preferences and useful facts. Ask One can use them alongside your notes and saved documents.',btn('+ Add memory','new-memory',true))}<div class="card memory-explainer"><h2>Your personal memory, under your control</h2><p class="muted">Examples: preferred language, learning style, course goals, formatting preferences, or recurring context. Only add details you want saved in this browser.</p></div><div class="grid item-grid">${memories.length?memories.map(m=>`<article class="card memory-card"><div class="row"><span class="tag blue">${esc(m.category||'Preference')}</span><button class="btn small" data-action="edit-memory" data-id="${m.id}">Edit</button></div><h3>${esc(m.title)}</h3><p>${esc(m.content)}</p><div class="row"><small class="muted">Saved ${dateFmt(m.date||today())}</small><button class="btn small danger" data-action="delete-memory" data-id="${m.id}">Delete</button></div></article>`).join(''):`<div class="card" style="grid-column:1/-1">${empty('No personal memories yet. Add a preference or useful fact to help One tailor its answers.','✧')}</div>`}</div><p class="muted" style="font-size:11px;margin-top:15px">Memory is stored locally on this device and included in your workspace backup.</p>`}
-function aiPrivacyControls(){const labels={notes:'Saved notes',tasks:'Tasks and reminders',projects:'Projects',documents:'Uploaded documents and OCR text',money:'Money and Udhaar records',memories:'Personal memories'};return '<section class="card"><h2>AI data sharing</h2><p class="muted" style="font-size:12px;line-height:1.6">Choose which workspace data One may include when sending a question to AI. Changes apply to future AI requests. Money sharing is off by default.</p>'+Object.entries(labels).map(([key,label])=>'<label class="list-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span>'+label+'</span><input type="checkbox" data-ai-share="'+key+'" '+((data.aiPrivacy||{})[key]!==false?'checked':'')+'></label>').join('')+'</section>'}
+function aiPrivacyControls(){const labels={notes:'Saved notes',tasks:'Tasks and reminders',projects:'Projects',documents:'Uploaded documents and OCR text',money:'Money and Udhaar records',memories:'Personal memories',people:'People & follow-ups'};return '<section class="card"><h2>AI data sharing</h2><p class="muted" style="font-size:12px;line-height:1.6">Choose which workspace data One may include when sending a question to AI. Changes apply to future AI requests. Money sharing is off by default.</p>'+Object.entries(labels).map(([key,label])=>'<label class="list-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span>'+label+'</span><input type="checkbox" data-ai-share="'+key+'" '+((data.aiPrivacy||{})[key]!==false?'checked':'')+'></label>').join('')+'</section>'}
 function settings(){return `<section class="card"><h2>Ask One voice preferences</h2><label class="list-item"><span>Voice language</span><select id="one-voice-language"><option value="hi-IN">Hindi / Hinglish</option><option value="en-IN">English (India)</option></select></label><label class="list-item"><span>Jawab bolkar sunao</span><input id="one-voice-speak" type="checkbox"></label></section>`+`${titleBlock('PROFILE & PREFERENCES','Settings','Manage your One account, companion app and data safety.')}<div class="card android-companion-card"><div class="row"><div class="list-icon">📱</div><div class="list-copy"><b>One SMS Sync for Android</b><small>Floating One bubble · Quick Notes · UPI SMS capture</small></div><span class="tag green">Available</span></div><p class="muted" style="font-size:12px;line-height:1.7;margin:12px 0">Install the companion app on your Android phone and sign in using the same One account. Enable the floating bubble or optional UPI SMS access from inside the app.</p><div class="actions"><a class="btn primary" href="https://github.com/Arbaj-k/one/releases/download/one-sms-sync-v0.1.0/app-debug.apk" target="_blank" rel="noopener">Download Android APK ↓</a><a class="btn" href="https://github.com/Arbaj-k/one/releases/tag/one-sms-sync-v0.1.0" target="_blank" rel="noopener">Release notes</a></div><small class="muted">Initial debug-signed release. Android may ask you to confirm installation from this source.</small></div><section class="card reminder-connections-card"><div class="row"><div class="list-copy"><h2>One notifications</h2><small>Task reminders in One and Android notification shade, including when One is in the background.</small></div><span class="tag blue">In-app + Android push</span></div><div class="notification-settings-preview"><span>♧</span><div><b>One notification centre</b><small>Unread count, reminder history and quick access to tasks</small></div></div><div class="actions"><button class="btn primary" type="button" data-action="enable-reminders">Enable Android notifications</button><button class="btn" type="button" data-action="open-notifications">View notifications</button></div><p class="muted" style="font-size:11px;line-height:1.6;margin:12px 0 0">Allow notifications when Android asks. Background push also requires the One push service to be configured on the server.</p></section><div class="grid two-col"><div class="card"><h2>Workspace</h2><div class="list-item"><div class="list-icon">✦</div><div class="list-copy"><b>Student Brain</b><small>Personal workspace</small></div><span class="tag green">Ready</span></div><p class="muted" style="font-size:12px;line-height:1.7;margin-top:15px">Your data is stored in this browser. Export regular backups to keep a copy.</p></div><div class="card"><h2>Data controls</h2><p class="muted" style="font-size:12px;line-height:1.7">Download a backup before clearing local data.</p><div class="actions">${btn('Export my data ↓','export-data',true)}${btn('Clear all data','clear-data')}</div></div></div><section class="card privacy-data-map"><h2>Privacy & personal data</h2><p class="muted" style="font-size:12px;line-height:1.65">Your account email and sign-in credentials are managed by Supabase Auth. Your workspace syncs to your private Supabase account. Selected AI context is sent to Google Gemini when you ask One a question.</p><div class="list-item"><div class="list-copy"><b>Stored on this device</b><small>Workspace cache, uploaded-file copies, offline queue and sign-in session.</small></div></div><div class="list-item"><div class="list-copy"><b>Sent to external services</b><small>Supabase for login/sync/files; Gemini for selected AI context; Google for Google sign-in; push providers for reminder delivery.</small></div></div><div class="list-item"><div class="list-copy"><b>Optional Android SMS sync</b><small>When enabled, parsed transaction details (not the full SMS body) are sent to One.</small></div></div><p class="muted" style="font-size:11px;line-height:1.6">Local workspace data is currently cached in browser storage for offline use. Browser storage is accessible to same-origin scripts; protect your device and avoid untrusted extensions.</p><a class="btn" href="docs/privacy-data-flow.md" target="_blank" rel="noopener">Read full data-flow map</a></section>${aiPrivacyControls()}`}function modal(title,body,saveLabel='Save'){const fab=document.querySelector('.floating-create-button');fab?.classList.add('is-hidden');document.querySelector('#modal-root').innerHTML=`<div class="modal-backdrop"><section class="modal create-form-screen" role="dialog" aria-modal="true" aria-labelledby="edit-form-title"><div class="modal-head"><button type="button" class="modal-back-button" data-action="close-modal" aria-label="Back" title="Back"><span aria-hidden="true">${formType==='fileMeta'?'Cancel':'←'}</span></button><h2 id="edit-form-title">${title}</h2></div><form id="edit-form">${body}<div class="modal-actions"><button class="btn primary modal-save-button" type="submit">${saveLabel}</button></div></form></section></div>`}
 function field(label,name,value='',type='text',opts={}){let val=esc(value??''),fieldId='one-field-'+String(name).replace(/[^a-z0-9_-]/gi,'-');const labelHtml='<label for="'+fieldId+'">'+label+'</label>';if(type==='textarea')return '<div class="field '+(opts.full?'full':'')+'">'+labelHtml+'<textarea id="'+fieldId+'" name="'+name+'" '+(opts.required?'required':'')+' placeholder="'+esc(opts.placeholder||'')+'">'+val+'</textarea></div>';if(type==='select')return '<div class="field '+(opts.full?'full':'')+'">'+labelHtml+'<select id="'+fieldId+'" name="'+name+'">'+opts.options.map(o=>{const parts=String(o).split('|'),v=parts.length>1?parts.shift():String(o),text=parts.length?parts.join('|'):String(o);return '<option value="'+esc(v)+'" '+(v===String(value??'')?'selected':'')+'>'+esc(text)+'</option>'}).join('')+'</select></div>';return '<div class="field '+(opts.full?'full':'')+'">'+labelHtml+'<input id="'+fieldId+'" name="'+name+'" type="'+type+'" value="'+val+'" '+(opts.required?'required':'')+' '+(opts.min!==undefined?'min="'+opts.min+'"':'')+' '+(opts.accept?'accept="'+esc(opts.accept)+'"':'')+' placeholder="'+esc(opts.placeholder||'')+'"></div>'}
 function choiceField(label,name,value,options,segmented=false,optional=false){const choices=optional?['',...options]:options;return `<div class="field full choice-field ${segmented?'choice-segmented':''}"><label>${label}</label><input type="hidden" name="${name}" value="${esc(value??'')}"><div class="choice-options" role="group" aria-label="${label}">${choices.map(option=>{const v=String(option),caption=optional&&v===''?'None':v;return `<button type="button" class="choice-option ${String(value??'')===v?'is-selected':''}" data-choice-name="${name}" data-choice-value="${esc(v)}" aria-pressed="${String(value??'')===v?'true':'false'}">${esc(caption)}</button>`}).join('')}</div></div>`}
@@ -838,7 +879,7 @@ async function loadOneScript(src){
  return new Promise((resolve,reject)=>{
   const existing=[...document.scripts].find(script=>script.src===src);
   if(existing){if(existing.dataset.loaded==='true'){resolve();return}existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('Could not load document processing library.')),{once:true});return}
-  const script=document.createElement('script');script.src=src;script.async=true;
+  const script=document.createElement('script');script.src=src;script.async=true;script.crossOrigin='anonymous';
   script.onload=()=>{script.dataset.loaded='true';resolve()};
   script.onerror=()=>{script.remove();reject(new Error('Could not load document processing library. Check your connection and retry.'))};
   document.head.appendChild(script);
@@ -847,7 +888,7 @@ async function loadOneScript(src){
 async function ensureOneDocumentLibraries(needsPdf,needsOcr){
  const jobs=[];
  if(needsPdf&&!window.pdfjsLib)jobs.push(oneDocumentLibraries.pdf||(oneDocumentLibraries.pdf=loadOneScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js')));
- if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')));
+ if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js')));
  await Promise.all(jobs);
  if(needsPdf&&!window.pdfjsLib)throw new Error('PDF reader did not initialize. Retry the upload.');
  if(needsOcr&&!window.Tesseract)throw new Error('OCR engine did not initialize. Retry the upload.');
@@ -1269,7 +1310,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    }catch(fileError){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
- const rankedNotes=(data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
+ const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
  // Avoid flooding general questions with unrelated personal notes.
  const notes=rankedNotes
   .filter(item=>terms.length>0&&item.score>0)
@@ -1323,18 +1364,19 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
 }
 async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
- const privacy={notes:true,tasks:true,projects:true,documents:true,money:false,memories:true,...(data.aiPrivacy||{})};
+ const privacy={notes:data.aiPrivacy?.notes===true,tasks:data.aiPrivacy?.tasks===true,projects:data.aiPrivacy?.projects===true,documents:data.aiPrivacy?.documents===true,money:data.aiPrivacy?.money===true,memories:data.aiPrivacy?.memories===true,people:data.aiPrivacy?.people===true};
  const selectedWorkspace={...context.workspace};
  if(!privacy.notes)selectedWorkspace.notes=[];
  if(!privacy.tasks)selectedWorkspace.tasks=[];
  if(!privacy.projects)selectedWorkspace.projects=[];
- if(!privacy.documents){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[]}
+ if(!privacy.documents){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[];selectedWorkspace.structuredDocuments=[]}
  if(!privacy.money)selectedWorkspace.expenses=[];
  if(!privacy.memories)selectedWorkspace.memories=[];
+ if(!privacy.people)selectedWorkspace.followUps=[];
  if(!privacy.tasks)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,dailyPlan:undefined};
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
- const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.money||!['Money & Udhaar','Study sessions'].includes(source))&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
+ const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.people||source!=='People & Follow-ups')&&(privacy.money||source!=='Money & Udhaar')&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
  const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
@@ -1748,7 +1790,7 @@ async function openUploadedFile(id,download=false){
 }
 function openFileMetadataDialog(file){
  if(!file)return;
- if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}
+ if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}if(!(['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||/\.(?:pdf|jpe?g|png|webp)$/i.test(file.name))){toast('Only PDF, JPG, PNG and WEBP files are supported.');return}
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const preview=isPdf?'<div class="file-upload-preview"><span style="font-size:30px">📄</span><span>'+esc(file.name)+'</span></div>':'<div class="file-upload-preview"><img alt="Selected file preview" src="'+URL.createObjectURL(file)+'" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:10px"><span>'+esc(file.name)+'</span></div>';
  window.pendingOneFile=file;formType='fileMeta';editing=null;
@@ -2305,23 +2347,41 @@ function action(name,id,extra){if(name!=='open-quick-add'&&name!=='quick-add-upl
 function confirmDelete(key,id){const item=data[key].find(x=>x.id===id);if(!item)return;if(confirm(`Delete "${item.title||item.name||item.description}"? This cannot be undone.`)){data[key]=data[key].filter(x=>x.id!==id);persist();render();toast('Deleted')}}
 function restoreData(){const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed||!Array.isArray(parsed.notes)||!Array.isArray(parsed.tasks))throw Error('Invalid backup');if(!confirm('Restore this backup and replace current workspace data?'))return;data={...starter(),...parsed};persist();page='overview';render();toast('Backup restored')}catch(e){toast('Invalid Student Brain backup file')}};reader.readAsText(f)}
 function exportData(){try{const payload={app:'Student Brain',backupVersion:1,exportedAt:new Date().toISOString(),data:migrateData(data)},blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='student-brain-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup downloaded')}catch(err){console.warn("Operation failed; diagnostic details redacted.");toast('Could not create backup. Check browser storage and try again.')}}
+function sanitizeBackupValue(value,depth=0){
+ if(depth>24)throw Error('Backup nesting is too deep.');
+ if(value===null||typeof value==='boolean'||typeof value==='number')return value;
+ if(typeof value==='string'){if(value.length>2*1024*1024)throw Error('A backup field is too large.');return value}
+ if(Array.isArray(value)){if(value.length>50000)throw Error('Backup contains too many records.');return value.map(item=>sanitizeBackupValue(item,depth+1))}
+ if(typeof value==='object'){
+  const out=Object.create(null);
+  for(const [key,item] of Object.entries(value)){if(['__proto__','prototype','constructor'].includes(key))continue;if(key.length>160)continue;out[key]=sanitizeBackupValue(item,depth+1)}
+  return out;
+ }
+ throw Error('Backup contains an unsupported data type.');
+}
 function parseBackupPayload(parsed){
- const payload=parsed?.app==='Student Brain'&&parsed?.data?parsed.data:parsed;
- if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.notes)||!Array.isArray(payload.tasks))throw Error('This file is not a valid Student Brain backup.');
- for(const key of ['projects','expenses','messages','studySessions','documents','memories'])if(payload[key]!==undefined&&!Array.isArray(payload[key]))throw Error('Backup data looks damaged ('+key+'). No data was changed.');
+ const clean=sanitizeBackupValue(parsed);
+ const payload=clean?.app==='Student Brain'&&clean?.data?clean.data:clean;
+ if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.notes)||!Array.isArray(payload.tasks))throw Error('This file is not a valid One backup.');
+ const collections=['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','followUps'];
+ for(const key of collections){
+  if(payload[key]!==undefined&&!Array.isArray(payload[key]))throw Error('Backup data looks damaged ('+key+'). No data was changed.');
+  if(Array.isArray(payload[key])&&payload[key].some(record=>!record||typeof record!=='object'||Array.isArray(record)))throw Error('Backup contains an invalid '+key+' record.');
+ }
+ if(payload.aiPrivacy!==undefined&&(!payload.aiPrivacy||typeof payload.aiPrivacy!=='object'||Array.isArray(payload.aiPrivacy)||Object.values(payload.aiPrivacy).some(value=>typeof value!=='boolean')))throw Error('Backup AI privacy settings are invalid.');
  return migrateData(payload);
 }
 function updateRestorePreview(){
  const file=document.querySelector('#restore-file')?.files?.[0],preview=document.querySelector('#restore-preview');if(!preview)return;
  if(!file){preview.textContent='No backup selected. Current workspace data will remain unchanged until you confirm.';return}
- if(file.size>20*1024*1024){preview.textContent='File exceeds the 20 MB restore limit. No data has changed.';return}
+ if(file.size>20*1024*1024){preview.textContent='File exceeds the 20 MB restore limit. No data has changed.';return}if(file.type&&file.type!=='application/json'&&!/\.json$/i.test(file.name)){preview.textContent='Choose a JSON backup file. No data has changed.';return}
  const reader=new FileReader();
  reader.onload=()=>{try{const parsed=JSON.parse(reader.result),payload=parseBackupPayload(parsed);preview.textContent='Valid backup · '+(parsed?.exportedAt?'Created '+new Date(parsed.exportedAt).toLocaleString():'No export date')+' · '+payload.notes.length+' notes · '+payload.tasks.length+' tasks · '+payload.expenses.length+' money records. Restore replaces current data after confirmation.'}catch(err){preview.textContent=(err.message||'Invalid backup')+' No data has changed.'}};
  reader.onerror=()=>{preview.textContent='Could not read this file. Select it again.'};reader.readAsText(file);
 }
 function restoreData(){
  const f=document.querySelector('#restore-file')?.files?.[0];if(!f){toast('Choose a JSON backup first');return}
- if(f.size>20*1024*1024){toast('Backup too large (20 MB maximum)');return}
+ if(f.size>20*1024*1024){toast('Backup too large (20 MB maximum)');return}if(f.type&&f.type!=='application/json'&&!/\.json$/i.test(f.name)){toast('Choose a JSON backup file');return}
  const reader=new FileReader();
  reader.onload=()=>{try{
   const parsed=JSON.parse(reader.result),next=parseBackupPayload(parsed);
@@ -2671,12 +2731,23 @@ function switchAccountWorkspace(user){
    try{await activateCloudWorkspace(nextUserId)}
    catch(error){console.warn("Operation failed; diagnostic details redacted.");cloudReady=false;cloudUser=null;setCloudMode('error','Saved locally. Cloud sync could not start: '+(error.message||'Unknown error'))}
   }else setCloudMode('offline','Guest data is saved only on this device. Sign in to sync across devices.');
-  window.data=data;
-  render();
+    render();
  });
  return workspaceSwitchQueue;
 }
-window.OneWorkspace={purgeUserLocalData};
+window.OneWorkspace={
+ purgeUserLocalData,
+ async flushCloudSync(){
+  if(!cloudReady||!cloudUser||!cloudClient||!navigator.onLine)return false;
+  await queueCloudSave();await syncQueue;
+  return cloudMode==='synced';
+ }
+};
+window.OneWorkspaceMetrics=()=>{
+ const tasks=Array.isArray(data.tasks)?data.tasks:[],notes=Array.isArray(data.notes)?data.notes:[],docs=Array.isArray(data.documents)?data.documents:[],expenses=Array.isArray(data.expenses)?data.expenses:[];
+ const todayKey=today();
+ return {completed:tasks.filter(t=>t.done||t.completedAt).length,overdue:tasks.filter(t=>!t.done&&t.due&&t.due<todayKey).length,notes:notes.length,documents:docs.length,spending:expenses.filter(e=>(e.kind||'expense')==='expense').reduce((sum,e)=>sum+Math.max(0,Number(e.amount)||0),0)};
+};
 window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())});
 initCloud();
 requestWorkspaceStoragePersistence();

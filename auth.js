@@ -104,7 +104,21 @@
     if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;close();const s=$('#cloud-status');if(s)s.textContent='Saved on this device';}catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out. Please try again.',true)}}
+  async function logout(){
+    try{
+      const user=session?.user;
+      const clearLocal=!!user&&confirm('Clear this account’s local One data from this device after confirming cloud sync? Choose Cancel to keep the local copy.');
+      if(clearLocal){
+        const synced=await window.OneWorkspace?.flushCloudSync?.();
+        if(!synced){status('Cloud sync is not confirmed. Local data was kept; connect to the internet and sync before clearing it.',true)}
+        else{await window.OneWorkspace?.purgeUserLocalData?.(user.id);status('This account’s local workspace cache was cleared.')}
+      }
+      const {error}=await getClient().auth.signOut();if(error)throw error;
+      session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
+      $('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;close();
+      const s=$('#cloud-status');if(s)s.textContent=clearLocal?'Local data cleared':'Saved on this device';
+    }catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out safely. Please try again.',true)}
+  }
   async function deleteAccount(){
     const user=session?.user;if(!user)return;
     if(!confirm('Permanently delete your One account and all cloud data, uploaded files, notes, tasks, messages and linked records? This cannot be undone.'))return;
