@@ -402,14 +402,14 @@ function nextReminderDate(task,fromDate=task?.due||today()){
  const x=new Date(Date.UTC(y,m-1,d));
  if(rule==='daily')x.setUTCDate(x.getUTCDate()+1);
  else if(rule==='weekly')x.setUTCDate(x.getUTCDate()+7);
- else if(rule==='monthly'){const targetMonth=x.getUTCMonth()+1,year=x.getUTCFullYear()+Math.floor(targetMonth/12),month=targetMonth%12,last=new Date(Date.UTC(year,month+1,0)).getUTCDate();x.setUTCFullYear(year,month,Math.min(d,last))}
+ else if(rule==='monthly'){const anchor=String(task?.repeatAnchorDate||task?.due||fromDate).split('-').map(Number),targetMonth=x.getUTCMonth()+1,year=x.getUTCFullYear()+Math.floor(targetMonth/12),month=targetMonth%12,last=new Date(Date.UTC(year,month+1,0)).getUTCDate();x.setUTCFullYear(year,month,Math.min(anchor[2]||d,last))}
  return x.toISOString().slice(0,10);
 }
 function completeTaskRecord(task){
  if(!task)return false;
  const now=Date.now(),rule=task.repeatRule||'none';
  if(rule!=='none'&&task.due){
-  task.lastCompletedAt=now;task.lastCompletedOccurrence=task.due;task.completionCount=(Number(task.completionCount)||0)+1;
+  task.repeatAnchorDate=task.repeatAnchorDate||task.due;task.lastCompletedAt=now;task.lastCompletedOccurrence=task.due;task.completionCount=(Number(task.completionCount)||0)+1;
   let next=nextReminderDate(task,task.due),guard=0;
   while(next<=today()&&guard++<500)next=nextReminderDate(task,next);
   task.due=next;task.done=false;delete task.completedAt;delete task.snoozedUntil;
