@@ -939,8 +939,8 @@ async function runImageOCR(file){
 async function processUploadedDocuments(files,sourceNoteId=null){
  const list=Array.from(files||[]);if(!list.length)return;
  const valid=list.filter(file=>file&&file.size>0&&file.size<=12*1024*1024);
- const needsPdf=valid.some(file=>file.type==='application/pdf'||/\\.pdf$/i.test(file.name));
- const needsOcr=valid.some(file=>file.type.startsWith('image/')||file.type==='application/pdf'||/\\.pdf$/i.test(file.name));
+ const needsPdf=valid.some(file=>file.type==='application/pdf'||/\.pdf$/i.test(file.name));
+ const needsOcr=valid.some(file=>file.type.startsWith('image/')||file.type==='application/pdf'||/\.pdf$/i.test(file.name));
  const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');
  try{if(status)status.textContent='Loading document tools…';await ensureOneDocumentLibraries(needsPdf,needsOcr)}
  catch(error){toast(error.message||'Document tools could not load');if(status)status.textContent=error.message||'Document tools could not load';return}
@@ -1015,7 +1015,7 @@ async function convertDocumentToJSON(id){
     originalFile={name:doc.name,mimeType,dataBase64:await fileToBase64(blob)};
    }
   }catch(fileError){console.warn("Original-file visual analysis unavailable; OCR text will be used.");}
-  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText,originalFile})});
+  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText,originalFile})});
   let payload={};try{payload=await response.json()}catch{}
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
@@ -1025,7 +1025,7 @@ async function convertDocumentToJSON(id){
 function downloadDocumentJSON(id){
  const doc=(data.documents||[]).find(item=>item.id===id);if(!doc?.extractedJson){toast('Convert to JSON first');return}
  const blob=new Blob([JSON.stringify(doc.extractedJson,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
- a.href=url;a.download=(doc.name||'document').replace(/\\.[^.]+$/,'')+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ a.href=url;a.download=(doc.name||'document').replace(/\.[^.]+$/,'')+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 async function copyDocumentJSON(id){
  const doc=(data.documents||[]).find(item=>item.id===id);if(!doc?.extractedJson){toast('Convert to JSON first');return}
@@ -1238,9 +1238,9 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
 async function buildStudentBrainAIRequest(question,targetDocId=null){
  const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
 const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(!targetDocId||doc.id===targetDocId));
- const normalizedQuery=String(question||'').toLowerCase().replace(/[^a-z0-9\\u0900-\\u097f]+/g,' ').trim();
+ const normalizedQuery=String(question||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097f]+/g,' ').trim();
  const stopWords=new Set(['the','and','for','from','with','what','when','where','which','who','how','does','did','are','was','were','this','that','these','those','tell','show','give','please','about','document','file','hai','kya','ka','ki','ke','ko','me','mai','mein','par','se','kaun','kab','kahan','batao','bata','mujhe','mera','meri','mere']);
- const qTokens=normalizedQuery.split(/\\s+/).filter(token=>token.length>2&&!stopWords.has(token));
+ const qTokens=normalizedQuery.split(/\s+/).filter(token=>token.length>2&&!stopWords.has(token));
  const rankedJson=docList.map(doc=>{
   const searchable=JSON.stringify(doc.extractedJson).toLowerCase();
   const tokenHits=qTokens.reduce((sum,token)=>sum+(searchable.includes(token)?1:0),0);
@@ -1432,8 +1432,8 @@ function isAskOneReadOnlyQuestion(question){
 }
 async function requestAskOneActionPlan(question){
  const q=String(question||'').trim();
- const explicitMutationAtStart=/^\\s*(?:(?:please|kindly)\\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark|remember|remind me|set (?:a )?reminder|yaad dila(?:na| do)?|yaad rakhna)\\b|^\\s*(?:task|todo|note|project|routine|expense|income)\\s+(?:add|bana|create|save|delete|remove|update|edit)\\b|^\\s*(?:mujhe|mere liye)\\s+(?:ek\\s+)?(?:task|todo|note|reminder)\\s+(?:add|bana|create|set)\\b/i.test(q);
- const asksAboutAttachedContent=/\\b(?:this|that|these|those|attached|uploaded|file|pdf|image|document|screenshot|photo|iska|iske|iski|isme|isey|isse|yeh|ye|इसका|इसकी|इसके|इसमें|इसे|यह|ये)\\b/i.test(q);
+ const explicitMutationAtStart=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark|remember|remind me|set (?:a )?reminder|yaad dila(?:na| do)?|yaad rakhna)\b|^\s*(?:task|todo|note|project|routine|expense|income)\s+(?:add|bana|create|save|delete|remove|update|edit)\b|^\s*(?:mujhe|mere liye)\s+(?:ek\s+)?(?:task|todo|note|reminder)\s+(?:add|bana|create|set)\b/i.test(q);
+ const asksAboutAttachedContent=/\b(?:this|that|these|those|attached|uploaded|file|pdf|image|document|screenshot|photo|iska|iske|iski|isme|isey|isse|yeh|ye|इसका|इसकी|इसके|इसमें|इसे|यह|ये)\b/i.test(q);
  if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent))return {kind:'none',sources:[]};
  const result=await requestStudentBrainAI(question,null,'action_plan');
  let plan;
@@ -1459,7 +1459,7 @@ async function requestAskOneActionPlan(question){
    const type=clean(item?.action,40);
    if(type==='create_reminder'){
     const title=clean(item.title,180),due=validDate(item.due_date)?item.due_date:'',clock=clean(item.reminder_time,5),repeat=['daily','weekly','monthly','none'].includes(item.repeat_rule)?item.repeat_rule:'none';
-    if(!title||!due||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(clock))return {answer:'Reminder ke liye title, valid date aur time chahiye. Koi change nahi kiya.',sources:[source]};
+    if(!title||!due||!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return {answer:'Reminder ke liye title, valid date aur time chahiye. Koi change nahi kiya.',sources:[source]};
     if((data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'09:00')===clock))return {answer:'Same reminder pehle se saved hai. Koi change nahi kiya.',sources:[source]};
     records.push({collection:'tasks',page:'planner',record:{id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'},success:'Reminder: '+title+' · '+due+' at '+clock});
    }else if(type==='create_project'){
@@ -2049,11 +2049,11 @@ async function chatActionIntent(question){
   pendingAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',moneyTab:'udhaar',expenseMonth:transactionDate.slice(0,7),successMessage:'Money & Udhaar mein saved: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Record verify kar liya hai.',requestedAt:Date.now()};
   return {answer:'Please confirm this money record: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Reply YES to save or NO to cancel. Abhi koi record add nahi hua.',sources:['Money & Udhaar']};
  }
- const noteReminderIntent=/\\b(?:is|iss|us|uss|ye|this|that)\\s+(?:note|notes)\\s+(?:ka|ki|ke)?\\s*(?:reminder|yaad)\\b|\\b(?:is|iss|us|uss|iska|uska|in notes? ka|note ka|note ki)\\s+(?:reminder|yaad|laga do|set karo|set kar do)\\b|\\b(?:remind me|yaad dilana|yaad dila do)\\s+(?:about|for|from)\\s+(?:my\\s+)?notes?\\b/i.test(lower);
+ const noteReminderIntent=/\b(?:is|iss|us|uss|ye|this|that)\s+(?:note|notes)\s+(?:ka|ki|ke)?\s*(?:reminder|yaad)\b|\b(?:is|iss|us|uss|iska|uska|in notes? ka|note ka|note ki)\s+(?:reminder|yaad|laga do|set karo|set kar do)\b|\b(?:remind me|yaad dilana|yaad dila do)\s+(?:about|for|from)\s+(?:my\s+)?notes?\b/i.test(lower);
  if(noteReminderIntent){
   const notes=Array.isArray(data.notes)?data.notes:[];
   if(!notes.length)return {answer:'Notes mein abhi koi saved note nahi mila. Pehle note save karo, phir uska reminder set kar denge.',sources:['Notes & Memory']};
-  const query=lower.replace(/\\b(?:please|remind me|set (?:a )?reminder|reminder|yaad dilana|yaad dila do|is|iss|us|uss|ye|this|that|iska|uska|note|notes|ka|ki|ke|ko|for|about|from|my|kal|tomorrow|today|aaj|next week|agle hafte|shaam|sham|evening|raat|night|subah|morning|at|baje|\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|baje)?)/gi,' ').replace(/\\s+/g,' ').trim();
+  const query=lower.replace(/\b(?:please|remind me|set (?:a )?reminder|reminder|yaad dilana|yaad dila do|is|iss|us|uss|ye|this|that|iska|uska|note|notes|ka|ki|ke|ko|for|about|from|my|kal|tomorrow|today|aaj|next week|agle hafte|shaam|sham|evening|raat|night|subah|morning|at|baje|\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?)/gi,' ').replace(/\s+/g,' ').trim();
   const words=query.split(/[^a-z0-9]+/i).filter(w=>w.length>2);
   const ranked=notes.map(note=>{const hay=[note.title,note.subject,note.tags,note.content].join(' ').toLowerCase();return {note,score:words.reduce((n,w)=>n+(hay.includes(w)?1:0),0)}}).sort((a,b)=>b.score-a.score||Number(b.note.updated||b.note.created||0)-Number(a.note.updated||a.note.created||0));
   let selected=ranked[0];
@@ -2063,11 +2063,11 @@ async function chatActionIntent(question){
   if(!selected)selected=notes.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0))[0];
   const due=parseDate();
   if(!due)return {answer:'Saved note “'+(selected.title||'Untitled note')+'” mil gaya. Kis date ko reminder chahiye? Example: Kal 7 baje.',sources:['Notes & Memory','Planner']};
-  const timeMatch=raw.match(/\\b(?:at\\s+(\\d{1,2})(?::(\\d{2}))?(?:\\s*(am|pm|baje))?|(?:(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)))\\b/i);
-  const clockMatch=raw.match(/\\b(?:at\\s+)?([01]?\\d|2[0-3]):([0-5]\\d)\\b/i);
+  const timeMatch=raw.match(/\b(?:at\s+(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm|baje))?|(?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)))\b/i);
+  const clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
   let reminderTime='';
   if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
-  else if(timeMatch){let hour=Number(timeMatch[1]||timeMatch[4]),minute=Number(timeMatch[2]||timeMatch[5]||0),meridiem=(timeMatch[3]||timeMatch[6]||'').toLowerCase();if(hour>23||hour<1||minute>59||(meridiem&&hour>12))return {answer:'Reminder time valid nahi hai. Example: 7:30 pm ya 19:30.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(!meridiem&&/\\b(?:shaam|sham|evening|raat|night)\\b/i.test(lower)&&hour<12)hour+=12;reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
+  else if(timeMatch){let hour=Number(timeMatch[1]||timeMatch[4]),minute=Number(timeMatch[2]||timeMatch[5]||0),meridiem=(timeMatch[3]||timeMatch[6]||'').toLowerCase();if(hour>23||hour<1||minute>59||(meridiem&&hour>12))return {answer:'Reminder time valid nahi hai. Example: 7:30 pm ya 19:30.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(!meridiem&&/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)&&hour<12)hour+=12;reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
   if(!reminderTime)return {answer:'Saved note “'+(selected.title||'Untitled note')+'” ke liye time bhi batao. Example: Kal shaam 7 baje.',sources:['Notes & Memory','Planner']};
   const title='Review note: '+(selected.title||String(selected.content||'Saved note').slice(0,70));
   const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&t.reminderTime===reminderTime);
@@ -2101,7 +2101,7 @@ async function chatActionIntent(question){
   return {answer:'Confirm '+(repeatRule!=='none'?repeatRule:'one-time')+' briefing: '+title+' · '+(repeatRule!=='none'?'Repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Task briefing','Planner']};
  }
  const explicitTaskAdd=/\b(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+(?:mein|me)\s+(?:add|jod)\s+(?:kar|karo|kar do)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:a\s+)?(?:task|todo)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:task|todo)\s+(?:ki|ka|ke)\b|\b(?:task bana do|task create karo|task add kar do|todo bana do)\b|\b(?:assignment|homework|exam|project)\b.*\b(?:add kar do|bana do|create|add)\b/i.test(lower);
- const naturalReminder=/\b(?:yaad\\s+(?:dila|dilana|dila dena|dila do|dila dijiyega|dilaa dena)|remind\\s+me|reminder\\s+(?:laga|set)|mat\\s+bhoolna|bhoolna\\s+mat|yaad\\s+rakhna|remind\\s+karna)\\b/i.test(lower);
+ const naturalReminder=/\b(?:yaad\s+(?:dila|dilana|dila dena|dila do|dila dijiyega|dilaa dena)|remind\s+me|reminder\s+(?:laga|set)|mat\s+bhoolna|bhoolna\s+mat|yaad\s+rakhna|remind\s+karna)\b/i.test(lower);
  const recurrenceReminder=/\b(?:daily|every day|roz|roj|har roz|har din|weekly|every week|har hafte|monthly|every month|each month|har mahine|mahine me ek baar|mahine mein ek baar)\b/i.test(lower)&&/\b(?:reminder|briefing)\b/i.test(lower);
  const reminderIntent=!explicitTaskAdd&&naturalReminder||recurrenceReminder||/\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do)\b/i.test(lower);
  if(reminderIntent){
@@ -2111,12 +2111,12 @@ async function chatActionIntent(question){
   const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none';
   let due=repeatRule!=='none'?today():parseDate();
   const weekdayMap={sunday:0,ravivar:0,monday:1,somvar:1,tuesday:2,mangalvar:2,wednesday:3,budhvar:3,thursday:4,guruwar:4,friday:5,shukravar:5,saturday:6,shanivar:6};
-  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\\\\b'+day+'\\\\b','i').test(lower));
+  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\\b'+day+'\\b','i').test(lower));
   if(weekly&&requestedWeekday){const base=new Date(due+'T12:00:00Z');const offset=(weekdayMap[requestedWeekday]-base.getUTCDay()+7)%7;base.setUTCDate(base.getUTCDate()+offset);due=base.toISOString().slice(0,10);}
   if(!due)return {answer:'Reminder ki date batao. Example: Remind me to pay electricity bill tomorrow at 7 pm, ya daily/weekly/monthly at 9 am.',sources:['Planner']};
   const timeMatch=raw.match(/\b(?:at\s+(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm|baje))?|(?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)))\b/i);
   const clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
-  let reminderTime=/\b(?:shaam|sham|evening|raat|night)\\b/i.test(lower)?'19:00':'09:00';
+  let reminderTime=/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)?'19:00':'09:00';
   if(clockMatch){reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2]}
   else if(timeMatch){let hour=Number(timeMatch[1]||timeMatch[4]),minute=Number(timeMatch[2]||timeMatch[5]||0),meridiem=(timeMatch[3]||timeMatch[6]||'').toLowerCase();if(hour>23||hour<1||minute>59||(meridiem&&hour>12))return {answer:'Reminder time valid nahi hai. Example: 7:30 pm ya 19:30.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(!meridiem&&/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)&&hour<12)hour+=12;reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
   const title=raw.replace(/^\s*(?:please\s+)?(?:remind me(?: to| about)?|set (?:a )?reminder(?: for)?|reminder (?:for|laga do|set karo|set kar do)|yaad dilana|yaad dila dena|yaad dila do|mujhe yaad(?:\s+dilana|\s+dila dena|\s+dila do))\s*/i,'').replace(/\b(?:today|tomorrow|kal|aaj|next day|next week|agle hafte|in\s+\d+\s+days?|after\s+\d+\s+days?|\d+\s+din\s+(?:baad|mein)|daily|every day|roz|roj|har roz|har din|weekly|every week|har hafte|monthly|every month|each month|har mahine|mahine me ek baar|mahine mein ek baar|monday|tuesday|wednesday|thursday|friday|saturday|sunday|somvar|mangalvar|budhvar|guruwar|shukravar|shanivar|ravivar|shaam|sham|evening|raat|night|subah|morning)\b/ig,'').replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g,'').replace(/\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/ig,'').replace(/\b(?:at\s+)?(?:[01]?\d|2[0-3])(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,'').replace(/\b(?:remind me|set a reminder|reminder|laga do|set karo|set kar do|yaad dilana|yaad dila dena|yaad dila do|mujhe|please|on|at|by)\b/ig,'').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
@@ -2127,7 +2127,7 @@ async function chatActionIntent(question){
   pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:'Reminder saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Enable notifications in One to receive alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(repeatRule!=='none'?repeatRule+' ':'')+'reminder: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel. It will appear under Task Briefing on Home.',sources:['Task Briefing','Planner']};
  }
- const addTask=explicitTaskAdd&&!naturalReminder||!naturalReminder&&/\\b(?:schedule|bana do|banao|add kar|jod do|likh lo)\\b/i.test(lower)&&/\\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\\b/i.test(lower);
+ const addTask=explicitTaskAdd&&!naturalReminder||!naturalReminder&&/\b(?:schedule|bana do|banao|add kar|jod do|likh lo)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
  if(addTask){
   const noteMatch=raw.match(/\b(?:notes?|details?)\s*[:\-]\s*(.+)$/i),notes=noteMatch?noteMatch[1].trim():'';
   const taskType=/\bassignment\b/i.test(raw)?'Assignment':/\bhomework\b/i.test(raw)?'Homework':/\bexam\b/i.test(raw)?'Exam':/\bproject\b/i.test(raw)?'Project':'';
@@ -2478,7 +2478,7 @@ window.handleStudentBrainVoiceCommand = function(raw) {
   else if(/wapas|return|repay|repaid/i.test(lower)){category='Udhaar returned';kind='repayment'}
   else if(/food|lunch|dinner|breakfast|khana/i.test(lower))category='Food';
   else if(/travel|bus|cab|auto/i.test(lower))category='Travel';
-  const desc=text.replace(/\\b(i\\s+)?(spent|paid|gave|lent|borrowed|returned|repaid|kharch(?:a)?|diya|diye|wapas)\\b/ig,'').replace(/₹|rs\\.?|rupees?|रुपये|रुपए/ig,'').replace(/[0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?/g,'').replace(/\\b(today|aaj|tomorrow|kal)\\b/ig,'').replace(/\\s+/g,' ').replace(/^[\\s,.:;-]+|[\\s,.:;-]+$/g,'').trim()||category;
+  const desc=text.replace(/\b(i\s+)?(spent|paid|gave|lent|borrowed|returned|repaid|kharch(?:a)?|diya|diye|wapas)\b/ig,'').replace(/₹|rs\.?|rupees?|रुपये|रुपए/ig,'').replace(/[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?/g,'').replace(/\b(today|aaj|tomorrow|kal)\b/ig,'').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim()||category;
   const recordDate=due||today(),amountLabel='₹'+amount.toLocaleString('en-IN');
   const moneySummary='Save this money record?\\n\\nType: '+category+' ('+kind+')\\nAmount: '+amountLabel+'\\nFor / person: '+desc+'\\nDate: '+dateFmt(recordDate);
   if(!confirm(moneySummary)){toast('Money record not saved');const voiceStatus=document.querySelector('#voice-status');if(voiceStatus)voiceStatus.textContent='Cancelled. No money record was saved.';speakVoiceConfirmation('Cancelled. No money record was saved.');return true}
@@ -2522,8 +2522,8 @@ window.submitStudentBrainVoiceText = function(raw) {
  if(!phrase)return false;
  try {
   // Money/udhaar commands are handled exclusively by the money-record flow.
-  const hasAmount=/(?:₹|\\brs\\.?\\s*)?\\d+(?:,\\d{3})*(?:\\.\\d+)?(?:\\s*(?:rupees?|rs\\.?|रुपये|रुपए))?/i.test(phrase);
-  const isMoneyCommand=hasAmount&&/rupee|rs\\.?|₹|udhaar|lend|lent|borrow|paid|spent|kharch|diye|diya|wapas|return|expense|lunch|food|रुपये|रुपए/i.test(phrase);
+  const hasAmount=/(?:₹|\brs\.?\s*)?\d+(?:,\d{3})*(?:\.\d+)?(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i.test(phrase);
+  const isMoneyCommand=hasAmount&&/rupee|rs\.?|₹|udhaar|lend|lent|borrow|paid|spent|kharch|diye|diya|wapas|return|expense|lunch|food|रुपये|रुपए/i.test(phrase);
   if(isMoneyCommand&&typeof window.handleStudentBrainVoiceCommand==='function')return window.handleStudentBrainVoiceCommand(phrase);
   // Every other spoken command is saved verbatim as a Knowledge Entry.
   const now=Date.now();
