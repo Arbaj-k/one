@@ -34,15 +34,31 @@
     function canHandle(text) {
       const query = String(text || '').trim();
       if (!query) return false;
-      const explicitTaskCommand = /^\s*(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|(?:^|\s)(?:(?:please|kindly)\s+)?(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar\s+do|karo|do)\b|^\s*(?:task bana do|task add kar do|todo bana do)\b/i.test(query);
-      const questionLike = /[?？]\s*$/.test(query) || /^\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|tell me|explain|describe|help me understand|i want to know|what should i|how do i|how can i|should i|can i|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\b/i.test(query);
-      if (questionLike && !explicitTaskCommand) return false;
-      const parsed = legacy.parseCommand(query);
-      const reminder = /\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(query);
-      const actionCue = Object.values(legacy.KEYWORDS?.action || {}).flat().some(word => query.toLowerCase().includes(word));
-      return !!(reminder || legacy.hasPending?.() || legacy.hasPendingReminder?.() || parsed?.ambiguous || parsed?.section || actionCue);
-    }
 
+      // Continue only an action that the user already explicitly started.
+      // This includes YES/NO replies and the follow-up details for a reminder.
+      if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;
+
+      // Ask One is primarily a Q&A surface. Mentioning a task, assignment,
+      // reminder, or an action verb inside a question must never execute it.
+      const readOnly = /[?？]\s*$|^\s*(?:what|what's|whats|which|who|when|where|why|how|tell me|explain|describe|help me understand|i want to know|i am asking|can you explain|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|batao|samjhao|समझाओ|बताओ|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\b/i.test(query)
+        || /\b(?:how do i|how can i|what does|what is|what are|meaning of|difference between|about|ke baare mein|kaise karte|kaise karu|kyu hota|kya hota)\b/i.test(query);
+      if (readOnly) return false;
+
+      // Only imperative commands at the beginning of the message are allowed
+      // to reach the mutating legacy command engine.
+      const explicitTaskCommand = /^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b
+        |^\s*(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b
+        |^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar\s+do|karo|do)\b
+        |^\s*(?:task bana do|task add kar do|todo bana do|assignment add kar do|homework add kar do)\b
+        |^\s*(?:mujhe|mere liye)\s+(?:ek\s+)?(?:task|todo|assignment)\s+(?:add|bana)\s+(?:kar\s+do|karo|do)\b/i.test(query);
+      const explicitAction = /^\s*(?:(?:please|kindly)\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark|remember)\b/i.test(query)
+        || /^\s*(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark)\b/i.test(query)
+        || /^\s*(?:task|todo|note|project|routine|habit|expense|income)\s+(?:add|bana|create|make|save|delete|remove|update|edit)\b/i.test(query)
+        || /^\s*(?:i\s+)?(?:spent|paid|received|earned|lent|borrowed)\b/i.test(query);
+      const explicitReminder = /^\s*(?:(?:please|kindly)\s+)?(?:remind me|set (?:a )?reminder|yaad dila(?:na| do)?|yaad rakhna|brief me)\b/i.test(query);
+      return explicitTaskCommand || explicitAction || explicitReminder;
+    }
     async function run(input) {
       const text = String(input || '').trim();
       if (!text) return false;
