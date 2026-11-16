@@ -1020,6 +1020,22 @@ function extractTimetableData(text){
  }
  return records;
 }
+
+function isTimetableQuestion(question){
+ return /\b(?:time\s*table|timetable|class\s+(?:time\s*)?table|class\s+schedule|lecture\s+schedule|weekly\s+schedule|periods?|lectures?|class(?:es)?\s+timing|which\s+subject|what\s+subject|my\s+classes|class\s+today|college\s+schedule|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|(?:समय\s*सारणी|टाइम\s*टेबल|कक्षा\s*का?\s*समय|क्लास\s*टाइम|आज\s*की\s*क्लास)/iu.test(String(question||''));
+}
+function savedTimetableJSON(doc){
+ const root=doc?.extractedJson||{},structured=root.structured_data||{};
+ const timetable=structured.timetable??structured.time_table??structured.class_timetable??structured.schedule??null;
+ const tables=Array.isArray(structured.tables)?structured.tables:[];
+ const timetableTables=tables.filter(table=>{
+  const headers=(table?.columns||table?.headers||[]).join(' ').toLowerCase();
+  return /subject|course|class|day|time|period|lecture|room|faculty/.test(headers);
+ });
+ const meaningful=Array.isArray(timetable)?timetable.length>0:!!timetable;
+ if(!meaningful&&!timetableTables.length)return '';
+ return JSON.stringify({document_type:root.document_type||root.documentType||'timetable',timetable,tables:timetableTables,pages:root.source_pages||root.pages||[]});
+}
 const AI_STOP_WORDS=new Set(['what','when','where','which','does','this','that','from','with','tell','show','about','please','the','and','for','are','was','is','in','on','of','your','have','could','should','would','can','find','search','me','my','brain','ask','file','uploaded','document','exam','paper','test','hai','kya','bata','do','or','to','a','an','as','at','by','it','be','summarize','summary','explain','ka','ki','ke','ko','se','mein','mera','meri','mere','btao','batao','dikhao','konsa','kaunsa','kab','kahan','kitna','kitne','hoga','hogi','tha','thi','the','please']);
 const AI_QUERY_SYNONYMS={
  timetable:['schedule','exam','date','time','paper'],
@@ -1146,6 +1162,19 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
  const isProjectLinked=item=>!!contextProject&&(item.projectId===contextProject.id||item.relatedProjectId===contextProject.id||(Array.isArray(item.projectIds)&&item.projectIds.includes(contextProject.id)));
  const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:6,maxChunks:targetDocId?24:24,maxChars:39000});
+ // Structured timetable JSON is authoritative and must reach the model even when
+ // OCR chunks contain no matching words or an older upload has sparse extracted text.
+ if(isTimetableQuestion(question)){
+  const timetableCandidates=(targetDocId?allDocs.filter(doc=>doc.id===targetDocId):allDocs)
+   .map(doc=>({doc,json:savedTimetableJSON(doc),score:(savedTimetableJSON(doc)?100:0)+aiTextScore([doc.name,doc.originalName,doc.tags,doc.note,doc.extractedText].join(' '),terms)}))
+   .filter(item=>item.json).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||0)-Number(a.doc.createdAt||a.doc.created||0));
+  const selected=timetableCandidates.slice(0,targetDocId?1:2);
+  for(const item of selected){
+   if(retrieval.evidence.some(hit=>hit.doc.id===item.doc.id&&/structured timetable/i.test(hit.text)))continue;
+   retrieval.evidence.push({doc:item.doc,label:'Saved structured timetable: '+item.doc.name,text:'Saved structured timetable data (primary source):\\n'+item.json,page:null,score:100});
+   if(!retrieval.documents.includes(item.doc.id))retrieval.documents.push(item.doc.id);
+  }
+ }
  if(!targetDocId&&contextProject){
   const linkedDocs=allDocs.filter(doc=>isProjectLinked(doc)&&!retrieval.evidence.some(hit=>hit.doc.id===doc.id)).slice(0,3);
   for(const doc of linkedDocs){
@@ -1526,7 +1555,7 @@ function resolveAskDocumentId(question,targetDocId){
  const docs=(data.documents||[]).filter(doc=>doc&&doc.id);
  if(!docs.length||!isDocumentContentQuestion(question))return null;
  const raw=String(question||'').toLowerCase();
- const timetableQuestion=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(raw);
+ const timetableQuestion=isTimetableQuestion(question);
  const day=(raw.match(/\b(friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/i)||[])[1]?.toLowerCase()||'';
  const ranked=docs.map(doc=>{
   const name=askOneNormalize([doc.name,doc.originalName,doc.tags||'',doc.note||''].join(' '));
@@ -1540,7 +1569,8 @@ function resolveAskDocumentId(question,targetDocId){
    if(day&&normalizedEvidence.includes(day))score+=12;
    const rows=typeof extractTimetableData==='function'?extractTimetableData(evidence):[];
    score+=Math.min(rows.length,12)*2;
-   if(doc.extractedJson?.structured_data?.timetable)score+=20;
+   if(savedTimetableJSON(doc))score+=40;
+   if(/timetable|time.?table|class.?schedule|lecture.?schedule/i.test([doc.name,doc.originalName,doc.tags,doc.note].join(' ')))score+=16;
   }
   return {doc,score,created:Number(doc.createdAt||doc.created||0)};
  }).sort((a,b)=>b.score-a.score||b.created-a.created);
