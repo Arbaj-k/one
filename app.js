@@ -2009,7 +2009,7 @@ async function chatActionIntent(question){
  }
  // Deterministic command routing: reminder/briefing requests must be handled
  // locally before document Q&A, while explicit "add task" remains a Planner task.
- const explicitTaskAddIntent=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:(?:can|could|would)\s+you\s+)(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar(?:o|na|\s+do)?|do)\b|^\s*(?:task bana do|task create karo|task add kar do|todo bana do)\b|^\s*(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b/i.test(lower);
+ const explicitTaskAddIntent=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:(?:can|could|would)\s+you\s+)(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar(?:o|na|\s+do)?|do)\b|^\s*(?:task bana do|task create karo|task add kar do|todo bana do)\b|^\s*(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b|^\s*(?:add|create|make)\s+(?:kar(?:o|na|\s+do)?|do)\s+(?:a\s+)?(?:task|todo)\s+(?:ki|ka|ke)\s+(?:assignment|homework|exam|project)\b/i.test(lower);
  const reminderCommandIntent=/\b(?:remind\s+me|reminder|yaad\s+(?:dila(?:na|\s+dena|\s+do)?|rakhna)|mat\s+bhoolna|don't\s+let\s+me\s+forget|briefing|brief\s+me|bata\s+dena|batana|yaad\s+karwana)\b/i.test(lower);
  if(!pendingAction&&explicitTaskAddIntent&&!reminderCommandIntent){
   const due=parseDate();
@@ -2017,7 +2017,7 @@ async function chatActionIntent(question){
   let reminderTime=/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)?'19:00':'09:00';
   if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
   else if(timeMatch){let h=Number(timeMatch[1]),m=Number(timeMatch[2]||0),mer=timeMatch[3].toLowerCase();if(h<1||h>12||m>59)return {answer:'Time valid nahi hai. Example: 9 am ya 7:30 pm.',sources:['Planner']};if(mer==='pm'&&h<12)h+=12;if(mer==='am'&&h===12)h=0;reminderTime=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
-  const title=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:add|create|make|new|a|an|task|todo|mein|me|add|kar|karo|karna|do|due|on|by|today|tomorrow|kal|aaj|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  const taskTypeMatch=raw.match(/\b(assignment|homework|exam|project)\b/i);\n  const taskType=taskTypeMatch?taskTypeMatch[1].toLowerCase().replace(/^./,c=>c.toUpperCase()):'';\n  const cleanTitle=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:add|create|make|new|a|an|task|todo|mein|me|add|kar|karo|karna|do|hai|ka|ki|ke|assignment|homework|exam|project|due|on|by|today|tomorrow|kal|aaj|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();\n  const title=[cleanTitle,taskType].filter(Boolean).join(' ');
   if(!title)return {answer:'Task ka naam batao. Example: Add task assignment due tomorrow.',sources:['Planner']};
   const duplicate=(data.tasks||[]).find(x=>!x.done&&String(x.title||'').toLowerCase()===title.toLowerCase()&&String(x.due||'')===(due||''));
   if(duplicate)return {answer:'Ye task pehle se Planner mein hai. Duplicate nahi banaya.',sources:['Planner']};
