@@ -33,7 +33,7 @@ assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routi
 assert.ok(source.includes('function isAskOneReadOnlyQuestion(question)'), 'Ask One must identify read-only questions before action planning');
 assert.ok(source.includes("if(isAskOneReadOnlyQuestion(question)&&plan.kind==='action'"), 'Question-shaped prompts must not be converted into AI write actions');
 assert.ok(source.includes('const explicitTaskAddIntent=/^'), 'Task creation must require an explicit command at the start of the message');
-assert.ok(fs.readFileSync('one-commands.js','utf8').includes('if (questionLike && !explicitTaskCommand) return false;'), 'Question-like messages must bypass local command execution');
+assert.ok(fs.readFileSync('one-commands.js','utf8').includes('if (readOnly) return false;'), 'Read-only questions must bypass local command execution');
 
 
 // Universal retrieval must not fall back to unrelated records when a query has no match.
