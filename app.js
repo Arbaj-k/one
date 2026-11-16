@@ -1301,11 +1301,10 @@ async function requestStudentBrainAI(question,targetDocId=null,mode=null){
 function isAskOneReadOnlyQuestion(question){
  const q=String(question||'').trim();
  if(!q)return false;
- const explicitTaskCommand=/^\\s*(?:please\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|(?:^|\\s)(?:(?:please|kindly)\\s+)?(?:can|could|would)\\s+you\\s+(?:please\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new)\\s+)?(?:task|todo)\\b|\\b(?:task|todo)\\s+(?:add|bana|create|make)\\s+(?:kar\\s+do|karo|do)\\b|\\b(?:task bana do|task add kar do|todo bana do)\\b/i.test(q);
+ const explicitTaskCommand=/^\s*(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|(?:^|\s)(?:(?:please|kindly)\s+)?(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar\s+do|karo|do)\b|^\s*(?:task bana do|task add kar do|todo bana do)\b/i.test(q);
  if(explicitTaskCommand)return false;
- return /[?？]\\s*$/.test(q)||/^\\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|tell me|explain|describe|help me understand|i want to know|what should i|how do i|how can i|should i|can i|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\\b/i.test(q);
+ return /[?？]\s*$/.test(q)||/^\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|tell me|explain|describe|help me understand|i want to know|what should i|how do i|how can i|should i|can i|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\b/i.test(q);
 }
-
 async function requestAskOneActionPlan(question){
  const result=await requestStudentBrainAI(question,null,'action_plan');
  let plan;
