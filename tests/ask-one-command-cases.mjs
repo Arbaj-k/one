@@ -35,7 +35,7 @@ for(const [phrase,expected] of cases){
 }
 const pay=parser.parseCommand('500 rupees chai pe kharcha add karo');
 assert.equal(pay.amount,500);
-assert.ok(!/\/\\b\\d/.test(parserSource),'money regex must use real word-boundary tokens');
+assert.ok(!parserSource.includes('/\\\\b\\\\d'), 'money regex must use real word-boundary tokens');
 const reminder=parser.parseCommand('remind me to Pay 500 to Raj tomorrow at 8pm');
 assert.match(reminder.title,/pay 500 to raj/i,'reminder titles must preserve names, amounts and prepositions');
 const chapter=parser.parseCommand('remind me to Read chapter 4 tomorrow at 8pm');
