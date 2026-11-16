@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>One</title></head><body><script>
+(function(){
+ const path=location.pathname;
+ const base='/one/';
+ const route=path.startsWith(base)?path.slice(base.length):path.replace(/^\\/+/, '');
+ const params=new URLSearchParams(location.search);
+ params.set('route',route.replace(/^\\/+|\\/+$/g,'')||'overview');
+ location.replace(base+'?'+params.toString()+location.hash);
+})();
+</script><p>Opening One…</p></body></html>
