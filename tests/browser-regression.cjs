@@ -38,20 +38,20 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.tasks.some(t=>t.title==='Browser regression task'),'Task UI save must persist to workspace storage.');
 
-  // Exercise real image OCR and PDF text extraction through the upload form.
+  // Exercise the image OCR and PDF text-extraction paths with deterministic browser test adapters.
   await page.locator('button[data-page="vault"]').first().click();
   await page.locator('#document-upload').setInputFiles({name:'browser-ocr.png',mimeType:'image/png',buffer:Buffer.from('fake-png-fixture')});
   const imageForm=page.locator('#edit-form');
   await imageForm.locator('[name="name"]').fill('Browser OCR image');
   await imageForm.locator('.modal-save-button').click();
-  await page.getByText('Browser OCR image',{exact:true}).waitFor({timeout:15000});
+  await page.getByRole('heading',{name:'Browser OCR image',exact:true}).waitFor({timeout:15000});
   let documents=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')).documents);
   assert.ok(documents.some(d=>d.name==='browser-ocr.png'&&d.mimeType==='image/png'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'Image upload must OCR text and save it with the normalized MIME type.');
   await page.locator('#document-upload').setInputFiles({name:'browser-text.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fake fixture')});
   const pdfForm=page.locator('#edit-form');
   await pdfForm.locator('[name="name"]').fill('Browser OCR PDF');
   await pdfForm.locator('.modal-save-button').click();
-  await page.getByText('Browser OCR PDF',{exact:true}).waitFor({timeout:15000});
+  await page.getByRole('heading',{name:'Browser OCR PDF',exact:true}).waitFor({timeout:15000});
   documents=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')).documents);
   assert.ok(documents.some(d=>d.name==='browser-text.pdf'&&d.mimeType==='application/pdf'&&d.extractedText.includes('University library notice')&&d.ocrStatus==='complete'),'PDF upload must extract text and save its MIME type.');
 
