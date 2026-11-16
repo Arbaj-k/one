@@ -52,7 +52,8 @@
         || /^\s*(?:task|todo|note|project|routine|habit|expense|income)\s+(?:add|bana|create|make|save|delete|remove|update|edit)\b/i.test(query)
         || /^\s*(?:i\s+)?(?:spent|paid|received|earned|lent|borrowed)\b/i.test(query);
       const explicitReminder = /^\s*(?:(?:please|kindly)\s+)?(?:remind(?:er)?\b|set (?:a )?reminder\b|yaad dila(?:na| do)?|yaad rakhna|brief me)\b/i.test(query)
-        || /\b(?:set|create|add|schedule)\s+(?:a\s+)?reminder\b/i.test(query);
+        || /\b(?:set|create|add|schedule)\s+(?:a\s+)?reminder\b/i.test(query)
+        || /\breminder\s+(?:set|laga|lagao|kar|karo|karna)\b/i.test(query);
       const taskManagement = /^\s*(?:(?:show|list|display)\s+(?:me\s+)?(?:my\s+)?(?:all\s+)?tasks\b|(?:mere\s+)?tasks?\s+(?:dikhao|batao|list|show)\b|(?:mark|complete|finish|done)\s+(?:the\s+)?(?:task\s+)?(.+?)\s+(?:as\s+)?(?:done|complete|completed)\b|(?:delete|remove|hatao)\s+(?:the\s+)?(?:task|todo)?\s*.+)/i.test(query);
       const implicitTaskIntent = /^(?=.*(?:\b(?:kal|tomorrow|today|aaj|parso|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?|subah|shaam|sham|raat)\b))(?=.*\b(?:jaana hai|jana hai|karna hai|karni hai|karne hain|submit karna|call karna|need to|have to|got to|should|must|remind me to)\b).+/i.test(query)
         || /^\s*(?:i need to|i have to|i should|i must|mujhe .+\b(?:karna|karni|jana|jaana) hai)\b/i.test(query);
@@ -71,7 +72,8 @@
         const taskIntent = /^(?=.*(?:\b(?:kal|tomorrow|today|aaj|parso|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?|subah|shaam|sham|raat)\b))(?=.*\b(?:jaana hai|jana hai|karna hai|karni hai|karne hain|submit karna|call karna|need to|have to|got to|should|must)\b).+/i.test(text)
           || /^\s*(?:i need to|i have to|i should|i must|mujhe .+\b(?:karna|karni|jana|jaana) hai)\b/i.test(text);
         const explicitReminder = /^\s*(?:(?:please|kindly)\s+)?(?:remind(?:er)?\b|set (?:a )?reminder\b|yaad dila(?:na| do)?|yaad rakhna|brief me)\b/i.test(text)
-          || /\b(?:set|create|add|schedule)\s+(?:a\s+)?reminder\b/i.test(text);
+          || /\b(?:set|create|add|schedule)\s+(?:a\s+)?reminder\b/i.test(text)
+          || /\breminder\s+(?:set|laga|lagao|kar|karo|karna)\b/i.test(text);
         const commandText = !explicitReminder && taskIntent && !/^\s*(?:add|create|make)\b/i.test(text)
           ? 'add task ' + text : text;
         let result;
