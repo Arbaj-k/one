@@ -12,6 +12,19 @@ const buildEnd=app.indexOf('async function requestStudentBrainAI(',buildStart);
 const buildSource=app.slice(buildStart,buildEnd);
 assert.ok(buildSource.indexOf('const contextProject=')>=0 && buildSource.indexOf('const contextProject=')<buildSource.indexOf('if(!targetDocId&&contextProject)'), 'Project context must be initialized before linked-document retrieval.');
 assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('const asksProjects=')<buildSource.indexOf('const asksTasks='), 'Project intent must be initialized before task intent reads it.');
+// Mess/hostel meal schedules use a different structured schema from class timetables.
+const scheduleStart=app.indexOf('function savedTimetableJSON(doc,question=');
+const scheduleEnd=app.indexOf('\\nconst AI_STOP_WORDS',scheduleStart);
+assert.ok(scheduleStart>=0&&scheduleEnd>scheduleStart,'Saved schedule selector must be available.');
+const savedScheduleJSON=vm.runInNewContext('(()=>{'+app.slice(scheduleStart,scheduleEnd)+';return savedTimetableJSON})()');
+const messDoc={name:'Hostel Mess Menu.pdf',type:'pdf',extractedJson:{document_type:'hostel_menu',title:'Weekly Mess Menu',structured_data:{days:[{day:'Tuesday',breakfast:['Poha','Tea'],lunch:['Dal','Rice'],dinner:['Roti','Paneer']}],weekly_menu:[{day:'Tuesday',meal:'Lunch',items:['Dal','Rice']}]},source_pages:[1]}};
+const messEvidence=JSON.parse(savedScheduleJSON(messDoc,'Tuesday mess ka time table'));
+assert.equal(messEvidence.document_type,'hostel_menu');
+assert.ok(messEvidence.menu_data.weekly_menu.length===1,'Mess weekly menu data must be passed to Ask One.');
+assert.ok(JSON.stringify(messEvidence).includes('Paneer'),'Meal rows must remain available to the answer model.');
+const classDoc={name:'Class timetable.pdf',extractedJson:{document_type:'timetable',structured_data:{timetable:[{day:'Tuesday',subject:'DBMS',start_time:'09:00'}]}}};
+assert.ok(JSON.parse(savedScheduleJSON(classDoc,'Tuesday class timetable')).timetable.length===1,'Existing class timetable retrieval must remain supported.');
+
 const commandAdapter = readFileSync(new URL('../one-commands.js', import.meta.url), 'utf8');
 assert.ok(commandAdapter.includes('if (readOnly && !localSection') && commandAdapter.includes('return localSection || explicitTaskCommand'), 'Local read/query commands must remain routable even when phrased as questions.');
 assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file questions must be routed to read-only answers.');
