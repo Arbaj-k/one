@@ -134,7 +134,7 @@ assert.ok(app.includes("category:/assignment|homework/i.test(lower)"), 'Explicit
 assert.ok(app.includes('reminder (?:for|laga do|set karo|set kar do)') && app.includes('yaad dila do'), 'Ask One must understand natural Hindi/Hinglish reminder phrases.');
 assert.ok(app.includes('shaam|sham|evening|raat|night'), 'Ask One must interpret evening/night reminder times.');
 assert.ok(app.includes('clockMatch=raw.match'), 'Ask One must accept 24-hour reminder times.');
-assert.ok(app.includes('pendingChatAction={type:\'create-record\',collection:\'tasks\''), 'Chat reminders must use the confirmed, duplicate-safe Planner task save flow.');
+assert.ok(app.includes('pendingAction={type:\'create-record\',collection:\'tasks\''), 'Chat reminders must use the confirmed, duplicate-safe Planner task save flow.');
 assert.ok(!app.includes('GEMINI_API_KEY'), 'Gemini API secret must never be present in browser code.');
 assert.ok(app.includes("const label='File: '+hit.doc.name"), 'Document citation labels should remain in the query-aware evidence builder.');
 assert.ok(app.includes('async function retryDocumentOCR('), 'Uploaded documents must support a retry/re-upload path.');
