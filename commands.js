@@ -35,6 +35,8 @@
   const det=reminderCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
+  const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
+  const udhaarSummary=/\b(who owes me|who do i owe|how much do i owe|mere paise kis ke paas|kis se paise lene|kisko paise dene|udhaar summary)\b/i.test(q);
   if(!det.intent&&recurrence.repeatRule!=='none')det.intent=/\b(routine|habit|walk|exercise|meditation)\b/i.test(q)?'routines':'tasks';
   if(planSummary)det.intent='tasks';
   let action=reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
@@ -47,7 +49,7 @@
   if(action==='complete'&&!det.intent)det.intent='tasks';
   if(action==='delete'&&!det.intent)det.intent='tasks';
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
-  if(planSummary||weeklySpending)action='summary';
+  if(planSummary||weeklySpending||dailySpending||udhaarSummary)action='summary';
   const date=parseDate(query),time=parseTime(query);
   let title=q
    .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|create|likho|save|task|tasks|todo|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|mere liye)\b/gi,' ')
@@ -56,7 +58,7 @@
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
-  const summary=planSummary?'today-plan':weeklySpending?'week-spending':null;
+  const summary=planSummary?'today-plan':weeklySpending?'week-spending':dailySpending?'today-spending':udhaarSummary?'udhaar-summary':null;
   return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,...recurrence};
  }
 
@@ -89,6 +91,24 @@
   if(s==='money'){if(!p.amount)return answer('Amount batao. Example: 500 rupaye chai pe kharcha jodo.');if(p.udhaarType){if(!p.person)return answer('Kis person ke saath udhaar hai? Example: Raj ko 500 udhaar diye.');const r={id:uid(),amount:p.amount,kind:p.udhaarType,person:p.person,description:(p.udhaarType.includes('repayment')?'Udhaar repayment':p.udhaarType==='borrowed'?'Borrowed':'Lent')+' · '+p.person,date:p.date||today(),created:Date.now(),updated:Date.now()};data.expenses.push(r);persist();window.OneCommandsUndo=()=>{data.expenses=data.expenses.filter(x=>x.id!==r.id);persist();render()};window.OneCommandsShowUndo?.();window.moneyTab='udhaar';render();return answer('Udhaar saved: '+money(r.amount)+' · '+r.kind+' · '+r.person,'Money & Udhaar')}const income=/\b(income|salary|aayi|aaya|received|credited)\b/.test(q),r={id:uid(),amount:p.amount,kind:income?'income':'expense',description:(income?'Salary':p.title.replace(/\b\d[\d,]*(?:\.\d+)?\b/g,'').replace(/\b(rupees?|rupaye|rupay|rs|pe|salary|aayi|aaya)\b/gi,'').trim()||'Expense'),category:income?'Salary':autoExpenseCategory(q),tags:income?['income','salary']: [autoExpenseCategory(q).toLowerCase(),...(/chai|tea|coffee/.test(q)?['chai']:[])],date:p.date||today(),created:Date.now(),updated:Date.now()};data.expenses.push(r);persist();window.OneCommandsUndo=()=>{data.expenses=data.expenses.filter(x=>x.id!==r.id);persist();render()};window.OneCommandsShowUndo?.();window.moneyTab=income?'income':'spending';render();return answer((income?'Income':'Expense')+' saved: '+money(r.amount)+' · '+r.description,'Money')}
   if(s==='routines'){data.routines=data.routines||[];if(!p.title)return answer('Routine ka naam batao.');const r={id:uid(),title:p.title,frequency:p.repeatRule==='none'?(/daily|roz|roj/.test(q)?'daily':'weekly'):p.repeatRule,repeatRule:p.repeatRule||'none',repeatDay:p.repeatDay,time:p.time||'',created:Date.now(),updated:Date.now()};data.routines.push(r);persist();window.OneCommandsUndo=()=>{data.routines=data.routines.filter(x=>x.id!==r.id);persist();render()};window.OneCommandsShowUndo?.();render();return answer('Routine added: '+r.title,'Routines')}
   if(s==='projects'){if(!p.title)return answer('Project ya milestone ka naam batao.');let project=data.projects.find(x=>norm(x.name||x.title).includes(norm(p.projectName||p.title).split(' ')[0]));if(project){project.milestones=project.milestones||[];const milestone={id:uid(),title:p.title,done:false,created:Date.now()};project.milestones.push(milestone);persist();window.OneCommandsUndo=()=>{project.milestones=project.milestones.filter(x=>x.id!==milestone.id);persist();render()};window.OneCommandsShowUndo?.();render();return answer('Milestone added to '+(project.name||project.title),'Projects')}const r={id:uid(),name:p.title,description:'',milestones:[],created:Date.now(),updated:Date.now()};data.projects.push(r);persist();window.OneCommandsUndo=()=>{data.projects=data.projects.filter(x=>x.id!==r.id);persist();render()};window.OneCommandsShowUndo?.();render();return answer('Project created: '+r.name,'Projects')}
+ }
+ if(p.action==='summary'&&p.summary==='udhaar-summary'){
+  const lent=new Map(),borrowed=new Map();
+  for(const item of data.expenses||[]){
+   const person=String(item.person||'').trim();if(!person)continue;
+   if(item.kind==='lent')lent.set(person,(lent.get(person)||0)+Number(item.amount||0));
+   if(item.kind==='lent_repayment')lent.set(person,(lent.get(person)||0)-Number(item.amount||0));
+   if(item.kind==='borrowed')borrowed.set(person,(borrowed.get(person)||0)+Number(item.amount||0));
+   if(item.kind==='borrowed_repayment')borrowed.set(person,(borrowed.get(person)||0)-Number(item.amount||0));
+  }
+  const owesMe=[...lent].filter(([,v])=>v>0),iOwe=[...borrowed].filter(([,v])=>v>0);
+  const show=rows=>rows.length?rows.map(([name,value])=>name+' · '+money(value)).join('\n'):'None';
+  return answer('Udhaar summary:\nPeople who owe you:\n'+show(owesMe)+'\n\nPeople you owe:\n'+show(iOwe),'Money & Udhaar');
+ }
+ if(p.action==='summary'&&p.summary==='today-spending'){
+  const date=today(),rows=(data.expenses||[]).filter(x=>(x.date||'')===date&&(x.kind||'expense')==='expense');
+  const total=rows.reduce((n,x)=>n+Number(x.amount||0),0);
+  return answer('Aaj ka kharcha: '+money(total)+(rows.length?'\n'+rows.map(x=>(x.description||'Expense')+' · '+money(x.amount)).join('\n'):'\nAaj koi expense record nahi mila.'),'Money');
  }
  if(p.action==='summary'&&p.summary==='week-spending'){
   const [yy,mm,dd]=today().split('-').map(Number);const end=new Date(Date.UTC(yy,mm-1,dd));const start=new Date(end);start.setUTCDate(start.getUTCDate()-((start.getUTCDay()+6)%7));const from=start.toISOString().slice(0,10),to=today();
