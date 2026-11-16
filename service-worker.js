@@ -1,5 +1,5 @@
 /* One PWA service worker. Bump version on each release. */
-const CACHE_VERSION="one-shell-v20",ASSET_CACHE="one-assets-v20";
+const CACHE_VERSION="one-shell-v21",ASSET_CACHE="one-assets-v20";
 const PRECACHE=["./","./index.html","./404.html","./supabase-client.js","./analytics.js","./workspace-intelligence.js","./styles.css","./app.js","./commands.js","./one-commands.js","./voice.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./icons/student-brain.svg"];
 const OFFLINE_PAGE="./index.html";
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_VERSION).then(c=>c.addAll(PRECACHE))));
