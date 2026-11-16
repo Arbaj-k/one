@@ -29,6 +29,11 @@ const cases=[
  ['edit task gym to evening gym','tasks'],['search notes about exam','notes'],['search notes about homework','notes'],['find notes about assignment','notes'],
  ['what are my project deadlines?','projects'],['routine roz 7am walk','routines']
 ];
+// A weekday in a timetable question is a lookup filter, never a task command.
+for (const phrase of ['Tuesday class timetable','show me Tuesday class time table','What is my Tuesday class schedule?']) {
+ const result=parser.parseCommand(phrase);
+ assert.equal(result.section,null,'weekday timetable question must stay read-only: '+phrase);
+}
 for(const [phrase,expected] of cases){
  const result=parser.parseCommand(phrase);
  assert.equal(typeof result,'object','parser should handle: '+phrase);
@@ -74,6 +79,7 @@ const center=adapterWindow.OneCommands.create({actions:{addTask(){callbacks++;re
 for(const phrase of ['mere tasks batao','who owes me money?','aaj ka kharcha dikhao'])assert.equal(center.canHandle(phrase),true,'local query should route: '+phrase);
 for(const phrase of ['Read this PDF and tell me what it says','Summarize the uploaded image','What is written in this invoice?','Is PDF ko padh ke samjhao'])assert.equal(center.canHandle(phrase),false,'document-content questions must reach OCR/AI retrieval: '+phrase);
 assert.equal(center.canHandle('show my uploaded PDFs'),true,'file-list queries must remain local');
+for (const phrase of ['Tuesday class timetable','show me Tuesday class time table','What is my Tuesday class schedule?']) assert.equal(center.canHandle(phrase),false,'timetable questions must bypass command mutations: '+phrase);
 await center.run('add task call Raj tomorrow');
 assert.equal(executed,1,'all local command mutations must use the one authoritative executor');
 assert.equal(callbacks,0,'competing callback mutation engines must not run');
