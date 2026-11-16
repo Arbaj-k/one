@@ -378,7 +378,7 @@ retrievalSandbox.savedScheduleDoc = {id:'weekly',name:'My Class Timetable.pdf',e
 const persistedScheduleJSON = vm.runInContext("savedTimetableJSON(savedScheduleDoc)", retrievalSandbox);
 assert.ok(persistedScheduleJSON.includes('Data Structures') && persistedScheduleJSON.includes('Monday'), 'Persisted weekly timetable JSON must be discoverable even without OCR text.');
 assert.ok(app.includes("Saved structured timetable: "), 'Saved timetable JSON must be injected directly into Ask One document evidence.');
-assert.ok(app.includes("if(savedTimetableJSON(doc))score+=40"), 'Documents with saved timetable JSON must rank above unrelated uploads.');
+assert.match(app, /if\(savedTimetableJSON\(doc(?:,question)?\)\)score\+=40/, 'Documents with saved timetable JSON must rank above unrelated uploads.');
 assert.doesNotThrow(() => new Function(app.slice(retrievalStart, retrievalEnd)), 'Retrieval helpers must remain valid JavaScript.');
 assert.ok(app.includes("timetable:extractTimetableData(doc.extractedText||'')"), 'Structured timetable rows must be included in AI context.');
 assert.match(app, /const taskSummary='Save this task\\?/,'Voice task creation must confirm its summary before saving.');
