@@ -1022,7 +1022,7 @@ function extractTimetableData(text){
 }
 
 function isTimetableQuestion(question){
- return /\b(?:time\s*table|timetable|class\s+(?:time\s*)?table|class\s+schedule|lecture\s+schedule|weekly\s+schedule|periods?|lectures?|class(?:es)?\s+timing|which\s+subject|what\s+subject|my\s+classes|class\s+today|college\s+schedule|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|(?:समय\s*सारणी|टाइम\s*टेबल|कक्षा\s*का?\s*समय|क्लास\s*टाइम|आज\s*की\s*क्लास)/iu.test(String(question||''));
+ return /\b(?:time\s*table|timetable|class\s+(?:time\s*)?table|class\s+schedule|lecture\s+schedule|weekly\s+schedule|periods?|lectures?|classes?|which\s+subject|what\s+subject|my\s+classes|class\s+today|college\s+schedule|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|(?:समय\s*सारणी|टाइम\s*टेबल|कक्षा\s*का?\s*समय|क्लास\s*टाइम|आज\s*की\s*क्लास)/iu.test(String(question||''));
 }
 function savedTimetableJSON(doc){
  const root=doc?.extractedJson||{},structured=root.structured_data||{};
