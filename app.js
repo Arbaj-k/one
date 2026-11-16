@@ -1411,6 +1411,7 @@ async function requestAskOneActionPlan(question){
   return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
  const action=clean(plan.action,40);
+ if(action==='query_items')return {kind:'none',sources:[]};
  if(action==='create_reminder'){
   const title=clean(plan.title,180);
   const due=validDate(plan.due_date)?plan.due_date:'';
