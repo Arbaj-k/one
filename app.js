@@ -1231,7 +1231,7 @@ function isTimetableQuestion(question){
 function savedTimetableJSON(doc,question=''){
  const root=doc?.extractedJson||{},structured=root.structured_data||{};
  const context=[question,doc?.name,doc?.originalName,root.document_type,root.title].join(' ').toLowerCase();
- const mealContext=/\\b(?:mess|menu|meal|breakfast|lunch|dinner|snack|hostel|food)\\b|(?:मेस|भोजन|नाश्ता|दोपहर का खाना|रात का खाना)/iu.test(context)||/hostel_menu|meal_menu|weekly_menu/i.test(String(root.document_type||''));
+ const mealContext=/\b(?:mess|menu|meal|breakfast|lunch|dinner|snack|hostel|food|canteen)\b|(?:मेस|भोजन|नाश्ता|दोपहर का खाना|रात का खाना)/iu.test(context)||/hostel_menu|meal_menu|weekly_menu/i.test(String(root.document_type||''));
  const timetable=structured.timetable??structured.time_table??structured.class_timetable??structured.schedule??null;
  const directMenuKeys=Object.keys(structured).filter(key=>/(?:menu|meal|mess|breakfast|lunch|dinner|weekly|daily|day)/i.test(key));
  const tables=Array.isArray(structured.tables)?structured.tables:[];
@@ -1409,9 +1409,9 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  // If a relevant uploaded image is matched, attach its locally saved original to Gemini.
  // OCR can miss menu labels, mixed Hindi/English text, and table/column relationships.
  // Only send the best-matching image, and only when it is already stored locally.
- const queryLooksLikeMealMenu=/(mess|menu|meal|dinner|lunch|breakfast|thursday|thrusday|khana|raat ka|रात|खाना|मेस)/i.test(String(question||''));
- const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||allDocs.find(doc=>doc.id===retrieval.documents[0])||
-  (queryLooksLikeMealMenu?allDocs.filter(doc=>doc.type==='image'&&doc.fileStored).sort((a,b)=>Number(b.created||0)-Number(a.created||0))[0]:null);
+ const queryLooksLikeMealMenu=/\b(?:mess|menu|meal|dinner|lunch|breakfast|hostel|canteen|food)\b|thursday|thrusday|khana|raat ka|रात|खाना|मेस|भोजन|नाश्ता/iu.test(String(question||''));
+ const mealDocumentCandidates=queryLooksLikeMealMenu?allDocs.filter(doc=>doc&&['image','pdf'].includes(doc.type)).map(doc=>({doc,score:aiTextScore([doc.name,doc.originalName,doc.tags,doc.note,doc.summary,doc.extractedText,doc.extractedJson?.document_type,doc.extractedJson?.title].join(' '),['mess','menu','meal','hostel','food','breakfast','lunch','dinner','weekly'])+(/mess|menu|meal|hostel|canteen|food|भोजन|मेस/i.test([doc.name,doc.originalName,doc.tags,doc.note,doc.extractedJson?.document_type,doc.extractedJson?.title].join(' '))?12:0)})).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)): [];
+ const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||(queryLooksLikeMealMenu?mealDocumentCandidates[0]?.doc:null)||allDocs.find(doc=>doc.id===retrieval.documents[0]);
  if(originalCandidate){
   const matchedDoc=originalCandidate;
   if(matchedDoc&&['image','pdf'].includes(matchedDoc.type)&&matchedDoc.fileStored){
