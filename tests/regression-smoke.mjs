@@ -423,6 +423,9 @@ assert.ok(app.includes("field('Repeat','repeatRule'") && app.includes("daily|Dai
 assert.ok(app.includes("field('Notify before','notifyBeforeMinutes'") && app.includes("10|10 minutes before") && app.includes("60|1 hour before") && app.includes("1440|1 day before"), 'Task reminders must support 10-minute, 1-hour and 1-day advance alerts.');
 assert.ok(app.includes("field('Related note (optional)','relatedNoteId'") && app.includes("field('Related document (optional)','relatedDocumentId'"), 'Reminders must link to existing notes and documents.');
 assert.ok(app.includes('function reminderOccurrenceOn(task,date)'), 'Local reminder checks must calculate recurring occurrences.');
+assert.ok(app.includes("if(!window.isSecureContext){toast('Notifications need a secure HTTPS connection.')"), 'Push setup must explain secure-context requirements.');
+assert.ok(app.includes("if(Number(test.sent||0)<1)throw new Error("), 'Push setup must verify that at least one real subscription received the test request.');
+assert.ok(app.includes("if(subscribed?.ok!==true)throw new Error(subscribed?.error||'Push subscription could not be saved.')"), 'Push setup must verify subscription persistence before claiming success.');
 assert.ok(app.includes('function snoozeTaskReminder(taskId,minutes)'), 'Notification centre must support snoozing reminders.');
 assert.ok(app.includes("data-action=\"snooze-task-10\"") && app.includes("data-action=\"reschedule-notification-task\"") && app.includes("data-action=\"complete-notification-task\""), 'Notification centre must expose snooze, reschedule and complete actions.');
 assert.ok(app.includes("data-action=\"open-notification-note\"") && app.includes("data-action=\"open-notification-document\""), 'Notification centre must open linked notes and documents.');
@@ -430,6 +433,11 @@ assert.ok(app.includes('task.snoozedUntil') && app.includes('notifyBeforeMinutes
 assert.ok(app.includes('tomorrowDate=addDaysToDate(currentDate,1)') && app.includes('reminderOccurrenceOn(task,day)'), 'Local reminders must fire a day-ahead alert for tomorrow due dates.');
 assert.ok(app.includes("'-snooze-'+snoozed") && app.includes('delete savedTask.snoozedUntil'), 'Snoozed reminders must create a new delivery and task edits must clear stale snoozes.');
 assert.ok(app.includes("function action(name,id,extra)"), 'Delegated action handler must accept action metadata.');
+const batchRouteIndex=app.indexOf("if(Array.isArray(plan.actions)&&plan.actions.length>1){");
+const singleActionIndex=app.indexOf("const action=clean(plan.action,40);");
+assert.ok(batchRouteIndex>0&&singleActionIndex>batchRouteIndex, 'Ask One must route multi-action batches before single-action handlers.');
+assert.ok(app.includes("type==='create_reminder'")&&app.includes("type==='create_project'"), 'Multi-action batches must support reminders and project creation.');
+assert.ok(app.includes("if(!title||!due||!/^([01]\\\\d|2[0-3]):[0-5]\\\\d$/.test(clock))"), 'Multi-action reminders must validate title, date and time before confirmation.');
 const push = readFileSync(new URL('../supabase/functions/one-push/index.ts', import.meta.url), 'utf8');
 assert.ok(push.includes('repeatRule') && push.includes('notifyBeforeMinutes') && push.includes('snoozedUntil'), 'Background push dispatcher must support recurrence, advance notices and snoozes.');
 assert.ok(push.includes('relatedNoteId') && push.includes('relatedDocumentId'), 'Background push messages must include linked note/document context.');

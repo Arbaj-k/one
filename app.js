@@ -1410,6 +1410,38 @@ async function requestAskOneActionPlan(question){
   pendingAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
   return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
+ if(Array.isArray(plan.actions)&&plan.actions.length>1){
+  if(plan.actions.length>6)return {answer:'Ek request mein maximum 6 actions process kar sakta hoon. Isko chhote parts mein bhejo.',sources:[source]};
+  const records=[];
+  for(const item of plan.actions){
+   const type=clean(item?.action,40);
+   if(type==='create_reminder'){
+    const title=clean(item.title,180),due=validDate(item.due_date)?item.due_date:'',clock=clean(item.reminder_time,5),repeat=['daily','weekly','monthly','none'].includes(item.repeat_rule)?item.repeat_rule:'none';
+    if(!title||!due||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(clock))return {answer:'Reminder ke liye title, valid date aur time chahiye. Koi change nahi kiya.',sources:[source]};
+    if((data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'09:00')===clock))return {answer:'Same reminder pehle se saved hai. Koi change nahi kiya.',sources:[source]};
+    records.push({collection:'tasks',page:'planner',record:{id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'},success:'Reminder: '+title+' · '+due+' at '+clock});
+   }else if(type==='create_project'){
+    const name=clean(item.name||item.title,180);if(!name)return {answer:'Project name missing hai. Koi change nahi kiya.',sources:[source]};
+    records.push({collection:'projects',page:'projects',record:{id:uid(),name,description:clean(item.description,1000),status:'In progress',targetDate:validDate(item.due_date)?item.due_date:'',created:now,updated:now},success:'Project: '+name});
+   }else if(type==='create_task'){
+    const title=clean(item.title,180);if(!title)return {answer:'Task ka naam missing hai. Kuch save nahi kiya.',sources:[source]};
+    records.push({collection:'tasks',page:'planner',record:{id:uid(),title,due:validDate(item.due_date)?item.due_date:'',category:'Personal',priority:['Low','Medium','High'].includes(item.priority)?item.priority:'Medium',done:false,created:now,updated:now},success:'Task: '+title});
+   }else if(['add_expense','create_expense','add_income','create_income'].includes(type)){
+    const amount=Number(item.amount),description=clean(item.description,180);if(!Number.isFinite(amount)||amount<=0||!description)return {answer:'Transaction amount ya description missing hai. Kuch save nahi kiya.',sources:[source]};
+    const kind=/income/.test(type)?'income':'expense',date=validDate(item.date)?item.date:today();
+    records.push({collection:'expenses',page:'expenses',record:{id:uid(),amount:String(amount),description,category:clean(item.category,60)||'Other',date,kind,created:now,updated:now},success:(kind==='income'?'Income':'Expense')+' ₹'+amount+' · '+description});
+   }else if(type==='add_udhaar'){
+    const amount=Number(item.amount),person=clean(item.person||item.target,100),kind=['lent','borrowed','lent_repayment','borrowed_repayment'].includes(item.udhaar_type)?item.udhaar_type:'lent';
+    if(!Number.isFinite(amount)||amount<=0||!person)return {answer:'Udhaar ke liye amount aur person ka naam chahiye. Kuch save nahi kiya.',sources:[source]};
+    records.push({collection:'expenses',page:'expenses',record:{id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date:validDate(item.date)?item.date:today(),created:now,updated:now},success:'Udhaar ₹'+amount+' · '+person});
+   }else if(type==='create_note'){
+    const content=clean(item.content,4000);if(!content)return {answer:'Note content missing hai. Kuch save nahi kiya.',sources:[source]};
+    records.push({collection:'notes',page:'notes',record:{id:uid(),title:clean(item.title,120)||'Quick note',content,subject:'Quick note',tags:'Ask One',created:now,updated:now},success:'Note saved'});
+   }else return {answer:'AI ne unsupported multi-action ('+type+') diya. Koi change nahi kiya.',sources:[source]};
+  }
+  pendingAction={type:'create-batch',records,source,requestedAt:now};
+  return {answer:'Confirm '+records.length+' actions:\n'+records.map((r,i)=>(i+1)+'. '+r.success).join('\n')+'\nAbhi kuch save nahi hua.',sources:[source]};
+ }
  const action=clean(plan.action,40);
  if(action==='query_items')return {kind:'none',sources:[]};
  if(action==='create_reminder'){
@@ -1458,30 +1490,7 @@ async function requestAskOneActionPlan(question){
   const record={id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date,created:now,updated:now};
   return makeConfirm('expenses',record,'expenses','Udhaar saved: '+fmtMoney(amount)+' · '+person+'.',{moneyTab:'udhaar',expenseMonth:date.slice(0,7)});
  }
- if(Array.isArray(plan.actions)&&plan.actions.length>1){
-  if(plan.actions.length>6)return {answer:'Ek request mein maximum 6 actions process kar sakta hoon. Isko chhote parts mein bhejo.',sources:[source]};
-  const records=[];
-  for(const item of plan.actions){
-   const type=clean(item?.action,40);
-   if(type==='create_task'){
-    const title=clean(item.title,180);if(!title)return {answer:'Task ka naam missing hai. Kuch save nahi kiya.',sources:[source]};
-    records.push({collection:'tasks',page:'planner',record:{id:uid(),title,due:validDate(item.due_date)?item.due_date:'',category:'Personal',priority:['Low','Medium','High'].includes(item.priority)?item.priority:'Medium',done:false,created:now,updated:now},success:'Task: '+title});
-   }else if(['add_expense','create_expense','add_income','create_income'].includes(type)){
-    const amount=Number(item.amount),description=clean(item.description,180);if(!Number.isFinite(amount)||amount<=0||!description)return {answer:'Transaction amount ya description missing hai. Kuch save nahi kiya.',sources:[source]};
-    const kind=/income/.test(type)?'income':'expense',date=validDate(item.date)?item.date:today();
-    records.push({collection:'expenses',page:'expenses',record:{id:uid(),amount:String(amount),description,category:clean(item.category,60)||'Other',date,kind,created:now,updated:now},success:(kind==='income'?'Income':'Expense')+' ₹'+amount+' · '+description});
-   }else if(type==='add_udhaar'){
-    const amount=Number(item.amount),person=clean(item.person||item.target,100),kind=['lent','borrowed','lent_repayment','borrowed_repayment'].includes(item.udhaar_type)?item.udhaar_type:'lent';
-    if(!Number.isFinite(amount)||amount<=0||!person)return {answer:'Udhaar ke liye amount aur person ka naam chahiye. Kuch save nahi kiya.',sources:[source]};
-    records.push({collection:'expenses',page:'expenses',record:{id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date:validDate(item.date)?item.date:today(),created:now,updated:now},success:'Udhaar ₹'+amount+' · '+person});
-   }else if(type==='create_note'){
-    const content=clean(item.content,4000);if(!content)return {answer:'Note content missing hai. Kuch save nahi kiya.',sources:[source]};
-    records.push({collection:'notes',page:'notes',record:{id:uid(),title:clean(item.title,120)||'Quick note',content,subject:'Quick note',tags:'Ask One',created:now,updated:now},success:'Note saved'});
-   }else return {answer:'AI ne unsupported multi-action ('+type+') diya. Koi change nahi kiya.',sources:[source]};
-  }
-  pendingAction={type:'create-batch',records,source,requestedAt:now};
-  return {answer:'Confirm '+records.length+' actions:\n'+records.map((r,i)=>(i+1)+'. '+r.success).join('\n')+'\nAbhi kuch save nahi hua.',sources:[source]};
- }
+
  const findTask=target=>{
   const needle=clean(target,180).toLowerCase();if(!needle)return {error:'Task ka saved title batao.'};
   const matches=(data.tasks||[]).filter(t=>{const title=String(t.title||'').toLowerCase();return title===needle||title.includes(needle)||needle.includes(title)});
@@ -2486,6 +2495,7 @@ const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
 function taskReminderStorageKey(){return TASK_REMINDER_KEY+'-'+(activeWorkspaceUserId||'guest');}
 function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return Date.UTC(y,m-1,d,hh||0,mm||0)-330*60000}
 async function enableTaskReminders(){
+ if(!window.isSecureContext){toast('Notifications need a secure HTTPS connection.');return}
  if(!('Notification' in window)){toast('This browser does not support notifications');return}
  try{
   const permission=await Notification.requestPermission();
@@ -2493,9 +2503,9 @@ async function enableTaskReminders(){
   toast('In-app reminders enabled');
   await checkTaskReminders();
   if(cloudReady&&cloudUser?.id&&'PushManager' in window&&navigator.serviceWorker){
-   try{await enableAndroidPush();toast('Android push notifications connected')}
-   catch(error){console.warn("Operation failed; diagnostic details redacted.");toast('In-app reminders enabled. Push setup needs server configuration.')}
-  }else toast('In-app reminders enabled. Sign in to connect Android push.');
+   try{await enableAndroidPush();toast('Device push notifications connected')}
+   catch(error){console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'In-app reminders enabled. Device push setup is not ready.')}
+  }else toast('In-app reminders enabled. Sign in to connect device push.');
  }catch(err){toast('Could not enable notifications')}
 }
 function base64UrlToBytes(value){
@@ -2510,13 +2520,16 @@ async function enableAndroidPush(){
  if(sessionError||!sessionData.session?.access_token)throw new Error('Your One session is not ready. Sign in again.');
  const {data:config,error:configError}=await cloudClient.functions.invoke('one-push',{body:{action:'config'}});
  if(configError)throw configError;
- if(!config?.publicKey)throw new Error(config?.error||'Push server is not configured yet.');
+ if(!config?.publicKey||config.configured===false)throw new Error(config?.error||'Push server is not configured yet.');
  let subscription=await registration.pushManager.getSubscription();
  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(config.publicKey)});
- const {error}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
- if(error)throw error;
- const test=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
- if(test.error)console.warn("Operation failed; diagnostic details redacted.");
+ const {data:subscribed,error:subscribeError}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
+ if(subscribeError)throw subscribeError;
+ if(subscribed?.ok!==true)throw new Error(subscribed?.error||'Push subscription could not be saved.');
+ const {data:test,error:testError}=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
+ if(testError)throw testError;
+ if(test?.ok!==true)throw new Error(test?.error||'Push test request failed.');
+ if(Number(test.sent||0)<1)throw new Error('Push service accepted the test, but no active device subscription received it. Check VAPID configuration and browser support.');
  return subscription;
 }
 async function checkTaskReminders(){
