@@ -879,7 +879,7 @@ async function loadOneScript(src){
  return new Promise((resolve,reject)=>{
   const existing=[...document.scripts].find(script=>script.src===src);
   if(existing){if(existing.dataset.loaded==='true'){resolve();return}existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('Could not load document processing library.')),{once:true});return}
-  const script=document.createElement('script');script.src=src;script.async=true;
+  const script=document.createElement('script');script.src=src;script.async=true;script.crossOrigin='anonymous';
   script.onload=()=>{script.dataset.loaded='true';resolve()};
   script.onerror=()=>{script.remove();reject(new Error('Could not load document processing library. Check your connection and retry.'))};
   document.head.appendChild(script);
@@ -888,7 +888,7 @@ async function loadOneScript(src){
 async function ensureOneDocumentLibraries(needsPdf,needsOcr){
  const jobs=[];
  if(needsPdf&&!window.pdfjsLib)jobs.push(oneDocumentLibraries.pdf||(oneDocumentLibraries.pdf=loadOneScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js')));
- if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')));
+ if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js')));
  await Promise.all(jobs);
  if(needsPdf&&!window.pdfjsLib)throw new Error('PDF reader did not initialize. Retry the upload.');
  if(needsOcr&&!window.Tesseract)throw new Error('OCR engine did not initialize. Retry the upload.');
