@@ -25,7 +25,7 @@ async function generate(geminiKey: string, prompt: string) {
     headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.1, maxOutputTokens: 6000 },
+      generationConfig: { responseMimeType: "application/json", temperature: 0.1, maxOutputTokens: 8192 },
     }),
   });
   const payload = await response.json();
@@ -64,7 +64,9 @@ Deno.serve(async (req: Request) => {
     const name = textValue(body?.name, 180) || "Untitled document";
     const mimeType = textValue(body?.mimeType, 80);
     if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(mimeType)) return json({ error: "Only PDF, JPG/JPEG and PNG files are supported." }, 415, undefined, req);
-    const sourceText = textValue(body?.extractedText, 52000).trim();
+    const rawSourceText = typeof body?.extractedText === "string" ? body.extractedText : "";
+    if (rawSourceText.length > 180000) return json({ error: "OCR text is complete and saved in My Knowledge, but this document is too large for one JSON conversion request (limit: 180,000 characters). The full extracted text remains available for Ask One." }, 413, undefined, req);
+    const sourceText = rawSourceText.trim();
     if (!sourceText) return json({ error: "No readable text was extracted. Try a clearer image or scanned PDF." }, 400, undefined, req);
     if (sourceText.length < 20) return json({ error: "Not enough readable text to structure. Check the source file." }, 422, undefined, req);
 
@@ -101,7 +103,7 @@ ${raw}`;
       schema_version: 1,
       title: typeof parsed.title === "string" ? parsed.title.slice(0, 500) : name,
       structured_data: parsed.structured_data,
-      source_pages: Array.isArray(parsed.source_pages) ? parsed.source_pages.filter((n: unknown) => Number.isInteger(n) && Number(n) > 0).slice(0, 300) : [],
+      source_pages: Array.isArray(parsed.source_pages) ? parsed.source_pages.filter((n: unknown) => Number.isInteger(n) && Number(n) > 0).slice(0, 2000) : [],
       warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map((v: unknown) => String(v).slice(0, 500)).slice(0, 50) : [],
       validation: { valid_json: true, repaired },
     };
