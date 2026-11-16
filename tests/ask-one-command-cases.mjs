@@ -47,7 +47,7 @@ assert.equal(assignment.title,'submit form','assignment task titles should exclu
 const homework=parser.parseCommand('homework bana do science chapter 4');
 assert.equal(homework.section,'tasks');
 assert.equal(homework.title,'science chapter 4','homework task titles should preserve the actual task');
-const marked=parser.parseCommand('mark maths homework done');
+const taskIntentSource=readFileSync(new URL('../app.js',import.meta.url),'utf8');\nassert.match(taskIntentSource,/add\\|create\\|make\\)\\s\\+\\(\\?:kar/,'Ask One must recognize Hinglish task-create phrasing before reminder routing');\nassert.match(taskIntentSource,/const taskTypeMatch=raw\\.match\\(\\/\\\\b\\(assignment\\|homework\\|exam\\|project\\)/,'Ask One must preserve assignment/homework type in the saved task title');\nconst marked=parser.parseCommand('mark maths homework done');
 assert.equal(marked.section,'tasks','homework completion must route to Tasks');
 assert.equal(marked.action,'complete');
 const recurring=parser.parseCommand('weekly reminder every Monday');
