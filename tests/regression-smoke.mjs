@@ -129,6 +129,7 @@ assert.ok(app.includes('function chatActionIntent('), 'Quick task and money acti
 assert.ok(app.includes('const explicitTaskAddIntent=/^'), 'Ask One must have a deterministic explicit Task Add intent.');
 assert.ok(app.includes('const reminderCommandIntent=/\\b(?:remind\\s+me|reminder'), 'Ask One must route reminder/briefing language separately from Task Add.');
 assert.ok(app.includes("category:'Briefing'")&&app.includes("page:'overview',successMessage:(daily?'Daily briefing':'Reminder')"), 'Confirmed reminders must be saved as Home Task Briefings.');
+assert.ok(app.includes("repeatRule,priority:'Medium',done:false,notes:'Created through Ask One voice/text briefing instruction.'"), 'Weekly and monthly briefings must persist their selected recurrence rule.');
 assert.ok(app.includes("category:/assignment|homework/i.test(lower)"), 'Explicit Task Add must remain a Planner task, not a briefing.');
 
 assert.ok(app.includes('reminder (?:for|laga do|set karo|set kar do)') && app.includes('yaad dila do'), 'Ask One must understand natural Hindi/Hinglish reminder phrases.');
