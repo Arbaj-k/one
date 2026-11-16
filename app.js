@@ -15,7 +15,7 @@ function migrateData(raw){
  return next;
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
-let data=loadData(),page='overview',chatBusy=false,pendingChatAction=null;
+let data=loadData(),page='overview',chatBusy=false,pendingAction=null;
 window.getOneWorkspaceData=()=>data;
 window.data=data;
 let cloudClient=null,cloudUser=null,cloudReady=false;
@@ -1407,7 +1407,7 @@ async function requestAskOneActionPlan(question){
  const validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(clean(v,10))&&(()=>{const d=new Date(v+'T12:00:00');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v})();
  const now=Date.now(),source='Ask One';
  const makeConfirm=(collection,record,page,success,extra={})=>{
-  pendingChatAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
+  pendingAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
   return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
  const action=clean(plan.action,40);
@@ -1449,6 +1449,14 @@ async function requestAskOneActionPlan(question){
   const record={id:uid(),description,amount:String(amount),category:clean(plan.category,60)||'Other',date,kind,created:now,updated:now};
   return makeConfirm('expenses',record,'expenses',(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+'.',{expenseMonth:date.slice(0,7)});
  }
+ if(action==='add_udhaar'){
+  const amount=Number(plan.amount),person=clean(plan.person||plan.target,100);
+  const kind=['lent','borrowed','lent_repayment','borrowed_repayment'].includes(plan.udhaar_type)?plan.udhaar_type:'lent';
+  if(!Number.isFinite(amount)||amount<=0||!person)return {answer:'Udhaar ke liye amount aur person ka naam batao. Example: Raj ko 500 udhaar diye.',sources:['Money & Udhaar']};
+  const date=validDate(plan.date)?plan.date:today();
+  const record={id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date,created:now,updated:now};
+  return makeConfirm('expenses',record,'expenses','Udhaar saved: '+fmtMoney(amount)+' · '+person+'.',{moneyTab:'udhaar',expenseMonth:date.slice(0,7)});
+ }
  const findTask=target=>{
   const needle=clean(target,180).toLowerCase();if(!needle)return {error:'Task ka saved title batao.'};
   const matches=(data.tasks||[]).filter(t=>{const title=String(t.title||'').toLowerCase();return title===needle||title.includes(needle)||needle.includes(title)});
@@ -1459,12 +1467,12 @@ async function requestAskOneActionPlan(question){
   const found=findTask(plan.target);if(found.error)return {answer:found.error+' Kuch change nahi kiya.',sources:['Planner']};
   const task=found.task;
   if(action==='delete_task'){
-   pendingChatAction={type:'delete-task',id:task.id,title:task.title,requestedAt:now};
+   pendingAction={type:'delete-task',id:task.id,title:task.title,requestedAt:now};
    return {answer:'Confirm delete: "'+task.title+'" task delete karna hai? Reply YES to delete or NO to cancel. Abhi delete nahi hua.',sources:['Planner']};
   }
   if(action==='complete_task'){
    if(task.done)return {answer:'Task "'+task.title+'" pehle se completed hai.',sources:['Planner']};
-   pendingChatAction={type:'update-record',recordType:'task',id:task.id,title:task.title,patch:{done:true,completedAt:now},source:'Planner',requestedAt:now};
+   pendingAction={type:'update-record',recordType:'task',id:task.id,title:task.title,patch:{done:true,completedAt:now},source:'Planner',requestedAt:now};
    return {answer:'Confirm: "'+task.title+'" ko completed mark kar doon? Reply YES or NO.',sources:['Planner']};
   }
   const patch={};
@@ -1473,7 +1481,7 @@ async function requestAskOneActionPlan(question){
   if(clean(plan.patch?.notes,1000))patch.notes=clean(plan.patch.notes,1000);
   if(clean(plan.patch?.title,180))patch.title=clean(plan.patch.title,180);
   if(!Object.keys(patch).length)return {answer:'Kya update karna hai—due date, priority, notes ya title?',sources:['Planner']};
-  pendingChatAction={type:'update-record',recordType:'task',id:task.id,title:task.title,patch,source:'Planner',requestedAt:now};
+  pendingAction={type:'update-record',recordType:'task',id:task.id,title:task.title,patch,source:'Planner',requestedAt:now};
   return {answer:'Confirm task update "'+task.title+'": '+Object.entries(patch).map(([k,v])=>k+' → '+v).join('; ')+'. Reply YES or NO.',sources:['Planner']};
  }
  return {answer:'Ye action abhi supported nahi hai. Kuch change nahi kiya.',sources:['Ask One']};
@@ -1795,11 +1803,11 @@ async function chatActionIntent(question){
  const raw=String(question||'').trim(),lower=raw.toLowerCase();
  const syncResult=async()=>{if(!cloudReady||!cloudUser)return ' Saved on this device; sign in to sync across devices.';if(!navigator.onLine)return ' Saved locally; cloud sync is queued until the device is online.';await syncQueue;return cloudMode==='synced'?' Saved and synced to your account.':' Saved locally, but cloud sync is not confirmed yet. Check the cloud status before relying on another device.'};
  const verify=(key,record)=>{try{const disk=JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}');return Array.isArray(disk[key])&&disk[key].some(x=>x.id===record.id)}catch{return false}};
- if(pendingChatAction){
-  const pending=pendingChatAction;
-  if(pending.requestedAt&&Date.now()-pending.requestedAt>5*60*1000){pendingChatAction=null;return {answer:'That confirmation expired after 5 minutes. No data was changed. Please send the request again.',sources:[pending.source||'Ask One']};}
+ if(pendingAction){
+  const pending=pendingAction;
+  if(pending.requestedAt&&Date.now()-pending.requestedAt>2*60*1000){pendingAction=null;return {answer:'That confirmation expired after 5 minutes. No data was changed. Please send the request again.',sources:[pending.source||'Ask One']};}
   if(/^(?:yes|yes confirm|confirm|confirm delete|haan|ha|kar do|delete it|proceed)$/i.test(lower)){
-   pendingChatAction=null;
+   pendingAction=null;
    if(pending.type==='create-record'){
     const allowed={tasks:'Planner',notes:'Notes & Memory',projects:'Projects',expenses:'Money & Udhaar'};
     if(!allowed[pending.collection]||!pending.record)return {answer:'This action is no longer valid. No data was changed.',sources:[]};
@@ -1840,10 +1848,10 @@ async function chatActionIntent(question){
    }
   }
   if(/^(?:no|no cancel|cancel|nahi|mat karo|stop)$/i.test(lower)){
-   pendingChatAction=null;
+   pendingAction=null;
    return {answer:'The action was cancelled. No data was changed.',sources:['Planner']};
   }
-  pendingChatAction=null;
+  pendingAction=null;
  }
 
  const rememberMatch=raw.match(/^\s*(?:please\s+)?(?:remember(?:\s+that|\s+this)?|save to memory|yaad rakhna|ise yaad rakhna)\s*[:,-]?\s*(.+)$/i);
@@ -1880,7 +1888,7 @@ async function chatActionIntent(question){
  const fieldDateForMoney=()=>{if(/\b(?:yesterday|kal\s+tha|beete\s+kal)\b/i.test(lower)){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}return parseDate()||today()};
  const dateKeyword=/\b(?:today|today'?s|this\s+day|current\s+day|aaj|aaj\s+ka|aaj\s+ki|aaj\s+ke|tomorrow|kal|kal\s+ka|kal\s+ki|kal\s+ke|yesterday|kal\s+tha|beete\s+kal|parso|parson|day\s+after\s+tomorrow|next\s+day|आज|आज\s+का|आज\s+की|आज\s+के|कल|कल\s+का|कल\s+की|कल\s+के|परसों)\b|\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(lower);
  const dateQueryIntent=dateKeyword&&(/\b(?:task|tasks|todo|to-do|kaam|assignment|planner|money|expense|expenses|spending|kharcha|kharch|income|payment|udhaar|lent|borrowed|repayment|transaction|transactions|schedule|plan|kya|what|show|dikhao|batao|bata|hai|hain|list|details|activity|records?)\b/i.test(lower)||/^\s*(?:today|aaj|kal|tomorrow|yesterday|parso|parson|आज|कल|परसों)\s*[?.!]*$/i.test(lower));
- if(!pendingChatAction&&dateQueryIntent){
+ if(!pendingAction&&dateQueryIntent){
   let selectedDate=parseDate();
   // Explicit present-day wording always wins over ambiguous Hinglish 'kal' elsewhere in a sentence.
   if(/\b(?:today|today'?s|aaj|aaj\s+ka|aaj\s+ki|aaj\s+ke|आज|आज\s+का|आज\s+की|आज\s+के)\b/i.test(lower))selectedDate=today();
@@ -1902,7 +1910,7 @@ async function chatActionIntent(question){
  // locally before document Q&A, while explicit "add task" remains a Planner task.
  const explicitTaskAddIntent=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:(?:can|could|would)\s+you\s+)(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar(?:o|na|\s+do)?|do)\b|^\s*(?:task bana do|task create karo|task add kar do|todo bana do)\b|^\s*(?:task|todo)\s+mein\s+add\s+kar(?:o|na|\s+do)?\b/i.test(lower);
  const reminderCommandIntent=/\b(?:remind\s+me|reminder|yaad\s+(?:dila(?:na|\s+dena|\s+do)?|rakhna)|mat\s+bhoolna|don't\s+let\s+me\s+forget|briefing|brief\s+me|bata\s+dena|batana|yaad\s+karwana)\b/i.test(lower);
- if(!pendingChatAction&&explicitTaskAddIntent&&!reminderCommandIntent){
+ if(!pendingAction&&explicitTaskAddIntent&&!reminderCommandIntent){
   const due=parseDate();
   const timeMatch=raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)\b/i),clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
   let reminderTime=/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)?'19:00':'09:00';
@@ -1913,10 +1921,10 @@ async function chatActionIntent(question){
   const duplicate=(data.tasks||[]).find(x=>!x.done&&String(x.title||'').toLowerCase()===title.toLowerCase()&&String(x.due||'')===(due||''));
   if(duplicate)return {answer:'Ye task pehle se Planner mein hai. Duplicate nahi banaya.',sources:['Planner']};
   const task={id:uid(),title,category:/assignment|homework/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+'.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+'.',requestedAt:Date.now()};
   return {answer:'Confirm Task Add: '+title+(due?' · '+dateFmt(due):'')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:['Planner']};
  }
- if(!pendingChatAction&&reminderCommandIntent){
+ if(!pendingAction&&reminderCommandIntent){
   const daily=/\b(?:daily|every\s+day|roz|har\s+roz|har\s+din)\b/i.test(lower);
   const due=daily?today():parseDate();
   if(!due)return {answer:'Reminder/briefing ki date batao. Example: Kal subah assignment likhna yaad dilana, ya roz subah 9 baje project update batana.',sources:['Task Briefing','Planner']};
@@ -1929,7 +1937,7 @@ async function chatActionIntent(question){
   const duplicate=reminderDuplicate({title,due,reminderTime,repeatRule,category:'Briefing'});
   if(duplicate)return {answer:'Ye briefing pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
   const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder/briefing command.'};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task Briefing',page:'overview',successMessage:(daily?'Daily briefing':'Reminder')+' saved: '+title+' · '+(daily?'every day':dateFmt(due))+' at '+reminderTime+'.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task Briefing',page:'overview',successMessage:(daily?'Daily briefing':'Reminder')+' saved: '+title+' · '+(daily?'every day':dateFmt(due))+' at '+reminderTime+'.',requestedAt:Date.now()};
   return {answer:'Confirm '+(daily?'daily briefing':'reminder')+': '+title+' · '+(daily?'Every day':dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel. Ye Home ke Task Briefing mein dikhega.',sources:['Task Briefing','Planner']};
  }
 
@@ -1944,7 +1952,7 @@ async function chatActionIntent(question){
   const duplicate=(data.expenses||[]).find(e=>e.kind==='lent'&&String(e.person||'').toLowerCase()===person.toLowerCase()&&Number(e.amount)===amount&&e.date===transactionDate&&String(e.dueDate||'')===dueDate);
   if(duplicate)return {answer:'Yeh record pehle se saved hai: '+fmtMoney(amount)+' lent to '+person+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
   const record={id:uid(),description:'Lent to '+person,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind:'lent',updated:Date.now(),created:Date.now()};
-  pendingChatAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',moneyTab:'udhaar',expenseMonth:transactionDate.slice(0,7),successMessage:'Money & Udhaar mein saved: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Record verify kar liya hai.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',moneyTab:'udhaar',expenseMonth:transactionDate.slice(0,7),successMessage:'Money & Udhaar mein saved: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Record verify kar liya hai.',requestedAt:Date.now()};
   return {answer:'Please confirm this money record: '+fmtMoney(amount)+' '+person+' ko diye'+(dueDate?' · wapas lene ki date '+dateFmt(dueDate):'')+'. Reply YES to save or NO to cancel. Abhi koi record add nahi hua.',sources:['Money & Udhaar']};
  }
  const noteReminderIntent=/\\b(?:is|iss|us|uss|ye|this|that)\\s+(?:note|notes)\\s+(?:ka|ki|ke)?\\s*(?:reminder|yaad)\\b|\\b(?:is|iss|us|uss|iska|uska|in notes? ka|note ka|note ki)\\s+(?:reminder|yaad|laga do|set karo|set kar do)\\b|\\b(?:remind me|yaad dilana|yaad dila do)\\s+(?:about|for|from)\\s+(?:my\\s+)?notes?\\b/i.test(lower);
@@ -1971,7 +1979,7 @@ async function chatActionIntent(question){
   const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&t.reminderTime===reminderTime);
   if(duplicate)return {answer:'Is note ka reminder pehle se set hai: “'+(selected.title||'Untitled note')+'” · '+dateFmt(due)+' at '+reminderTime+'. Duplicate nahi banaya.',sources:['Planner','Notes & Memory']};
   const task={id:uid(),title,category:'Reminder',notes:'Related saved note ID: '+selected.id+'\\n'+String(selected.content||'').slice(0,1200),relatedNoteId:selected.id,due,reminderTime,priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Notes & Memory',page:'planner',successMessage:'Saved note “'+(selected.title||'Untitled note')+'” ka reminder set ho gaya: '+dateFmt(due)+' at '+reminderTime+'.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Notes & Memory',page:'planner',successMessage:'Saved note “'+(selected.title||'Untitled note')+'” ka reminder set ho gaya: '+dateFmt(due)+' at '+reminderTime+'.',requestedAt:Date.now()};
   return {answer:'Confirm reminder for your existing note “'+(selected.title||'Untitled note')+'” · '+dateFmt(due)+' at '+reminderTime+'. Reply YES to save or NO to cancel. Main naya note nahi bana raha.',sources:['Notes & Memory','Planner']};
  }
  const briefingIntent=/\b(?:brief me|briefing|roz|daily|every day|har roz|har din|weekly|every week|har hafte|monthly|every month|har mahine|is date ko|iss date ko|us date ko|batana|bata dena)\b/i.test(lower)&&/\b(?:bata|batana|bata dena|remind|yaad|brief|briefing|update)\b/i.test(lower);
@@ -1995,7 +2003,7 @@ async function chatActionIntent(question){
   const duplicate=(data.tasks||[]).find(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&(t.repeatRule||'none')===repeatRule);
   if(duplicate)return {answer:'Ye briefing pehle se scheduled hai: '+title+'. Duplicate nahi banaya.',sources:['Planner']};
   const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule:daily?'daily':'none',priority:'Medium',done:false,notes:'Created through Ask One voice/text briefing instruction.',created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:(repeatRule!=='none'?(repeatRule[0].toUpperCase()+repeatRule.slice(1)+' briefing'):'Scheduled briefing')+' saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Enable notifications for alerts.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:(repeatRule!=='none'?(repeatRule[0].toUpperCase()+repeatRule.slice(1)+' briefing'):'Scheduled briefing')+' saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Enable notifications for alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(repeatRule!=='none'?repeatRule:'one-time')+' briefing: '+title+' · '+(repeatRule!=='none'?'Repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel.',sources:['Task briefing','Planner']};
  }
  const explicitTaskAdd=/\b(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+(?:mein|me)\s+(?:add|jod)\s+(?:kar|karo|kar do)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:a\s+)?(?:task|todo)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:task|todo)\s+(?:ki|ka|ke)\b|\b(?:task bana do|task create karo|task add kar do|todo bana do)\b|\b(?:assignment|homework|exam|project)\b.*\b(?:add kar do|bana do|create|add)\b/i.test(lower);
@@ -2022,7 +2030,7 @@ async function chatActionIntent(question){
   const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&(t.repeatRule||'none')===repeatRule);
   if(duplicate)return {answer:'Reminder already exists for '+title+' on '+dateFmt(due)+'. Duplicate nahi banaya.',sources:['Planner']};
   const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created from a natural-language Ask One reminder.'};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:'Reminder saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Enable notifications in One to receive alerts.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:'Reminder saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Enable notifications in One to receive alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(repeatRule!=='none'?repeatRule+' ':'')+'reminder: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel. It will appear under Task Briefing on Home.',sources:['Task Briefing','Planner']};
  }
  const addTask=explicitTaskAdd&&!naturalReminder||!naturalReminder&&/\\b(?:schedule|bana do|banao|add kar|jod do|likh lo)\\b/i.test(lower)&&/\\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\\b/i.test(lower);
@@ -2045,7 +2053,7 @@ async function chatActionIntent(question){
   let reminderTime='09:00';
   if(reminderTimeMatch){let hour=Number(reminderTimeMatch[1]),minute=Number(reminderTimeMatch[2]||0),meridiem=(reminderTimeMatch[3]||'').toLowerCase();if(minute>59||hour>12||hour<0)return {answer:'Reminder time valid nahi hai. Example: 7:30 pm.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(meridiem==='baje'&&hour>23)return {answer:'Time 24-hour format mein do, jaise 19:00.',sources:['Planner']};reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
   const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,reminderTime,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',requestedAt:Date.now()};
   return {answer:'Please confirm task: '+title+(due?' · Due '+dateFmt(due):' · No due date')+'. Reply YES to save or NO to cancel. Abhi task add nahi hua.',sources:['Planner']};
  }
  const addNote=/\b(?:add|save|create|write|likh|save kar)\b/i.test(lower)&&/\b(?:note|notes|notepad)\b/i.test(lower);
@@ -2055,7 +2063,7 @@ async function chatActionIntent(question){
   const duplicate=(data.notes||[]).find(item=>String(item.content||'').trim().toLowerCase()===content.toLowerCase()&&Date.now()-Number(item.created||0)<24*60*60*1000);
   if(duplicate)return {answer:'This exact note was already saved recently. I did not create a duplicate.',sources:['Notes & Memory']};
   const note={id:uid(),title:'Quick note',content,subject:'Quick note',tags:'chat capture',created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'notes',record:note,source:'Notes & Memory',page:'notes',successMessage:'Note Notes & Memory mein save ho gaya: '+content+'.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'notes',record:note,source:'Notes & Memory',page:'notes',successMessage:'Note Notes & Memory mein save ho gaya: '+content+'.',requestedAt:Date.now()};
   return {answer:'Please confirm note: '+content+'. Reply YES to save or NO to cancel. Abhi note add nahi hua.',sources:['Notes & Memory']};
  }
  const addProject=/\b(?:add|create|start|banao|bana do)\b/i.test(lower)&&/\bproject\b/i.test(lower);
@@ -2065,7 +2073,7 @@ async function chatActionIntent(question){
   const duplicate=(data.projects||[]).find(item=>String(item.name||item.title||'').trim().toLowerCase()===name.toLowerCase());
   if(duplicate)return {answer:'A project with this name already exists: "'+(duplicate.name||duplicate.title)+'". I did not create a duplicate.',sources:['Projects']};
   const project={id:uid(),name,description:'',status:'In progress',targetDate:'',created:Date.now(),updated:Date.now()};
-  pendingChatAction={type:'create-record',collection:'projects',record:project,source:'Projects',page:'projects',successMessage:'Project created: '+name+'. Projects mein saved aur verified hai.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'projects',record:project,source:'Projects',page:'projects',successMessage:'Project created: '+name+'. Projects mein saved aur verified hai.',requestedAt:Date.now()};
   return {answer:'Please confirm project: '+name+'. Reply YES to create or NO to cancel. Abhi project add nahi hua.',sources:['Projects']};
  }
 
@@ -2096,7 +2104,7 @@ async function chatActionIntent(question){
   if(rename&&type==='project')patch.name=rename[1].trim();
   if(type==='note'&&/\bcontent\s*[:=]/i.test(raw)){patch.content=raw.match(/\bcontent\s*[:=]\s*([\s\S]+)$/i)[1].trim()}
   if(!Object.keys(patch).length)return {answer:'Kya change karna hai clear nahi hua. Example: Update task DSA due tomorrow, set priority high. Ya Rename project Hapn to Hapn v2.',sources:[source]};
-  pendingChatAction={type:'update-record',recordType:type,id:target.record.id,title:String(target.label||''),patch,source,requestedAt:Date.now()};
+  pendingAction={type:'update-record',recordType:type,id:target.record.id,title:String(target.label||''),patch,source,requestedAt:Date.now()};
   return {answer:'Please confirm update for '+type+' "'+String(target.label||'')+'": '+Object.entries(patch).map(([key,value])=>key+' → '+value).join('; ')+'. Reply YES to save or NO to cancel. Abhi koi change nahi hua.',sources:[source]};
  }
  const moneyCreateCue=/\b(?:add|save|record|log|track|spent|spend|expense|income|received|earned|kharch|kharcha|kharche|kamaya|mila|payment)\b/i.test(lower);
@@ -2115,7 +2123,7 @@ async function chatActionIntent(question){
   const duplicate=(data.expenses||[]).find(e=>(e.kind||'expense')===kind&&Number(e.amount)===amount&&String(e.description||'').toLowerCase()===description.toLowerCase()&&String(e.date||'')===date);
   if(duplicate)return {answer:'Matching money record already exists: '+fmtMoney(amount)+' for '+description+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
   const record={id:uid(),description,amount:String(amount),category,date,kind,updated:Date.now(),created:Date.now()};
-  pendingChatAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',expenseMonth:date.slice(0,7),successMessage:(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',expenseMonth:date.slice(0,7),successMessage:(kind==='income'?'Income received: ':'Expense saved: ')+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'.',requestedAt:Date.now()};
   return {answer:'Please confirm money record: '+(kind==='income'?'income':'expense')+' of '+fmtMoney(amount)+' for '+description+' on '+dateFmt(date)+'. Reply YES to save or NO to cancel. Abhi money record add nahi hua.',sources:['Money & Udhaar']};
  }
 
@@ -2148,7 +2156,7 @@ async function chatActionIntent(question){
  if(deleteTask){
   const needle=raw.replace(/\b(?:please|delete|remove|hata do|delete kar|task|todo|assignment|the|my)\b/ig,' ').trim().toLowerCase();
   const found=(data.tasks||[]).filter(t=>needle&&String(t.title||'').toLowerCase().includes(needle));
-  if(found.length===1){pendingChatAction={type:'delete-task',id:found[0].id,title:found[0].title,requestedAt:Date.now()};return {answer:'Please confirm: delete task "'+found[0].title+'"? Reply YES to delete or NO to cancel. Nothing has been deleted yet.',sources:['Planner']}}
+  if(found.length===1){pendingAction={type:'delete-task',id:found[0].id,title:found[0].title,requestedAt:Date.now()};return {answer:'Please confirm: delete task "'+found[0].title+'"? Reply YES to delete or NO to cancel. Nothing has been deleted yet.',sources:['Planner']}}
   return {answer:found.length?'Multiple tasks match. Exact task title batao.':'Task nahi mila; kuch delete nahi kiya.',sources:['Planner']};
  }
  return null;
@@ -2180,7 +2188,7 @@ async function sendChat(question,targetDocId=null){
   if(handled)return;
  }
  // Process an outstanding confirmation first; otherwise let semantic planning run before legacy keyword rules.
- if(pendingChatAction)actionResult=await chatActionIntent(query);
+ if(pendingAction)actionResult=await chatActionIntent(query);
   if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
   if(!targetDocId&&asksTimetableContext){
