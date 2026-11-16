@@ -85,7 +85,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   let title=q
    .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|mere liye|mark|complete|finish|done|delete|remove|edit|update|do)\b/gi,' ')
    .replace(/\b(?:today|aaj|tomorrow|kal|parso|parson|daily|every day|weekly|monthly|every week|every month|roz|roj|har roz|har din|subah|morning|evening|shaam|sham|raat|night|at|baje|am|pm|oclock)\b/gi,' ')
-   .replace(/\b(?:due|on)\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/gi,' ')\n   .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ')
+   .replace(/\b(?:due|on)\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/gi,' ')\n   .replace(/\b(?:on|due)\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/gi,' ')\n   .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
