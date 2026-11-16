@@ -26,7 +26,7 @@ const cases=[
  ['borrowed 2000 from Aman','money'],['settled 300 with Raj','money'],
  ['how much did I spend this week?','money'],['aaj ka income dikhao','money'],
  ['delete task call Raj','tasks'],['mark maths homework done','tasks'],
- ['edit task gym to evening gym','tasks'],['search notes about exam','notes'],
+ ['edit task gym to evening gym','tasks'],['search notes about exam','notes'],['search notes about homework','notes'],['find notes about assignment','notes'],
  ['what are my project deadlines?','projects'],['routine roz 7am walk','routines']
 ];
 for(const [phrase,expected] of cases){
