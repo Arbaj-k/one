@@ -417,7 +417,7 @@ function completeTaskRecord(task){
  task.updated=now;return true;
 }
 function reminderDuplicate(task,excludeId=null){
- const norm=value=>String(value||'').normalize('NFKC').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();
+ const norm=value=>String(value||'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  const title=norm(task?.title);
  return (data.tasks||[]).find(x=>x.id!==excludeId&&!x.done&&!x.paused&&norm(x.title)===title&&String(x.due||'')===String(task?.due||'')&&String(x.reminderTime||'09:00')===String(task?.reminderTime||'09:00')&&(x.repeatRule||'none')===(task?.repeatRule||'none'));
 }
