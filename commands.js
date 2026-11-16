@@ -64,7 +64,9 @@
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
   const udhaarSummary=/\b(who owes me|who do i owe|how much do i owe|mere paise kis ke paas|kis se paise lene|kisko paise dene|udhaar summary)\b/i.test(q);
-  if(!det.intent&&recurrence.repeatRule!=='none')det.intent=/\b(routine|habit|walk|exercise|meditation)\b/i.test(q)?'routines':'tasks';
+  const explicitRecurringCommand=reminderCue||/\b(?:daily|every day|roz|roj|har roz|har din|weekly|every week|har hafte|monthly|every month|each month|har mahine|mahine me ek baar|mahine mein ek baar)\b/i.test(q)||/\b(?:add|create|make|save|schedule|set)\b.{0,30}\b(?:task|todo|reminder|routine|habit)\b/i.test(q);
+// A weekday alone is a lookup filter, not a task or reminder.
+if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.intent=/\b(routine|habit|walk|exercise|meditation)\b/i.test(q)?'routines':'tasks';
   if(planSummary)det.intent='tasks';
   let action=reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
