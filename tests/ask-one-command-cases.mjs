@@ -41,6 +41,17 @@ const reminder=parser.parseCommand('remind me to Pay 500 to Raj tomorrow at 8pm'
 assert.match(reminder.title,/pay 500 to raj/i,'reminder titles must preserve names, amounts and prepositions');
 const chapter=parser.parseCommand('remind me to Read chapter 4 tomorrow at 8pm');
 assert.match(chapter.title,/chapter 4/i,'reminder titles must preserve chapter numbers');
+const assignment=parser.parseCommand('assignment add kar do submit form');
+assert.equal(assignment.section,'tasks');
+assert.equal(assignment.title,'submit form','assignment task titles should exclude command words');
+const homework=parser.parseCommand('homework bana do science chapter 4');
+assert.equal(homework.section,'tasks');
+assert.equal(homework.title,'science chapter 4','homework task titles should preserve the actual task');
+const marked=parser.parseCommand('mark maths homework done');
+assert.equal(marked.section,'tasks','homework completion must route to Tasks');
+assert.equal(marked.action,'complete');
+const recurring=parser.parseCommand('weekly reminder every Monday');
+assert.equal(recurring.repeatRule,'weekly','weekly reminder recurrence must be parsed');
 
 let executed=0,callbacks=0;
 const adapterWindow={OneCommands:{...parser,executeCommand(q){executed++;return {answer:'ok'}},hasPending:()=>false,hasPendingReminder:()=>false}};
@@ -52,4 +63,19 @@ assert.equal(center.canHandle('show my uploaded PDFs'),true,'file-list queries m
 await center.run('add task call Raj tomorrow');
 assert.equal(executed,1,'all local command mutations must use the one authoritative executor');
 assert.equal(callbacks,0,'competing callback mutation engines must not run');
-console.log('Ask One command cases passed: '+cases.length+' natural-language cases plus router, Udhaar and title-preservation checks.');
+const commandData={tasks:[],notes:[],projects:[],routines:[],expenses:[],documents:[]};
+let persistCount=0,sequence=0;
+const commandWindow={};
+vm.runInNewContext(parserSource,{window:commandWindow,Date,Intl,console,today:()=> '2026-11-16',data:commandData,persist(){persistCount++},render(){},uid:()=> 'test-'+(++sequence),dateFmt:value=>value,money:value=>'₹'+value,localStorage:{getItem(){return null},setItem(){}}});
+const moneyResult=commandWindow.OneCommands.executeCommand('500 rupees chai pe kharcha add karo');
+assert.equal(commandData.expenses.length,1,'expense command must persist one expense record');
+assert.equal(Number(commandData.expenses[0].amount),500);
+assert.equal(commandData.expenses[0].kind,'expense');
+assert.equal(commandData.expenses[0].category,'Food');
+assert.ok(persistCount>0,'expense save must call persistence');
+const recurringResult=commandWindow.OneCommands.executeCommand('weekly reminder to pay rent every Monday');
+assert.equal(commandData.tasks.length,1,'weekly reminder command must create a task');
+assert.equal(commandData.tasks[0].repeatRule,'weekly');
+assert.equal(commandData.tasks[0].title,'pay rent','weekly reminder must preserve only the reminder subject');
+assert.ok(commandData.tasks[0].due,'weekly reminder must have a next occurrence date');
+console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, weekly reminder creation, router, Udhaar and title-preservation checks.');
