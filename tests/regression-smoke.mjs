@@ -625,6 +625,7 @@ assert.ok(intentCode.includes("category:'Briefing'"), 'Reminder commands must be
 assert.ok(intentCode.includes("category:/assignment|submit/i.test(lower)?'Assignment'"), 'Explicit task adds must retain task categories.');
 
 
+{
 // Defensive security hardening: CSP, DOM sinks, private workspace data, backups, logout and share target.
 const securityAuthSource=readFileSync(new URL('../auth.js',import.meta.url),'utf8');
 const securityAnalyticsSource=readFileSync(new URL('../analytics.js',import.meta.url),'utf8');
@@ -648,3 +649,5 @@ assert.ok(securityIndexSource.includes('@2.119.0')&&securityIndexSource.includes
 assert.ok(securityPwaInitSource.includes('serviceWorker.register'), 'PWA update and install bootstrap must remain available after CSP migration.');
 assert.ok(securityServiceWorkerSource.includes('safeShareUrl')&&securityServiceWorkerSource.includes('totalBytes<=20*1024*1024'), 'Share Target must reject unsafe URLs and cap aggregate file size.');
 assert.ok(securityServiceWorkerSource.includes("new URL(requested).origin===self.location.origin"), 'Notification clicks must not navigate users to external or unsafe origins.');
+
+}
