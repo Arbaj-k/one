@@ -179,6 +179,13 @@ Rules:
 - For complete_task/update_task, the app will validate the target against the user's own saved records before changing anything.
 - Do not output markdown, explanations, or extra keys.`;
     }
+    const mealQuestion = /\b(?:mess|menu|meal|breakfast|lunch|dinner|hostel|canteen|food)\b|मेस|भोजन|नाश्ता|खाना/iu.test(message);
+    const weekdayMatch = message.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i) || message.match(/सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार/u);
+    const requestedWeekday = weekdayMatch?.[1] || ({सोमवार:"Monday",मंगलवार:"Tuesday",बुधवार:"Wednesday",गुरुवार:"Thursday",शुक्रवार:"Friday",शनिवार:"Saturday",रविवार:"Sunday"} as Record<string,string>)[weekdayMatch?.[0] || ""] || "";
+    if (mealQuestion) {
+      prompt += "\n\nMESS MENU SINGLE-ANSWER MODE:\n- This is one narrow question about the saved mess/hostel menu. Answer ONLY for the requested weekday" + (requestedWeekday ? " (" + requestedWeekday + ")" : "") + ".\n- Find that weekday's matching row/column in the most relevant saved mess/menu document. Cross-check meal labels and values in the same row/column; do not mix weekdays or meals.\n- Return exactly ONE consolidated answer, not multiple candidate answers, alternatives, drafts, repeated sections, or reasoning.\n- Include only meal entries actually present for that weekday (breakfast/lunch/dinner if listed). Do not repeat meals or dishes.\n- If an entry is missing or unclear, say so; never guess or substitute another day's menu.\n- Keep it concise: weekday heading and at most one bullet per meal. Do not list all seven days unless explicitly asked.";
+    }
+
     const parts: Array<Record<string, unknown>> = [{ text: prompt }];
     if (validatedInline) {
       parts.push({ text: "The original file attached next is: " + validatedInline.name + ". Read it visually and use it as primary evidence for file-specific questions. Cite \"" + validatedInline.label + "\" when used." });
