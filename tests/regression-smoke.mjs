@@ -13,6 +13,9 @@ assert.ok(buildSource.indexOf('const contextProject=')>=0 && buildSource.indexOf
 assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('const asksProjects=')<buildSource.indexOf('const asksTasks='), 'Project intent must be initialized before task intent reads it.');
 const commandAdapter = readFileSync(new URL('../one-commands.js', import.meta.url), 'utf8');
 assert.ok(commandAdapter.includes('if (readOnly) return false;'), 'Ask One must never run mutating commands for informational questions.');
+assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file questions must be routed to read-only answers.');
+assert.ok(app.includes("if(!explicitMutationAtStart&&(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent))return {kind:'none',sources:[]}"), 'File context alone must never trigger a workspace action.');
+
 assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
 assert.ok(commandAdapter.includes('const explicitTaskCommand = /^\s*'), 'Task creation must require an imperative command at the start of the message.');
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
