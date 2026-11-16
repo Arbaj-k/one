@@ -46,6 +46,8 @@ const adapterWindow={OneCommands:{...parser,executeCommand(q){executed++;return 
 vm.runInNewContext(adapterSource,{window:adapterWindow,console,SpeechSynthesisUtterance:function(){}});
 const center=adapterWindow.OneCommands.create({actions:{addTask(){callbacks++;return {answer:'wrong engine'}}},fallback(){}});
 for(const phrase of ['mere tasks batao','who owes me money?','aaj ka kharcha dikhao'])assert.equal(center.canHandle(phrase),true,'local query should route: '+phrase);
+for(const phrase of ['Read this PDF and tell me what it says','Summarize the uploaded image','What is written in this invoice?','Is PDF ko padh ke samjhao'])assert.equal(center.canHandle(phrase),false,'document-content questions must reach OCR/AI retrieval: '+phrase);
+assert.equal(center.canHandle('show my uploaded PDFs'),true,'file-list queries must remain local');
 await center.run('add task call Raj tomorrow');
 assert.equal(executed,1,'all local command mutations must use the one authoritative executor');
 assert.equal(callbacks,0,'competing callback mutation engines must not run');
