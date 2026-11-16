@@ -15,6 +15,7 @@ const cases=[
  ['show my pending tasks','tasks'],['list all notes','notes'],['mere projects dikhao','projects'],
  ['daily routine batao','routines'],['show my PDFs','files'],['add task submit assignment tomorrow','tasks'],
  ['create a task to call Raj','tasks'],['kal maths homework complete karna hai','tasks'],
+ ['task add karo maths homework','tasks'],['assignment add kar do submit form','tasks'],['homework bana do science chapter 4','tasks'],
  ['remind me to pay 500 to Raj tomorrow at 8pm','tasks'],['kal subah 9 baje bill pay yaad dilana','tasks'],
  ['daily briefing at 8am','tasks'],['weekly reminder every Monday','tasks'],
  ['monthly reminder for rent','tasks'],['save note meeting with Raj','notes'],
