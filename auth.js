@@ -31,7 +31,7 @@
         ${view!=='reset'?'<button id="one-google" class="one-auth-google" type="button"><span class="google-g">G</span> Continue with Google</button><div class="one-auth-divider"><span>or continue with email</span></div>':''}
         <form id="one-auth-form" novalidate>
           ${view==='signup'?'<label>Full name<input name="name" autocomplete="name" maxlength="80" placeholder="Your name" required></label>':''}
-          <label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label>
+          ${view==='update'?'':'<label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label>'}
           ${view==='reset'?'':view==='update'?'<label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required></label>':'<label>Password<div class="one-auth-password"><input name="password" type="password" autocomplete="'+(view==='signup'?'new-password':'current-password')+'" minlength="8" placeholder="At least 8 characters" required><button type="button" class="one-show-password" aria-label="Show password">Show</button></div></label>'}
           ${view==='login'?'<button type="button" id="one-forgot" class="one-auth-link">Forgot password?</button>':''}
           <button class="one-auth-submit" type="submit">${view==='signup'?'Create account':view==='reset'?'Send reset link':view==='update'?'Update password':'Log in'} <span>→</span></button>
