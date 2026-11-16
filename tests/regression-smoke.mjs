@@ -489,7 +489,8 @@ assert.ok(app.includes('structuredRequest') && app.includes('convertDocumentToJS
 // Ask One date keywords must resolve natural English/Hinglish dates and return the selected day's saved tasks and money records.
 assert.ok(app.includes('const dateKeyword=') && app.includes('dateQueryIntent'), 'Ask One must detect date-focused questions.');
 assert.ok(app.includes('today|today\'?s|this\\s+day|current\\s+day|aaj'), 'Ask One must understand today and aaj variants.');
-assert.ok(app.includes('tomorrow|kal|yesterday|parso|parson'), 'Ask One must understand tomorrow, kal, yesterday and parso variants.');
+assert.ok(app.includes('tomorrow|kal|kal\\s+ka') && app.includes('yesterday|kal\\s+tha|beete\\s+kal') && app.includes('parso|parson'), 'Ask One must understand tomorrow, kal, yesterday and parso variants.');
+assert.ok(app.includes('Explicit present-day wording always wins over ambiguous Hinglish') && app.includes('selectedDate=today()'), 'Explicit today/aaj must take priority over ambiguous kal matching.');
 assert.ok(app.includes("filter(t=>t.due===selectedDate)"), 'Ask One date lookup must return tasks for the resolved date.');
 assert.ok(app.includes("filter(e=>e.date===selectedDate||e.dueDate===selectedDate)"), 'Ask One date lookup must return money transactions and repayments for the resolved date.');
 assert.ok(app.includes('No tasks scheduled.') && app.includes('No money activity.'), 'Ask One date lookup must clearly report empty task and money results.');
