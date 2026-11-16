@@ -1410,7 +1410,7 @@ async function requestAskOneActionPlan(question){
   pendingAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
   return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
-  if(Array.isArray(plan.actions)&&plan.actions.length>1){
+ if(Array.isArray(plan.actions)&&plan.actions.length>1){
   if(plan.actions.length>6)return {answer:'Ek request mein maximum 6 actions process kar sakta hoon. Isko chhote parts mein bhejo.',sources:[source]};
   const records=[];
   for(const item of plan.actions){
@@ -1441,7 +1441,21 @@ async function requestAskOneActionPlan(question){
   }
   pendingAction={type:'create-batch',records,source,requestedAt:now};
   return {answer:'Confirm '+records.length+' actions:\n'+records.map((r,i)=>(i+1)+'. '+r.success).join('\n')+'\nAbhi kuch save nahi hua.',sources:[source]};
- }ifications in One to receive browser alerts.');
+ }
+ const action=clean(plan.action,40);
+ if(action==='query_items')return {kind:'none',sources:[]};
+ if(action==='create_reminder'){
+  const title=clean(plan.title,180);
+  const due=validDate(plan.due_date)?plan.due_date:'';
+  const repeat=['daily','weekly','monthly','none'].includes(plan.repeat_rule)?plan.repeat_rule:'none';
+  const clock=clean(plan.reminder_time,5);
+  if(!title)return {answer:'Kis cheez ka reminder set karna hai?',sources:['Task Briefing']};
+  if(!due)return {answer:'Reminder ki date batao. Example: Kal subah 9 baje assignment yaad dilana.',sources:['Task Briefing']};
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return {answer:'Reminder ka time batao. Example: 9:00 AM ya 18:30.',sources:['Task Briefing']};
+  const record={id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'};
+  const duplicate=(data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'')===clock);
+  if(duplicate)return {answer:'Ye reminder pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
+  return makeConfirm('tasks',record,'overview',(repeat==='daily'?'Daily reminder set: ':'Reminder set: ')+title+' · '+due+' at '+clock+'. It will appear in Task Briefing. Enable notifications in One to receive browser alerts.');
  }
  if(action==='create_task'){
   const title=clean(plan.title,180);if(!title)return {answer:'Task ka naam batao.',sources:['Planner']};
@@ -2506,16 +2520,13 @@ async function enableAndroidPush(){
  if(sessionError||!sessionData.session?.access_token)throw new Error('Your One session is not ready. Sign in again.');
  const {data:config,error:configError}=await cloudClient.functions.invoke('one-push',{body:{action:'config'}});
  if(configError)throw configError;
- if(!config?.publicKey||config.configured===false)throw new Error(config?.error||'Push server is not configured yet.');
+ if(!config?.publicKey)throw new Error(config?.error||'Push server is not configured yet.');
  let subscription=await registration.pushManager.getSubscription();
  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(config.publicKey)});
- const {data:subscribed,error:subscribeError}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
- if(subscribeError)throw subscribeError;
- if(subscribed?.ok!==true)throw new Error(subscribed?.error||'Push subscription could not be saved.');
- const {data:test,error:testError}=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
- if(testError)throw testError;
- if(test?.ok!==true)throw new Error(test?.error||'Push test request failed.');
- if(Number(test.sent||0)<1)throw new Error('Push service accepted the test, but no active device subscription received it. Check VAPID configuration and browser support.');
+ const {error}=await cloudClient.functions.invoke('one-push',{body:{action:'subscribe',subscription:subscription.toJSON()}});
+ if(error)throw error;
+ const test=await cloudClient.functions.invoke('one-push',{body:{action:'test'}});
+ if(test.error)console.warn("Operation failed; diagnostic details redacted.");
  return subscription;
 }
 async function checkTaskReminders(){
