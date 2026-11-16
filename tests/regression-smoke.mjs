@@ -217,7 +217,7 @@ for (const feature of [
   assert.ok(app.includes(feature), `Regression guard missing: ${feature}`);
 }
 
-assert.ok(!html.includes('data-page="memory"'), 'Removed navigation must not reintroduce the Personal Memory menu entry.');
+assert.ok(html.includes('id="one-more-nav"') && html.includes('data-page="memory"'), 'Personal Memory must remain accessible from the mobile More drawer, not the primary navigation.');
 assert.ok(app.includes('memory:personalMemory'), 'Personal Memory page must remain available internally after navigation cleanup.');
 
 const dashboardStart=app.indexOf('function overview(){');
