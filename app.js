@@ -780,6 +780,7 @@ modal((id?'Edit ':'')+({note:'Note',task:'task',study:'study session',project:'p
 async function saveForm(e){e.preventDefault();if(formType==='fileMeta'){const fd=new FormData(e.target),metadata=Object.fromEntries(fd.entries()),file=window.pendingOneFile;if(!String(metadata.name||'').trim()){toast('Naam is required');return}if(!file){toast('Choose a file again');return}const button=e.target.querySelector('.modal-save-button');if(button){button.disabled=true;button.textContent='Saving…'}saveFile(file,metadata).then(record=>{window.pendingOneFile=null;document.querySelector('#modal-root').innerHTML='';page='vault';window.vaultDocumentQuery='';render();toast('File saved to Uploaded Items');if(record.detectedActionItems?.length)reviewOneExtractedActions('document',record.id)}).catch(error=>{if(button){button.disabled=false;button.textContent='Save file'}toast(error.message||'Could not save file')});return}if(formType==='fileRename'){const fd=new FormData(e.target),metadata=Object.fromEntries(fd.entries());if(!String(metadata.name||'').trim()){toast('Naam is required');return}if(renameFile(editing,metadata)){document.querySelector('#modal-root').innerHTML='';render();toast('File details updated')}return}if(formType==='quickUpload'){const files=Array.from(e.target.querySelector('[name=uploads]')?.files||[]);if(!files.length){toast('Choose at least one PDF or image');return}const invalid=files.find(f=>f.size>12*1024*1024||!(f.type==='application/pdf'||f.type.startsWith('image/')));if(invalid){toast(invalid.size>12*1024*1024?'Each file must be 12 MB or smaller':'Choose only PDF or image files');return}document.querySelector('#modal-root').innerHTML='';processUploadedDocuments(files);return}const fd=new FormData(e.target),v=Object.fromEntries(fd.entries()),key=(formType==='note'||formType==='quickKnowledge')?'notes':formType==='task'?'tasks':formType==='project'?'projects':'expenses';if(formType==='memory'){data.memories=data.memories||[];const record=editing?data.memories.find(x=>x.id===editing):null;if(record)Object.assign(record,v,{date:today(),updated:Date.now()});else data.memories.push({id:uid(),...v,date:today(),created:Date.now()});persist();if(window.OneAnalytics&&!editing)window.OneAnalytics.trackEvent('memory_created');document.querySelector('#modal-root').innerHTML='';page='memory';render();toast(editing?'Memory updated':'Memory saved');return}if(formType==='quickKnowledge'){v.subject='Knowledge';v.tags='knowledge';if(!String(v.content||'').trim()){toast('Enter content');return}if(!String(v.title||'').trim())v.title='Knowledge Entry';}let noteFiles=[];if(formType==='note'){v.title=String(v.title||'').trim();v.content=String(v.content||'').trim();if(!v.content){toast('Enter note content');return}delete v.links;delete v.noteLinks;delete v.noteFiles;delete v.attachment;delete v.attachmentName;delete v.attachmentType;delete v.attachmentData;delete v.subject;delete v.tags;}if(['task','expense'].includes(formType)&&v.projectId?.includes('|'))v.projectId=v.projectId.split('|')[0];if(!v.projectId)delete v.projectId;if(formType==='study'){data.studySessions=data.studySessions||[];data.studySessions.push({id:uid(),...v,created:Date.now()});persist();document.querySelector('#modal-root').innerHTML='';render();toast('Study session planned');return}if(formType==='expense'&&(!Number.isFinite(Number(v.amount))||Number(v.amount)<=0)){toast('Enter a valid amount');return}if(formType==='expense'){v.kind=v.kind||'expense';if(v.kind!=='expense'&&!String(v.person||'').trim()){toast('Enter the person name for lending or repayment');return}if(['lent','borrowed','lent_repayment','borrowed_repayment'].includes(v.kind)){v.person=String(v.person).trim();v.description=String(v.description||'').trim()||(({lent:'Lent to ',borrowed:'Borrowed from ',lent_repayment:'Received from ',borrowed_repayment:'Repaid to '}[v.kind]||'Udhaar with ')+v.person);v.category=v.kind.includes('repayment')?'Repayment':'Udhaar'}else delete v.dueDate}if(formType==='task'){v.paused=v.reminderStatus==='paused';delete v.reminderStatus;const candidate={...v,title:String(v.title||'').trim(),repeatRule:v.repeatRule||'none'};const duplicate=reminderDuplicate(candidate,editing);if(duplicate){toast('Same reminder already exists. Duplicate save nahi hua.');return}}let obj=editing?data[key].find(x=>x.id===editing):null;if(obj)Object.assign(obj,v,{updated:Date.now()});else data[key].push({id:uid(),...v,done:false,updated:Date.now(),created:Date.now()});persist();if(formType==='task'){try{const shown=JSON.parse(localStorage.getItem(taskReminderStorageKey())||'{}');const savedTask=editing?data.tasks.find(t=>t.id===editing):data.tasks[data.tasks.length-1];if(savedTask){delete savedTask.snoozedUntil;Object.keys(shown).filter(key=>key.startsWith('task-'+savedTask.id+'-')).forEach(key=>delete shown[key]);persist();}localStorage.setItem(taskReminderStorageKey(),JSON.stringify(shown));}catch{}setTimeout(checkTaskReminders,0)}if(window.OneAnalytics&&!editing){const eventName={note:'note_created',task:'task_created',project:'project_created',expense:'expense_created'}[formType];if(eventName)window.OneAnalytics.trackEvent(eventName)}document.querySelector('#modal-root').innerHTML='';render();toast(editing?'Changes saved':'Created successfully');}
 async function retryDocumentOCR(id){
  const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
+ try{await ensureOneDocumentLibraries(doc.type==='pdf',true)}catch(error){toast(error.message||'Document tools could not load');return}
  const picker=document.createElement('input');picker.type='file';picker.accept=doc.type==='pdf'?'.pdf':'image/*';
  picker.onchange=async()=>{
   const file=picker.files?.[0];if(!file)return;
@@ -832,6 +833,25 @@ function shouldRunDocumentOCR(value){
  const text=String(value||'').replace(/\[Page\s+\d+\]|\[OCR\]|\[No selectable text detected[^\]]*\]/gi,' ').trim();
  return text.length<48||documentTextQuality(text)<.48;
 }
+const oneDocumentLibraries={pdf:null,ocr:null};
+async function loadOneScript(src){
+ return new Promise((resolve,reject)=>{
+  const existing=[...document.scripts].find(script=>script.src===src);
+  if(existing){if(existing.dataset.loaded==='true'){resolve();return}existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('Could not load document processing library.')),{once:true});return}
+  const script=document.createElement('script');script.src=src;script.async=true;
+  script.onload=()=>{script.dataset.loaded='true';resolve()};
+  script.onerror=()=>{script.remove();reject(new Error('Could not load document processing library. Check your connection and retry.'))};
+  document.head.appendChild(script);
+ });
+}
+async function ensureOneDocumentLibraries(needsPdf,needsOcr){
+ const jobs=[];
+ if(needsPdf&&!window.pdfjsLib)jobs.push(oneDocumentLibraries.pdf||(oneDocumentLibraries.pdf=loadOneScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js')));
+ if(needsOcr&&!window.Tesseract)jobs.push(oneDocumentLibraries.ocr||(oneDocumentLibraries.ocr=loadOneScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')));
+ await Promise.all(jobs);
+ if(needsPdf&&!window.pdfjsLib)throw new Error('PDF reader did not initialize. Retry the upload.');
+ if(needsOcr&&!window.Tesseract)throw new Error('OCR engine did not initialize. Retry the upload.');
+}
 async function runImageOCR(file){
  if(!window.Tesseract?.recognize)throw new Error('OCR engine unavailable. Refresh the page and try again.');
  const cleanText=value=>String(value||'').replace(/[\t\f\v]+/g,' ').split(/\r?\n/).map(line=>line.replace(/\s+/g,' ').trim()).filter(line=>line&&!/^[|_~•·.\-]{2,}$/.test(line)&&!/^([A-Z])\1{3,}$/.test(line)).join('\n').trim();
@@ -877,6 +897,12 @@ async function runImageOCR(file){
 
 async function processUploadedDocuments(files,sourceNoteId=null){
  const list=Array.from(files||[]);if(!list.length)return;
+ const valid=list.filter(file=>file&&file.size>0&&file.size<=12*1024*1024);
+ const needsPdf=valid.some(file=>file.type==='application/pdf'||/\\.pdf$/i.test(file.name));
+ const needsOcr=valid.some(file=>file.type.startsWith('image/')||file.type==='application/pdf'||/\\.pdf$/i.test(file.name));
+ const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');
+ try{if(status)status.textContent='Loading document tools…';await ensureOneDocumentLibraries(needsPdf,needsOcr)}
+ catch(error){toast(error.message||'Document tools could not load');if(status)status.textContent=error.message||'Document tools could not load';return}
  const setStatus=message=>{const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
  const setProgress=(percent,label)=>setStatus(label+' · '+Math.max(0,Math.min(100,Math.round(percent)))+'%');
  for(const file of list){
