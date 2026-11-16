@@ -22,11 +22,11 @@
 <meta name="google-site-verification" content="j7p1r3NhJxaOUtzdJwzkjT3_l3Y61bnObboSkIlghSs">
 <link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
 </head>
-<body class="one-auth-required">
+<body>
 <div class="app">
   <main class="main">
-    <header class="topbar"><div class="mobile-brand">✦ One</div><div class="topbar-right"><button type="button" class="notification-bell" data-action="open-notifications" aria-label="Open notifications" title="Notifications">♧<span class="notification-badge" id="notification-unread-count" hidden>0</span></button><button id="install-app" class="install-app" aria-label="Install One" title="Install app" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" /></svg></button><span class="demo-pill" aria-label="Connection status" title="Connection and sync status"><i></i><span id="cloud-status">Saved on this device · Not available on other devices</span></span><div class="avatar" aria-hidden="true">O</div><button id="one-signin" class="one-signin-button" type="button">Sign in</button></div></header>
-    <nav class="workspace-shortcuts" aria-label="Workspace navigation"><button type="button" class="btn small" data-page="analytics">Analysis</button></nav>
+    <header class="topbar"><div class="mobile-brand">✦ One</div><div class="topbar-right"><button type="button" class="notification-bell" data-action="open-notifications" aria-label="Open notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-badge" id="notification-unread-count" hidden>0</span></button><button id="install-app" class="install-app" aria-label="Install One" title="Install app" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" /></svg></button><span class="demo-pill" aria-label="Connection status" title="Workspace sync status"><i></i><span id="cloud-status">Local</span></span><div class="avatar" aria-hidden="true">O</div><button id="one-signin" class="one-signin-button" type="button">Sign in</button></div></header>
+    <nav class="workspace-shortcuts" aria-label="Workspace navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money</button><button type="button" data-page="ask">Ask One</button><button type="button" data-page="analytics">Analytics</button></nav><nav class="mobile-nav" aria-label="Primary navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="ask">Ask One</button><button type="button" data-action="toggle-more-nav" aria-expanded="false">More</button></nav><div id="one-more-nav" class="one-more-nav" hidden><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money & Udhaar</button><button type="button" data-page="analytics">Analytics</button><button type="button" data-page="study">Routines / Study</button><button type="button" data-page="memory">Personal Memory</button><button type="button" data-page="settings">Settings</button></div>
     <section id="page-content" class="content"></section>
     
   </main>
@@ -35,8 +35,6 @@
 <div id="one-auth-root" hidden></div>
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="document-extractor.js"></script>
 <script src="supabase-client.js"></script>
 <script src="app.js"></script>
