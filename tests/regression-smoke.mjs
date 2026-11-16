@@ -597,6 +597,15 @@ assert.ok(app.includes("tomorrow|kal|next day|कल"), 'Hindi tomorrow wording 
 const sendChatCode=app.slice(app.indexOf('async function sendChat('),app.indexOf('function action(',app.indexOf('async function sendChat(')));
 assert.ok(sendChatCode.indexOf('chatActionIntent(query)') < sendChatCode.indexOf('requestStudentBrainAI(query'), 'Local reminder/briefing actions must run before document AI retrieval.');
 
+// Ask One routing regression: core query, action and document regexes must be real regexes.
+assert.ok(app.includes(String.raw`normalizedQuery.split(/\s+/)`), 'Document retrieval must tokenize natural-language queries.');
+assert.ok(app.includes(String.raw`const explicitMutationAtStart=/^\s*`), 'Action planning must recognize explicit mutation commands.');
+assert.ok(app.includes(String.raw`const asksAboutAttachedContent=/\b`), 'Attached PDF/image questions must be classified as document questions.');
+assert.ok(app.includes(String.raw`/\.pdf$/i.test(file.name)`), 'PDF extension detection must match ordinary filenames.');
+assert.ok(app.includes(String.raw`const naturalReminder=/\b(?:yaad\s+`), 'Natural-language reminder patterns must use valid whitespace regexes.');
+assert.ok(commandSource.includes(String.raw`stop|\d+)$/i.test(q)`), 'Pending command choices must accept numeric selections.');
+assert.ok(commandSource.includes(String.raw`routine)\b/i.test(q)`), 'Pending reminder routing must use a valid word boundary.');
+
 // Daily Planner has its own local month calendar (not external calendar integration).
 const dailyPlanner=app.slice(app.indexOf('function plannerCalendar(){'),app.indexOf('function studyPlanner(){'));
 assert.ok(dailyPlanner.includes('function plannerCalendar(){'), 'Daily Planner monthly calendar renderer is missing.');
