@@ -71,12 +71,11 @@
  const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
  if(pendingReminderDraft&&Date.now()>reminderDraftExpiresAt)pendingReminderDraft=null;if(pendingReminderDraft&&/^(?:add|create|make|show|list|delete|remove|complete|mark|save|note|task|expense|income|udhaar|project|routine)\b/i.test(q)){pendingReminderDraft=null;}if(reminderCue||pendingReminderDraft){
   const combined=pendingReminderDraft?pendingReminderDraft+' '+query:query;
-  const due=parseDate(combined),time=parseTime(combined);
+  const repeat=parseRecurrence(combined),repeatRule=repeat.repeatRule,due=parseDate(combined)||(repeatRule!=='none'?today():''),time=parseTime(combined);
   const title=norm(combined).replace(/\b(remind(?:er)?|set|laga|lagao|laga do|set karo|set kar do|yaad|dila|dilana|dila do|dila dena|rakhna|briefing|brief me|mujhe|mere|please|karo|karna|kar|me|the|a|an|liya|liye|ke liye|ka|ki|ke|kal|tomorrow|aaj|today|parso|parson|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm|daily|every day|weekly|every week|monthly|every month|each month|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|monday|tuesday|wednesday|thursday|friday|saturday|sunday|somvar|mangalvar|budhvar|guruwar|shukravar|shanivar|ravivar|roz|har roz|har din|for)\b/gi,' ')
    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim().replace(/^(?:to|for)\s+/i,'');
   if(!title){pendingReminderDraft=combined;reminderDraftExpiresAt=Date.now()+120000;return answer('Kis baat ka reminder set karna hai? Example: assignment, bill pay karna, ya kisi ko call karna.','Task Briefing')}
   if(!due){pendingReminderDraft=combined;reminderDraftExpiresAt=Date.now()+120000;return answer('“'+title+'” ka reminder kis din set karna hai? Jaise kal, Friday ya 20/11.','Task Briefing')}
-  const repeat=parseRecurrence(combined),repeatRule=repeat.repeatRule;
   const r={id:uid(),title,due:due||(repeatRule!=='none'?today():''),reminderTime:time||'09:00',priority:'Medium',category:'Briefing',repeatRule,repeatDay:repeat.repeatDay,done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
   pendingReminderDraft=null;data.tasks.push(r);persist();
   window.OneCommandsUndo=()=>{data.tasks=data.tasks.filter(x=>x.id!==r.id);persist();render()};
