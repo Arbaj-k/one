@@ -185,7 +185,7 @@ Rules:
       parts.push({ inline_data: { mime_type: validatedInline.mimeType, data: validatedInline.data } });
     }
     const primaryModel = "gemini-3.5-flash-lite";
-    const fallbackModel = "gemini-3.6-flash";
+    const fallbackModel = "gemini-2.5-flash";
     let usedModel = primaryModel;
     const requestBody = JSON.stringify({
       contents: [{ role: "user", parts }],
