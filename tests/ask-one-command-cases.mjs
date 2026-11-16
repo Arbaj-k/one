@@ -78,4 +78,12 @@ assert.equal(commandData.tasks.length,1,'weekly reminder command must create a t
 assert.equal(commandData.tasks[0].repeatRule,'weekly');
 assert.equal(commandData.tasks[0].title,'pay rent','weekly reminder must preserve only the reminder subject');
 assert.ok(commandData.tasks[0].due,'weekly reminder must have a next occurrence date');
-console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, weekly reminder creation, router, Udhaar and title-preservation checks.');
+const dailyResult=commandWindow.OneCommands.executeCommand('daily reminder to walk');
+assert.equal(commandData.tasks.length,2,'daily reminder without a fixed date must still be scheduled');
+assert.equal(commandData.tasks[1].repeatRule,'daily');
+assert.equal(commandData.tasks[1].title,'walk');
+const monthlyResult=commandWindow.OneCommands.executeCommand('monthly reminder for rent');
+assert.equal(commandData.tasks.length,3,'monthly reminder without a fixed date must still be scheduled');
+assert.equal(commandData.tasks[2].repeatRule,'monthly');
+assert.equal(commandData.tasks[2].title,'rent');
+console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
