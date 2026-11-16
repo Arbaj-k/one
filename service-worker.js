@@ -1,10 +1,11 @@
 /* One PWA service worker. Bump version on each release. */
-const CACHE_VERSION="one-shell-v23",ASSET_CACHE="one-assets-v22";
+const CACHE_VERSION="one-shell-v24",ASSET_CACHE="one-assets-v23";
 const PRECACHE=["./","./index.html","./404.html","./supabase-client.js","./analytics.js","./workspace-intelligence.js","./styles.css","./app.js","./commands.js","./one-commands.js","./voice.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./icons/student-brain.svg"];
 const OFFLINE_PAGE="./index.html";
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_VERSION).then(c=>c.addAll(PRECACHE))));
 self.addEventListener("activate",e=>e.waitUntil((async()=>{const keep=new Set([CACHE_VERSION,ASSET_CACHE]);const keys=await caches.keys();await Promise.all(keys.filter(k=>/^(one-shell-|one-assets-|student-brain-shell-)/.test(k)&&!keep.has(k)).map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener("message",e=>{if(e.data?.type==="SKIP_WAITING")self.skipWaiting()});
+function safeShareUrl(value){try{const url=new URL(String(value||''),self.location.origin);return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password?url.href:''}catch(_){return ''}}
 async function saveSharePayload(payload){
  return await new Promise((resolve,reject)=>{
   const request=indexedDB.open("one-share-inbox",1);
@@ -18,8 +19,14 @@ self.addEventListener("fetch",e=>{
  if(r.method==="POST"&&u.origin===self.location.origin&&u.pathname.endsWith("/share/")){
   e.respondWith((async()=>{
    try{
-    const form=await r.formData(),files=form.getAll("shared_files").filter(x=>x instanceof File&&x.size>0).map(file=>({name:file.name,type:file.type,size:file.size,blob:file}));
-    const payload={id:Date.now()+"-"+Math.random().toString(36).slice(2),title:String(form.get("title")||""),text:String(form.get("text")||""),url:String(form.get("url")||""),files,createdAt:Date.now()};
+    const form=await r.formData(),rawFiles=form.getAll("shared_files").filter(x=>x instanceof File&&x.size>0);
+    let totalBytes=0;
+    const files=rawFiles.filter(file=>{
+     const validType=['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type);
+     if(!validType||file.size>12*1024*1024)return false;
+     totalBytes+=file.size;return totalBytes<=20*1024*1024;
+    }).map(file=>({name:String(file.name||'Shared file').replace(/[\\/\\0-\\x1f]/g,'_').slice(0,180),type:file.type,size:file.size,blob:file}));
+    const payload={id:Date.now()+"-"+Math.random().toString(36).slice(2),title:String(form.get("title")||"").slice(0,300),text:String(form.get("text")||"").slice(0,12000),url:safeShareUrl(form.get("url")),files,createdAt:Date.now()};
     await saveSharePayload(payload);
     return Response.redirect(new URL("./?shared=1",self.registration.scope),303);
    }catch(error){return new Response("One could not receive this shared item. Please open One and try again.",{status:500,headers:{"Content-Type":"text/plain; charset=utf-8"}})}
@@ -36,12 +43,12 @@ self.addEventListener("push",event=>{
  try{if(event.data)payload={...payload,...event.data.json()}}catch(_){try{payload.body=event.data?.text()||payload.body}catch(__){}}
  event.waitUntil(self.registration.showNotification(payload.title||"One · Reminder",{
   body:payload.body||"You have a reminder.",icon:"./icons/student-brain.svg",badge:"./icons/student-brain.svg",
-  tag:payload.tag||"one-push-"+Date.now(),renotify:false,data:{url:payload.url||"./"}
+  tag:payload.tag||"one-push-"+Date.now(),renotify:false,data:{url:safeShareUrl(payload.url)||"./"}
  }));
 });
 self.addEventListener("notificationclick",event=>{
  event.notification.close();
- const target=new URL(event.notification.data?.url||"./",self.location.origin).href;
+ const requested=safeShareUrl(event.notification.data?.url||"./"),target=requested&&new URL(requested).origin===self.location.origin?requested:new URL("./",self.location.origin).href;
  event.waitUntil((async()=>{
   const windows=await self.clients.matchAll({type:"window",includeUncontrolled:true});
   for(const client of windows){if("focus" in client){await client.focus();client.navigate?.(target);return}}
