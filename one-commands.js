@@ -45,15 +45,17 @@
         || /\b(?:how do i|how can i|what does|what is|what are|meaning of|difference between|about|ke baare mein|kaise karte|kaise karu|kyu hota|kya hota)\b/i.test(query);
       if (readOnly) return false;
 
-      // Only imperative commands at the beginning of the message are allowed
-      // to reach the mutating legacy command engine.
+      // Natural-language task intent: no special syntax or slash commands.
       const explicitTaskCommand = /^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b|^\s*(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar\s+do|karo|do)\b|^\s*(?:task bana do|task add kar do|todo bana do|assignment add kar do|homework add kar do)\b|^\s*(?:mujhe|mere liye)\s+(?:ek\s+)?(?:task|todo|assignment)\s+(?:add|bana)\s+(?:kar\s+do|karo|do)\b/i.test(query);
       const explicitAction = /^\s*(?:(?:please|kindly)\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark|remember)\b/i.test(query)
         || /^\s*(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make|save|record|log|track|delete|remove|edit|update|change|complete|finish|mark)\b/i.test(query)
         || /^\s*(?:task|todo|note|project|routine|habit|expense|income)\s+(?:add|bana|create|make|save|delete|remove|update|edit)\b/i.test(query)
         || /^\s*(?:i\s+)?(?:spent|paid|received|earned|lent|borrowed)\b/i.test(query);
       const explicitReminder = /^\s*(?:(?:please|kindly)\s+)?(?:remind me|set (?:a )?reminder|yaad dila(?:na| do)?|yaad rakhna|brief me)\b/i.test(query);
-      return explicitTaskCommand || explicitAction || explicitReminder;
+      const taskManagement = /^\s*(?:(?:show|list|display)\s+(?:me\s+)?(?:my\s+)?(?:all\s+)?tasks\b|(?:mere\s+)?tasks?\s+(?:dikhao|batao|list|show)\b|(?:mark|complete|finish|done)\s+(?:the\s+)?(?:task\s+)?(.+?)\s+(?:as\s+)?(?:done|complete|completed)\b|(?:delete|remove|hatao)\s+(?:the\s+)?(?:task|todo)?\s*.+)/i.test(query);
+      const implicitTaskIntent = /^(?=.*(?:\b(?:kal|tomorrow|today|aaj|parso|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?|subah|shaam|sham|raat)\b))(?=.*\b(?:jaana hai|jana hai|karna hai|karni hai|karne hain|submit karna|call karna|need to|have to|got to|should|must|remind me to)\b).+/i.test(query)
+        || /^\s*(?:i need to|i have to|i should|i must|mujhe .+\b(?:karna|karni|jana|jaana) hai)\b/i.test(query);
+      return explicitTaskCommand || explicitAction || explicitReminder || taskManagement || implicitTaskIntent;
     }
     async function run(input) {
       const text = String(input || '').trim();
@@ -63,7 +65,13 @@
         return false;
       }
       try {
-        const parsed = legacy.parseCommand(text);
+        // Convert an unambiguous natural-language commitment into the existing
+        // local task command shape. Questions are filtered in canHandle first.
+        const taskIntent = /^(?=.*(?:\b(?:kal|tomorrow|today|aaj|parso|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?|subah|shaam|sham|raat)\b))(?=.*\b(?:jaana hai|jana hai|karna hai|karni hai|karne hain|submit karna|call karna|need to|have to|got to|should|must)\b).+/i.test(text)
+          || /^\s*(?:i need to|i have to|i should|i must|mujhe .+\b(?:karna|karni|jana|jaana) hai)\b/i.test(text);
+        const commandText = taskIntent && !/^\s*(?:add|create|make)\b/i.test(text)
+          ? 'add task ' + text : text;
+        const parsed = legacy.parseCommand(commandText);
         let result;
         if (parsed?.ambiguous) {
           const names = { tasks: 'Tasks', notes: 'Notes', projects: 'Projects', routines: 'Routines', money: 'Money', files: 'Files', scan: 'Scan' };
@@ -78,10 +86,10 @@
               label: parsed.title, due: parsed.date, time: parsed.time,
               kind: parsed.section, query: text
             };
-            result = await callback(args);
-            if (!result) result = legacy.executeCommand(text);
+            result = await callback({...args,query:commandText});
+            if (!result) result = legacy.executeCommand(commandText);
           } else {
-            result = legacy.executeCommand(text);
+            result = legacy.executeCommand(commandText);
           }
         }
         if (result && typeof result.then === 'function') result = await result;
