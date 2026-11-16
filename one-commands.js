@@ -36,7 +36,7 @@
       // returns a local "not found" response and sendChat never reaches OCR/RAG.
       const refersToDocument = /\b(?:pdf|image|photo|document|file|screenshot|invoice|receipt|attachment|uploaded)\b|(?:पीडीएफ|फोटो|तस्वीर|दस्तावेज़)/i.test(query);
       const asksDocumentContent = /\b(?:read|padh|padho|summar\w*|explain|what|what's|whats|tell me|extract|analyse|analyze|translate|describe|inside|content|text|written|says|say)\b|(?:isme|is mein|ismein|kya likha|padh ke|samjhao)/i.test(query);
-      const asksForFileList = /\b(?:show|list|find|search|open|my|all|uploaded)\b.*\b(?:files?|pdfs?|images?|documents?)\b/i.test(query);
+      const asksForFileList = /\b(?:show|list|find|search|open)\b.*\b(?:files?|pdfs?|images?|documents?)\b/i.test(query) || /\b(?:my|all|uploaded)\s+(?:files?|pdfs?|images?|documents?)\b/i.test(query) && /\b(?:show|list|find|search|open)\b/i.test(query);
       if (refersToDocument && asksDocumentContent && !asksForFileList) return false;
 
       // Local query commands remain routable even when phrased as questions.
