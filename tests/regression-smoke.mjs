@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-assert.match(app, /function today\(\)\{return new Intl\.DateTimeFormat\('en-CA',\{timeZone:'Asia\/Kolkata'/, 'Today must use Asia/Kolkata, not UTC or browser-local date.');
+assert.match(app, /function today\(\)\{const parts=new Intl\.DateTimeFormat\('en-US',\{timeZone:'Asia\/Kolkata'[^}]*\}\)\.formatToParts\(new Date\(\)\)/, 'Today must use Asia/Kolkata formatToParts so the date is stable across browser locales.');
+assert.ok(app.includes("today|today'?s|aaj|aaj\\s+ka|aaj\\s+ki|aaj\\s+ke"), 'Explicit today/aaj wording must override ambiguous kal/yesterday matching.');
 const buildStart=app.indexOf('async function buildStudentBrainAIRequest(');
 const buildEnd=app.indexOf('async function requestStudentBrainAI(',buildStart);
 const buildSource=app.slice(buildStart,buildEnd);
