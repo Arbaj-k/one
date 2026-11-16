@@ -499,9 +499,9 @@ assert.ok(app.includes("item.date===date||item.dueDate===date"), 'Ask One money 
 
 // Uploaded file metadata, IndexedDB blob storage, file actions and Ask One file search.
 assert.ok(app.includes("files:['file','files','pdf','image','photo','document','documents','upload','uploaded','bill'"), 'Ask One must recognize file-related keywords.');
-assert.ok(app.includes('function searchFiles(query){') && app.includes('function saveFile(file,metadata){') && app.includes('function renameFile(id,metadata){') && app.includes('async function deleteFile(id){'), 'File operations must use dedicated maintainable functions.');
+assert.ok(app.includes('function searchFiles(query){') && app.includes('async function saveFile(file,metadata){') && app.includes('function renameFile(id,metadata){') && app.includes('async function deleteFile(id){'), 'File operations must use dedicated maintainable functions.');
 assert.ok(app.includes('function openFileMetadataDialog(file){') && app.includes("field('Naam','name',file.name") && app.includes("field('Tags / Keywords','tags'") && app.includes("field('Note','note'"), 'Selecting a file must open the metadata dialog with a prefilled required name.');
-assert.ok(app.includes('file.size>5*1024*1024') && app.includes('File size limit is 5 MB'), 'Uploads must enforce a clear 5 MB limit.');
+assert.ok(app.includes('file.size>12*1024*1024') && app.includes('File size limit is 12 MB'), 'Uploads must enforce a clear 5 MB limit.');
 assert.ok(app.includes('await saveOriginalDocument(id,file)') && app.includes('doc.originalName=file.name') && app.includes('doc.created=Date.now()'), 'Original file blobs must be stored in IndexedDB with metadata.');
 assert.ok(app.includes("data-action=\"open-uploaded-file\"") && app.includes("data-action=\"download-uploaded-file\"") && app.includes("data-action=\"rename-uploaded-file\""), 'Uploaded files must expose view, download and rename actions.');
 assert.ok(app.includes('function openUploadedFile(id,download=false){') && app.includes('function searchFiles(query){'), 'Files must be viewable and searchable.');
