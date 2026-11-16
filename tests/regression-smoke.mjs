@@ -14,7 +14,7 @@ assert.ok(buildSource.indexOf('const asksProjects=')>=0 && buildSource.indexOf('
 const commandAdapter = readFileSync(new URL('../one-commands.js', import.meta.url), 'utf8');
 assert.ok(commandAdapter.includes('if (readOnly) return false;'), 'Ask One must never run mutating commands for informational questions.');
 assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
-assert.ok(commandAdapter.includes('const explicitTaskCommand = /^\\\\s*'), 'Task creation must require an imperative command at the start of the message.');
+assert.ok(commandAdapter.includes('const explicitTaskCommand = /^\s*'), 'Task creation must require an imperative command at the start of the message.');
 const voice = readFileSync(new URL('../voice-assistant.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
