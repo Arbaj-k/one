@@ -33,8 +33,11 @@ assert.ok(source.includes('const studySessions=asksRoutines?'), 'Unrelated routi
 assert.ok(source.includes('function isAskOneReadOnlyQuestion(question)'), 'Ask One must identify read-only questions before action planning');
 assert.ok(source.includes("if(isAskOneReadOnlyQuestion(question)&&plan.kind==='action'"), 'Question-shaped prompts must not be converted into AI write actions');
 assert.ok(source.includes('const explicitTaskAddIntent=/^'), 'Task creation must require an explicit command at the start of the message');
-assert.ok(fs.readFileSync('one-commands.js','utf8').includes('if (readOnly) return false;'), 'Read-only questions must bypass local command execution');
+assert.ok(fs.readFileSync('one-commands.js','utf8').includes('if (readOnly && !localSection'), 'Read-only workspace queries must route through the local command pipeline');
 
+
+assert.ok(source.includes("action==='add_udhaar'") && source.includes("type==='create-batch'"), 'Structured action routing must support Udhaar and multi-action batches');
+assert.ok(source.includes('confirm-pending-action') && source.includes('cancel-pending-action'), 'Ask One must expose inline confirmation controls');
 
 // Universal retrieval must not fall back to unrelated records when a query has no match.
 assert.ok(source.includes('else selectedTasks=matches.map(item=>item.task).slice(0,40);'), 'Task retrieval must return only matched records');
@@ -45,11 +48,11 @@ assert.ok(source.includes('selectedMemories=ranked.map(item=>item.memory).slice(
 const intentStart=source.indexOf('async function chatActionIntent(question)');
 const intentEnd=source.indexOf('async function sendChat(question',intentStart);
 const intentSource=source.slice(intentStart,intentEnd);
-assert.ok(intentSource.indexOf('const verify=')<intentSource.indexOf('if(pendingChatAction)'), 'Action confirmation must initialize verification before use');
+assert.ok(intentSource.indexOf('const verify=')<intentSource.indexOf('if(pendingAction)'), 'Action confirmation must initialize verification before use');
 assert.ok(intentSource.includes("pending.type==='create-record'"), 'Create actions must use the shared confirmation handler');
-assert.ok(intentSource.includes('5*60*1000'), 'Pending confirmations must expire instead of remaining valid indefinitely');
+assert.ok(intentSource.includes('2*60*1000'), 'Pending confirmations must expire instead of remaining valid indefinitely');
 for (const message of ['Please confirm task:', 'Please confirm note:', 'Please confirm project:', 'Please confirm money record:', 'Please confirm this money record:']) assert.ok(intentSource.includes(message), 'Create confirmation missing: '+message);
-assert.ok(source.includes('let data=loadData(),page=\'overview\',chatBusy=false,pendingChatAction=null;'), 'Ask One confirmation state is missing');
+assert.ok(source.includes('let data=loadData(),page=\'overview\',chatBusy=false,pendingAction=null;'), 'Ask One confirmation state is missing');
 assert.ok(source.includes('Please confirm: delete task'), 'Task deletion must require explicit confirmation');
 assert.ok(source.includes('A matching open task already exists'), 'Task creation must detect duplicates');
 assert.ok(source.includes('This exact note was already saved recently'), 'Note creation must detect recent duplicates');
