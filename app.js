@@ -16,6 +16,8 @@ function migrateData(raw){
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
 let data=loadData(),page='overview',chatBusy=false,pendingChatAction=null;
+window.getOneWorkspaceData=()=>data;
+window.data=data;
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
 const CLOUD_KEY='sb_publishable_-PlVhv38rbHYFqsfvJ42AQ_S6-2A7JT';
@@ -25,7 +27,7 @@ let studentBrainAIClient=null,studentBrainAITokenPromise=null;
 function getStudentBrainAIClient(){
  if(studentBrainAIClient)return studentBrainAIClient;
  if(!window.supabase?.createClient)throw new Error('Supabase client did not load. Refresh and try again.');
- studentBrainAIClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:'student-brain-ai-auth-v1'}});
+ studentBrainAIClient=window.getOneSupabaseClient();
  return studentBrainAIClient;
 }
 async function getStudentBrainAIToken(){
@@ -193,6 +195,7 @@ function stopWorkspaceRealtime(){
  workspaceChannel=null;
 }
 function persist(){
+ window.data=data;
  const snapshot=JSON.stringify(data);
  try{
   localStorage.setItem(workspaceStorageKey(),snapshot);
@@ -289,7 +292,7 @@ async function activateCloudWorkspace(userId){
 function initCloud(){
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase client did not load.');
-  cloudClient=window.supabase.createClient(CLOUD_URL,CLOUD_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'one-auth-session-v1'}});
+  cloudClient=window.getOneSupabaseClient();
   setCloudMode('offline','Guest workspaces are device-only. Sign in to enable secure cloud sync.');
  }catch(error){console.warn("Operation failed; diagnostic details redacted.");setCloudMode('error',error.message)}
 }
@@ -893,7 +896,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
    data.documents.push({id,name:file.name,type:isPdf?'pdf':'image',mimeType:file.type||'',size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete'});
-   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded');render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');await convertDocumentToJSON(id);await autoProcessDocumentInsights(id);
+   persist();if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');await convertDocumentToJSON(id);await autoProcessDocumentInsights(id);
   }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
  }
 }
@@ -2057,7 +2060,7 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
 };
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;window.OneCommands?.remember(query);
- data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message');persist();
+ data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message',page);persist();
  let actionResult=null;
  if(window.OneCommands?.create){
   const handled=await window.ensureOneCommandCenter().run(query);
@@ -2444,6 +2447,11 @@ window.addEventListener('popstate',e=>{page=e.state?.sbPage||'overview';render()
 render();
 (function handlePwaShortcut(){
  const params=new URLSearchParams(location.search);
+ const requestedRoute=String(params.get('route')||'').replace(/^\\/+|\\/+$/g,'').toLowerCase();
+ const pathRoute=location.pathname.replace(/^\\/one\\/?/,'').replace(/^\\/+|\\/+$/g,'').toLowerCase();
+ if(['analysis','analytics'].includes(requestedRoute)||['analysis','analytics'].includes(pathRoute)){
+  page='analytics';history.replaceState({sbPage:'analytics'},'','/one/analysis');render();window.OneAnalytics?.loadDashboard?.(30);return;
+ }
  if(params.get('quick-note')==='1'){
   history.replaceState({sbPage:'overview'},'',location.pathname);
   page='overview';render();
@@ -2491,12 +2499,13 @@ function switchAccountWorkspace(user){
    try{await activateCloudWorkspace(nextUserId)}
    catch(error){console.warn("Operation failed; diagnostic details redacted.");cloudReady=false;cloudUser=null;setCloudMode('error','Saved locally. Cloud sync could not start: '+(error.message||'Unknown error'))}
   }else setCloudMode('offline','Guest data is saved only on this device. Sign in to sync across devices.');
+  window.data=data;
   render();
  });
  return workspaceSwitchQueue;
 }
 window.OneWorkspace={purgeUserLocalData};
-window.addEventListener('one:auth-changed',event=>{const user=event.detail?.user||null;if(user)switchAccountWorkspace(user).then(()=>consumeOneShareInbox())});
+window.addEventListener('one:auth-changed',event=>{switchAccountWorkspace(event.detail?.user||null).then(()=>consumeOneShareInbox())});
 initCloud();
 requestWorkspaceStoragePersistence();
 
