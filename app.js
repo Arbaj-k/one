@@ -2400,7 +2400,10 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
 };
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();if(!query||chatBusy)return;window.OneCommands?.remember(query);
- const chatInput=document.querySelector('#chat-input');if(chatInput&&chatInput.value.trim()===query)chatInput.value='';\n data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message',page);persist();\n // Show the sent message immediately, before command routing or any AI/network wait.\n if(page==='ask'){render();scrollChatToBottom();}
+ const chatInput=document.querySelector('#chat-input');if(chatInput&&chatInput.value.trim()===query)chatInput.value='';
+ data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message',page);persist();
+ // Show the sent message immediately, before command routing or any AI/network wait.
+ if(page==='ask'){render();scrollChatToBottom();}
  let actionResult=null;
  if(window.OneCommands?.create){
   const handled=await window.ensureOneCommandCenter().run(query);
