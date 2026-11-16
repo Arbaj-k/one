@@ -2206,13 +2206,7 @@ async function chatActionIntent(question){
 }
 window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
  if(window.OneCommandCenter)return window.OneCommandCenter;
- const executeLocal=({query})=>window.OneCommands.executeCommand(query);
- const actions={
-  addTask:executeLocal,addNote:executeLocal,addExpense:executeLocal,addIncome:executeLocal,
-  addRoutine:executeLocal,addProject:executeLocal,completeTask:executeLocal,remove:executeLocal,show:executeLocal
- };
  window.OneCommandCenter=window.OneCommands.create({
-  actions,
   lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
   speak:false, // voice.js speaks rendered replies once, avoiding duplicate speech
   onReply:(message)=>{data.messages.push({role:'assistant',content:message,sources:['Ask One'],pendingAction:!!window.OneCommands?.hasPending?.()});persist();render();scrollChatToBottom();},
