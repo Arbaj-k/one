@@ -374,7 +374,7 @@ function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
 function dateFmt(d){if(!d)return 'No date';const x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
-function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
+function today(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return values.year+'-'+values.month+'-'+values.day}
 function showOneCommandUndo(){const t=document.querySelector('#toast');if(!t)return;t.innerHTML='Saved · <button type="button" id="one-command-undo" style="border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer">Undo</button>';t.classList.add('show');t.querySelector('#one-command-undo')?.addEventListener('click',()=>{window.OneCommandsUndo?.();t.classList.remove('show');toast('Action undone')},{once:true});clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),4000)}window.OneCommandsShowUndo=showOneCommandUndo;
 function toast(msg){const t=document.querySelector('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),2300)}
 function updateNotificationBell(){
@@ -1832,7 +1832,9 @@ async function chatActionIntent(question){
  const dateQueryIntent=dateKeyword&&(/\b(?:task|tasks|todo|to-do|kaam|assignment|planner|money|expense|expenses|spending|kharcha|kharch|income|payment|udhaar|lent|borrowed|repayment|transaction|transactions|schedule|plan|kya|what|show|dikhao|batao|bata|hai|hain|list|details|activity|records?)\b/i.test(lower)||/^\s*(?:today|aaj|kal|tomorrow|yesterday|parso|parson|आज|कल|परसों)\s*[?.!]*$/i.test(lower));
  if(!pendingChatAction&&dateQueryIntent){
   let selectedDate=parseDate();
-  if(/\b(?:yesterday|kal\s+tha|beete\s+kal|day\s+before\s+yesterday)\b/i.test(lower)){const d=new Date(today()+'T12:00:00');d.setDate(d.getDate()-(/\bday\s+before\s+yesterday\b/i.test(lower)?2:1));selectedDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  // Explicit present-day wording always wins over ambiguous Hinglish 'kal' elsewhere in a sentence.
+  if(/\b(?:today|today'?s|aaj|aaj\s+ka|aaj\s+ki|aaj\s+ke|आज|आज\s+का|आज\s+की|आज\s+के)\b/i.test(lower))selectedDate=today();
+  else if(/\b(?:yesterday|kal\s+tha|beete\s+kal|day\s+before\s+yesterday)\b/i.test(lower)){const d=new Date(today()+'T12:00:00');d.setDate(d.getDate()-(/\bday\s+before\s+yesterday\b/i.test(lower)?2:1));selectedDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
   else if(/\b(?:parso|parson|day\s+after\s+tomorrow|परसों)\b/i.test(lower)){const d=new Date(today()+'T12:00:00');d.setDate(d.getDate()+2);selectedDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
   selectedDate=selectedDate||today();
   const dayTasks=(data.tasks||[]).filter(t=>t.due===selectedDate);
