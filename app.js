@@ -2449,7 +2449,7 @@ render();
  const params=new URLSearchParams(location.search);
  const requestedRoute=String(params.get('route')||'').split('/').filter(Boolean).join('/').toLowerCase();
  const pathRoute=location.pathname.toLowerCase().startsWith('/one/')?location.pathname.toLowerCase().slice(5).split('/').filter(Boolean).join('/'):'';
- if(['analysis','analytics'].includes(requestedRoute)||['analysis','analytics'].includes(pathRoute)){
+ if(['analysis','analytics'].includes(requestedRoute.split('/')[0])||['analysis','analytics'].includes(pathRoute.split('/')[0])){
   page='analytics';history.replaceState({sbPage:'analytics'},'','/one/analysis');render();window.OneAnalytics?.loadDashboard?.(30);return;
  }
  if(params.get('quick-note')==='1'){
