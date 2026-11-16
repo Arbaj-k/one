@@ -10,7 +10,8 @@
   function getClient() {
     if (client) return client;
     if (!window.supabase?.createClient) throw Error('Authentication service could not load. Please retry when you are online.');
-    client = window.supabase.createClient(URL, KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'one-auth-session-v1'}});
+    if (typeof window.getOneSupabaseClient !== 'function') throw Error('Shared Supabase client unavailable.');
+    client = window.getOneSupabaseClient();
     return client;
   }
   function status(message, error=false) {
@@ -38,7 +39,7 @@
         <div id="one-auth-message" class="one-auth-message" role="status" aria-live="polite" hidden></div>
         <div class="one-auth-switch">${view==='login'?'New to One? <button id="one-switch" type="button">Create account</button>':view==='signup'?'Already have an account? <button id="one-switch" type="button">Log in</button>':view==='reset'?'<button id="one-switch" type="button">Back to log in</button>':'<button id="one-switch" type="button">Back to log in</button>'}</div>
         
-        <p class="one-auth-legal">Your personal workspace is available only after you sign in. Your data is tied to your account.</p>
+        <button type="button" id="one-continue-guest" class="one-auth-link">Continue without signing in</button><p class="one-auth-legal">Use a local workspace without an account. Sign in only when you want account-based cloud sync.</p>
       </section></div>`;
     $('#one-auth-root').hidden=false;
 
@@ -48,8 +49,9 @@
     $('.one-show-password')?.addEventListener('click',e=>{const input=$('[name=password]');input.type=input.type==='password'?'text':'password';e.currentTarget.textContent=input.type==='password'?'Show':'Hide'});
     $('#one-google')?.addEventListener('click',google);
     $('#one-auth-form')?.addEventListener('submit',submit);
+    $('#one-continue-guest')?.addEventListener('click',close);
   }
-  function close(){if(!session?.user)return;const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}
+  function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}
   function open(next='login'){view=next;render();document.body.classList.add('one-auth-open','one-auth-required')}
   async function submit(e){
     e.preventDefault();const form=new FormData(e.currentTarget),email=String(form.get('email')||'').trim(),password=String(form.get('password')||''),name=String(form.get('name')||'').trim();
@@ -102,7 +104,7 @@
     if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
-  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;document.body.classList.add('one-auth-required');open('login');const s=$('#cloud-status');if(s)s.textContent='Sign in required';}catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out. Please try again.',true)}}
+  async function logout(){try{const {error}=await getClient().auth.signOut();if(error)throw error;session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;close();const s=$('#cloud-status');if(s)s.textContent='Saved on this device';}catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out. Please try again.',true)}}
   async function deleteAccount(){
     const user=session?.user;if(!user)return;
     if(!confirm('Permanently delete your One account and all cloud data, uploaded files, notes, tasks, messages and linked records? This cannot be undone.'))return;
@@ -121,11 +123,11 @@
   async function boot(){
     document.body.classList.add('one-auth-required');
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
-      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){document.body.classList.add('one-auth-required');open('login');window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
-      if(session?.user){paintUser(session.user);await upsertProfile(session.user);document.body.classList.remove('one-auth-required')}else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));open('login')}
+      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
+      if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('reset');status('Choose a new password.');}
-    }catch(err){console.warn("Operation failed; diagnostic details redacted.");open('login');status('Authentication service is unavailable. Please check your connection and retry.',true)}
+    }catch(err){console.warn("Operation failed; diagnostic details redacted.");close();}
   }
   window.OneAuth={open,logout,getSession:()=>session,getUser:()=>session?.user||null};
   document.addEventListener('DOMContentLoaded',boot);
