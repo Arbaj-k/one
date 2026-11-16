@@ -2073,3 +2073,13 @@ body.one-auth-required{overflow:hidden!important}
   .main:has(.chat-shell) .chat-form { grid-template-columns: minmax(0,1fr) 48px auto; gap: 5px; }
   .main:has(.chat-shell) .chat-form button[type="submit"] { min-width: 76px; padding: 0 8px; font-size: 13px; }
 }
+
+
+/* Workspace navigation and responsive first-run polish */
+body.one-auth-required .app{visibility:visible!important;pointer-events:auto!important;user-select:auto!important}body.one-auth-required{overflow:auto!important}
+.notification-bell svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.demo-pill{max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.demo-pill i{flex:none}
+.workspace-shortcuts{display:flex;gap:6px;padding:8px 28px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}.workspace-shortcuts button{border:0;background:transparent;color:var(--muted);padding:8px 11px;border-radius:9px;font-size:12px;font-weight:700;white-space:nowrap}.workspace-shortcuts button:hover,.workspace-shortcuts button[aria-current=page]{background:var(--blue-light);color:var(--blue)}
+.mobile-nav{display:none}.one-more-nav{display:none}
+@media(max-width:700px){.workspace-shortcuts{display:none}.mobile-nav{display:flex!important;position:fixed;left:0;right:0;bottom:0;z-index:30;justify-content:space-around;align-items:center;background:var(--white,#fff);border-top:1px solid var(--line);padding:7px 4px calc(7px + env(safe-area-inset-bottom));}.mobile-nav button{flex:1;min-width:0;border:0;background:transparent;color:var(--muted);font-size:10px;font-weight:700;padding:8px 2px}.mobile-nav button[aria-current=page]{color:var(--blue)}.one-more-nav:not([hidden]){display:grid;position:fixed;z-index:31;bottom:calc(62px + env(safe-area-inset-bottom));right:10px;grid-template-columns:1fr 1fr;gap:6px;padding:12px;background:var(--white,#fff);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 38px #15223b25}.one-more-nav button{border:0;background:var(--bg,#f7f9fc);padding:10px;border-radius:9px;text-align:left;font-size:12px}.topbar-right{gap:6px}.demo-pill{max-width:72px;font-size:10px}.floating-create-button{bottom:calc(78px + env(safe-area-inset-bottom))!important;right:14px!important}.content{padding-bottom:90px!important}}
+:where(button,a,input,textarea,select,[tabindex]):focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 55%,transparent);outline-offset:2px}
