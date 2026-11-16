@@ -1950,7 +1950,8 @@ async function chatActionIntent(question){
  }
  const explicitTaskAdd=/\b(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|\b(?:task|todo)\s+(?:add|bana|create|make)\b|\b(?:task|todo)\s+(?:mein|me)\s+(?:add|jod)\s+(?:kar|karo|kar do)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:a\s+)?(?:task|todo)\b|\b(?:add|create|make)\s+(?:kar|karo|kar\s+do)\s+(?:task|todo)\s+(?:ki|ka|ke)\b|\b(?:task bana do|task create karo|task add kar do|todo bana do)\b|\b(?:assignment|homework|exam|project)\b.*\b(?:add kar do|bana do|create|add)\b/i.test(lower);
  const naturalReminder=/\\b(?:yaad\\s+(?:dila|dilana|dila dena|dila do|dila dijiyega|dilaa dena)|remind\\s+me|reminder\\s+(?:laga|set)|mat\\s+bhoolna|bhoolna\\s+mat|yaad\\s+rakhna|remind\\s+karna)\\b/i.test(lower);
- const reminderIntent=!explicitTaskAdd&&naturalReminder||/\\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do)\\b/i.test(lower);
+ const recurrenceReminder=/\b(?:daily|every day|roz|roj|har roz|har din|weekly|every week|har hafte|monthly|every month|each month|har mahine|mahine me ek baar|mahine mein ek baar)\b/i.test(lower)&&/\b(?:reminder|briefing)\b/i.test(lower);
+ const reminderIntent=!explicitTaskAdd&&naturalReminder||recurrenceReminder||/\b(?:remind me(?: to| about)?|set (?:a )?reminder|reminder (?:for|laga do|set karo|set kar do)|reminder laga do)\b/i.test(lower);
  if(reminderIntent){
   const daily=/\b(?:daily|every day|roz|roj|har roz|har din)\b/i.test(lower);
   const weekly=/\b(?:weekly|every week|har hafte|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|har somvar|har mangalvar|har budhvar|har guruwar|har shukravar|har shanivar|har ravivar|monday|tuesday|wednesday|thursday|friday|saturday|sunday|somvar|mangalvar|budhvar|guruwar|shukravar|shanivar|ravivar)\b/i.test(lower);
