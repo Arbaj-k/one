@@ -66,7 +66,7 @@ assert.ok(source.includes('type:\'update-record\''), 'Record updates must requir
 assert.ok(source.includes('Please confirm update for '), 'Record update confirmation prompt is missing');
 assert.ok(source.includes('Object.assign(record,pending.patch,{updated:Date.now()})'), 'Confirmed record updates must be applied');
 assert.ok(source.includes('await syncQueue'), 'Action confirmation must wait for queued cloud sync');
-assert.ok(source.includes('const actionResult=await chatActionIntent(query)'), 'Chat handler must await async actions');
+assert.ok(source.includes('actionResult=await chatActionIntent(query)'), 'Chat handler must await async actions');
 
 // Phase 4 personal intelligence: explicit memory, workspace search,
 // deadline-based planning, expense-only category comparisons and project risk checks.
