@@ -2408,15 +2408,29 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
  return window.OneCommandCenter;
 };
 async function sendChat(question,targetDocId=null){
- const query=String(question||'').trim();if(!query||chatBusy)return;window.OneCommands?.remember(query);
- const chatInput=document.querySelector('#chat-input');if(chatInput&&chatInput.value.trim()===query)chatInput.value='';
- data.messages.push({role:'user',content:query});if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message',page);persist();
- // Show the sent message immediately, before command routing or any AI/network wait.
- if(page==='ask'){render();scrollChatToBottom();}
- let actionResult=null;
- // One authoritative Ask One pipeline: pending confirmations/local actions first,
- // then the AI action planner, then AI Q&A with a local cross-collection fallback.
- if(pendingAction)actionResult=await chatActionIntent(query);
+ const query=String(question||'').trim();
+ if(!query||chatBusy)return;
+ chatBusy=true;
+ window.OneCommands?.remember(query);
+ const chatInput=document.querySelector('#chat-input');
+ if(chatInput&&chatInput.value.trim()===query)chatInput.value='';
+ const userMessage={id:uid(),role:'user',content:query,createdAt:Date.now()};
+ data.messages=Array.isArray(data.messages)?data.messages:[];
+ data.messages.push(userMessage);
+ if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message',page);
+ persist();
+ const reply=(result,extra={})=>{
+  data.messages.push({id:uid(),role:'assistant',content:String(result?.answer||'I could not prepare an answer for that question.'),sources:Array.isArray(result?.sources)?result.sources:[],replyTo:userMessage.id,createdAt:Date.now(),...extra});
+  persist();
+ };
+ try{
+  if(page==='ask'){render();scrollChatToBottom()}else render();
+  // A pending confirmation owns the next reply. Never fall through to Gemini,
+  // otherwise the confirmation result and an unrelated AI answer get appended together.
+  if(pendingAction){
+   const pendingResult=await chatActionIntent(query);
+   if(pendingResult){reply(pendingResult,{pendingAction:!!pendingAction});return}
+  }
   if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
   if(!targetDocId&&asksTimetableContext){
@@ -2424,54 +2438,52 @@ async function sendChat(question,targetDocId=null){
    if(latestUploaded)targetDocId=latestUploaded.id;
   }
   if(isDocumentContentQuestion(query)&&!targetDocId){
-   data.messages.push({role:'assistant',content:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});
-   persist();render();scrollChatToBottom();return;
+   reply({answer:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});return;
   }
   if(isSpendingAmountQuestion(query)&&!targetDocId){
-   const spending=answerSpendingAmount(query);
-   data.messages.push({role:'assistant',content:spending.answer,sources:spending.sources});
-   persist();render();scrollChatToBottom();return;
+   reply(answerSpendingAmount(query));return;
   }
- let semanticReadOnly=false;
- if(!actionResult&&!targetDocId&&!isDocumentContentQuestion(query)){
-  try{
-   const planned=await requestAskOneActionPlan(query);
-   if(planned?.kind==='none')semanticReadOnly=true;
-   else if(planned){data.messages.push({role:'assistant',content:planned.answer,sources:planned.sources||[]});persist();render();scrollChatToBottom();return}
-  }catch(error){console.warn('Ask One action planning failed:',error);}
- }
- // Do not let legacy keyword heuristics override an AI-classified question or document query.
- if(!actionResult&&!semanticReadOnly&&!isDocumentContentQuestion(query))actionResult=await chatActionIntent(query);
- if(actionResult){data.messages.push({role:'assistant',content:actionResult.answer,sources:actionResult.sources,pendingAction:!!pendingAction});persist();render();scrollChatToBottom();return}
- // Deterministic local read-only routing: use the section intent map before the generic AI answer.
- if(!targetDocId&&!isDocumentContentQuestion(query)){
-  const detected=detectIntent(query);
-  if(detected.intent){
-   const localAnswer=answerQuery(detected.intent,query);
-   data.messages.push({role:'assistant',content:localAnswer.answer,sources:localAnswer.sources||[]});
-   persist();render();scrollChatToBottom();return;
+  let semanticReadOnly=false;
+  if(!targetDocId&&!isDocumentContentQuestion(query)){
+   try{
+    const planned=await requestAskOneActionPlan(query);
+    if(planned?.kind==='none')semanticReadOnly=true;
+    else if(planned){reply(planned);return}
+   }catch(error){console.warn('Ask One action planning failed:',error)}
   }
-  // Multi-section questions are valid queries, not ambiguity errors.
-  // Continue to Gemini/local retrieval instead of terminating the conversation.
- }
- if(!targetDocId){
-  const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
-  if(structuredRequest&&/\b(file|document|pdf|image|upload|bill|receipt|invoice|iska|is document|iss document)\b/i.test(query)){
-   const candidates=phase5SearchResults(query).filter(item=>item.type==='Document');
-   const doc=candidates.length?(data.documents||[]).find(item=>item.id===candidates[0].id):(data.documents||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
-   if(doc){if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id);const updated=(data.documents||[]).find(item=>item.id===doc.id);data.messages.push({role:'assistant',content:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});persist();render();scrollChatToBottom();return}
+  let actionResult=null;
+  if(!semanticReadOnly&&!isDocumentContentQuestion(query))actionResult=await chatActionIntent(query);
+  if(actionResult){reply(actionResult,{pendingAction:!!pendingAction});return}
+  if(!targetDocId&&!isDocumentContentQuestion(query)){
+   const detected=detectIntent(query);
+   if(detected.intent){reply(answerQuery(detected.intent,query));return}
   }
- }
- chatBusy=true;render();scrollChatToBottom();
- try{const result=await requestStudentBrainAI(query,targetDocId);data.messages.push({role:'assistant',content:result.answer,sources:result.sources})}
- catch(error){
-  console.warn("Operation failed; diagnostic details redacted.");
+  if(!targetDocId){
+   const structuredRequest=/\b(extract|structure|structured|json|table|fields|data nikaal|data nikalo|details nikaal|extract data)\b/i.test(query);
+   if(structuredRequest&&/\b(file|document|pdf|image|upload|bill|receipt|invoice|iska|is document|iss document)\b/i.test(query)){
+    const candidates=phase5SearchResults(query).filter(item=>item.type==='Document');
+    const doc=candidates.length?(data.documents||[]).find(item=>item.id===candidates[0].id):(data.documents||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
+    if(doc){
+     if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id);
+     const updated=(data.documents||[]).find(item=>item.id===doc.id);
+     reply({answer:updated?.extractedJson?'Structured data extracted for '+doc.name+'. You can ask me about its fields, amounts, dates or tables.\n'+JSON.stringify(updated.extractedJson.structured_data||updated.extractedJson,null,2).slice(0,5000):'I could not extract structured data from '+doc.name+'. '+(updated?.jsonError||''),sources:['Uploaded Items']});
+     return;
+    }
+   }
+  }
+  const result=await requestStudentBrainAI(query,targetDocId);
+  reply(result);
+ }catch(error){
+  console.warn('Ask One reply failed:',error);
   const fallback=aiAnswer(query),hasFallback=Array.isArray(fallback.sources)&&fallback.sources.length>0;
   const signIn=!cloudUser?' Sign in for Gemini AI replies.':'';
-  data.messages.push({role:'assistant',content:(hasFallback?fallback.answer+'\n\n':'')+'AI unavailable: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing local results from your saved workspace.':'\nYour saved data remains available locally.')+signIn,sources:hasFallback?fallback.sources:[]});
- }finally{chatBusy=false;persist();render();scrollChatToBottom()}
+  reply({answer:(hasFallback?fallback.answer+'\n\n':'')+'AI unavailable: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing local results from your saved workspace.':'\nYour saved data remains available locally.')+signIn,sources:hasFallback?fallback.sources:[]});
+ }finally{
+  chatBusy=false;
+  persist();
+  if(page==='ask'){render();scrollChatToBottom()}
+ }
 }
-
 async function resolveAskPending(confirm){let result;if(window.OneCommands?.hasPending?.()||window.OneCommands?.hasPendingReminder?.()){result=window.OneCommands.executeCommand(confirm?'haan':'cancel');if(result?.then)result=await result}else result=await chatActionIntent(confirm?'haan':'cancel');if(result?.answer)data.messages.push({role:'assistant',content:result.answer,sources:result.sources||[]});persist();render();scrollChatToBottom()}
 function action(name,id,extra){if(name!=='open-quick-add'&&name!=='quick-add-upload'&&name!=='close-quick-add')closeQuickAddMenu();const modalRoot=document.querySelector('#modal-root');if(name!=='open-quick-add'&&name!=='quick-add-upload'&&modalRoot?.querySelector('.quick-add-modal'))modalRoot.innerHTML='';const map={ 'confirm-pending-action':()=>resolveAskPending(true),'cancel-pending-action':()=>resolveAskPending(false),'open-quick-add':()=>openQuickAdd(),'extract-document-actions':()=>reviewOneExtractedActions('document',id),'extract-note-actions':()=>reviewOneExtractedActions('note',id),'new-knowledge-entry':()=>openForm('note'),'quick-add-upload':()=>openUploadForm(),'close-quick-add':()=>closeQuickAddMenu(),'new-note':()=>openForm('note'),'new-memory':()=>openMemoryForm(),'edit-memory':()=>openMemoryForm(id),'delete-memory':()=>{if(confirm('Delete this saved memory?')){data.memories=(data.memories||[]).filter(m=>m.id!==id);persist();render();toast('Memory deleted')}},'go-memory':()=>{page='memory';render()},'voice-quick-command':()=>{if(window.startStudentBrainListening)window.startStudentBrainListening();else toast('Voice assistant is loading. Try again.');},'edit-note':()=>openForm('note',id),'delete-note':()=>confirmDelete('notes',id),'delete-document':()=>{if(confirm('Delete this document and its saved file?'))deleteFile(id).then(()=>{render();toast('Document deleted')})},'open-uploaded-file':()=>openUploadedFile(id,false),'download-uploaded-file':()=>openUploadedFile(id,true),'rename-uploaded-file':()=>{const file=(data.documents||[]).find(item=>item.id===id);if(!file)return;editing=id;formType='fileRename';modal('Rename file',field('Naam','name',file.name,'text',{required:true,full:true})+field('Tags / Keywords','tags',(file.tags||[]).join(', '),'text',{full:true})+field('Note','note',file.note||'','textarea',{full:true}),'Save changes')},'delete-uploaded-file':()=>{if(confirm('Delete this file?'))deleteFile(id).then(()=>{render();toast('File deleted')})},'toggle-document-pin':()=>{const doc=(data.documents||[]).find(d=>d.id===id);if(doc){doc.pinned=!doc.pinned;doc.pinnedAt=doc.pinned?Date.now():null;persist();render();toast(doc.pinned?'Document pinned':'Document unpinned')}},'confirm-expiry-candidate':()=>{const doc=(data.documents||[]).find(d=>d.id===id),candidate=doc?.expiryCandidates?.[Number(extra)];if(!doc||!candidate)return;if(!confirm('One found a possible expiry date: '+dateFmt(candidate.date)+(candidate.page?' on page '+candidate.page:'')+'.\n\nSource: '+candidate.line+'\n\nUse this date for reminders?'))return;doc.expiresOn=candidate.date;doc.expiryDateSource={line:candidate.line,page:candidate.page,confirmedAt:Date.now()};doc.expiryReminderDays=[30,7,1,0];persist();render();toast('Expiry date confirmed. Reminders enabled.')},'save-document-expiry':()=>{const doc=(data.documents||[]).find(d=>d.id===id),value=document.querySelector('#document-expiry-'+CSS.escape(id))?.value||'';if(!doc)return;if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){toast('Choose a valid expiry date');return}doc.expiresOn=value||null;doc.expiryReminderDays=Array.isArray(doc.expiryReminderDays)?doc.expiryReminderDays:[30,7,1,0];persist();render();toast(value?'Document expiry saved':'Expiry date cleared')},'connect-document-note':()=>{const doc=(data.documents||[]).find(d=>d.id===id),noteId=document.querySelector('[data-document-note-select="'+CSS.escape(id)+'"]')?.value;if(!doc||!noteId){toast('Choose a note first');return}doc.relatedNoteIds=Array.isArray(doc.relatedNoteIds)?doc.relatedNoteIds:[];if(!doc.relatedNoteIds.includes(noteId))doc.relatedNoteIds.push(noteId);persist();render();toast('Related note connected')},'open-vault-result':()=>openVaultResult(id),'refresh-document-summary':async()=>{const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;if(!String(doc.extractedText||'').trim()){toast('No extracted text available. Retry OCR first.');return}await autoProcessDocumentInsights(id);doc.summaryRefreshedAt=Date.now();persist();render();toast('AI summary and detected insights refreshed')},'retry-document-ocr':()=>retryDocumentOCR(id),'convert-document-json':()=>convertDocumentToJSON(id),'copy-document-json':()=>copyDocumentJSON(id),'download-document-json':()=>downloadDocumentJSON(id),'save-document-json':()=>{const doc=(data.documents||[]).find(d=>d.id===id);if(doc?.extractedJson){doc.jsonSavedToKnowledge=true;doc.jsonSavedAt=Date.now();doc.jsonStatus='saved_to_knowledge';persist();render();toast('JSON saved to My Knowledge')}else toast('Convert to JSON first')},'ask-document':()=>askDocument(id),'new-task':()=>{openForm('task');if(window.plannerSelectedDate){const dueField=document.querySelector('#edit-form [name=due]');if(dueField)dueField.value=window.plannerSelectedDate}},'enable-reminders':()=>enableTaskReminders(),'open-notifications':()=>notificationCentre(),'snooze-task-10':()=>snoozeTaskReminder(id,10),'snooze-task-60':()=>snoozeTaskReminder(id,60),'snooze-task-1440':()=>snoozeTaskReminder(id,1440),'reschedule-notification-task':()=>openForm('task',id),'complete-notification-task':()=>{const task=(data.tasks||[]).find(t=>t.id===id);if(task&&!task.done){completeTaskRecord(task);(data.notifications||[]).filter(n=>n.taskId===id).forEach(n=>n.read=true);persist();notificationCentre();toast(task.repeatRule&&task.repeatRule!=='none'?'Occurrence complete · next reminder scheduled':'Reminder marked complete')}},'open-notification-note':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item?.relatedId){const note=(data.notes||[]).find(n=>n.id===item.relatedId);if(note){document.querySelector('#modal-root').innerHTML='';page='notes';window.noteQuery=note.title||'';render();requestAnimationFrame(()=>document.querySelector('.note-card')?.scrollIntoView({behavior:'smooth',block:'center'}));}}},'open-notification-document':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item?.relatedId){document.querySelector('#modal-root').innerHTML='';page='vault';render();requestAnimationFrame(()=>document.querySelector('#vault-document-'+CSS.escape(item.relatedId))?.scrollIntoView({behavior:'smooth',block:'center'}));}},'mark-notification-read':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item){item.read=true;persist();notificationCentre();}},'mark-all-notifications-read':()=>{(data.notifications||[]).forEach(item=>item.read=true);persist();notificationCentre();},'open-notification-task':()=>{const item=(data.notifications||[]).find(x=>x.id===id);if(item?.taskId){const task=data.tasks.find(t=>t.id===item.taskId);if(task){document.querySelector('#modal-root').innerHTML='';page='planner';window.plannerView='All';render();requestAnimationFrame(()=>document.querySelector('[data-action="edit-task"][data-id="'+CSS.escape(task.id)+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));}}},'share-task-whatsapp':()=>shareTaskReminder(id,'whatsapp'),'share-task-telegram':()=>shareTaskReminder(id,'telegram'),'save-money-budget':()=>{const amount=Number(document.querySelector('#money-budget-amount')?.value||0),month=window.expenseMonth||today().slice(0,7);if(!Number.isFinite(amount)||amount<=0){toast('Enter a valid monthly budget');return}data.moneyBudgets=Array.isArray(data.moneyBudgets)?data.moneyBudgets:[];const existing=data.moneyBudgets.find(x=>x.month===month);if(existing)existing.amount=amount;else data.moneyBudgets.push({month,amount,updated:Date.now()});persist();render();toast('Monthly budget saved')},'new-study':()=>openForm('study'),'edit-task':()=>openForm('task',id),'delete-task':()=>confirmDelete('tasks',id),'new-project':()=>openForm('project'),'edit-project':()=>openForm('project',id),'new-expense':()=>{openForm('expense');if(id&&['lent','borrowed'].includes(id)){const kindField=document.querySelector('#edit-form [name=kind]');if(kindField)kindField.value=id;const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField)categoryField.value='Udhaar'}},'loan-repayment':()=>{const person=id,hasLent=data.expenses.some(e=>e.person===person&&e.kind==='lent');openForm('expense');const kindField=document.querySelector('#edit-form [name=kind]');if(kindField)kindField.value=hasLent?'lent_repayment':'borrowed_repayment';const personField=document.querySelector('#edit-form [name=person]');if(personField)personField.value=person;const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField)categoryField.value='Repayment';const descriptionField=document.querySelector('#edit-form [name=description]');if(descriptionField)descriptionField.value=(hasLent?'Received from ':'Repaid to ')+person},'loan-person-history':()=>{window.loanPersonFilter=id;page='loans';render();document.querySelector('.loan-history-title')?.scrollIntoView({behavior:'smooth'})},'loan-clear-filter':()=>{window.loanPersonFilter='';render()},'expense-quick-action':()=>{if(id==='all'){window.expenseMonth='';render();return}openForm('expense');const typeField=document.querySelector('#edit-form [name=kind]');if(typeField){typeField.value=id;typeField.dispatchEvent(new Event('change',{bubbles:true}))}const descriptionField=document.querySelector('#edit-form [name=description]');if(descriptionField){descriptionField.focus();descriptionField.setSelectionRange?.(0,descriptionField.value.length)}const categoryField=document.querySelector('#edit-form [name=category]');if(categoryField&&id.includes('repayment'))categoryField.value='Repayment';const personField=document.querySelector('#edit-form [name=person]');if(personField&&id!=='expense')personField.placeholder='Who was the money for/from?'},'edit-expense':()=>openForm('expense',id),'delete-expense':()=>confirmDelete('expenses',id),'delete-study':()=>{data.studySessions=(data.studySessions||[]).filter(x=>x.id!==id);persist();render();toast('Study session removed')},'planner-view':()=>{window.plannerView=id;render();requestAnimationFrame(()=>document.querySelector('.planner-view-heading')?.scrollIntoView({behavior:'smooth',block:'start'}))},'planner-date':()=>{window.plannerSelectedDate=id;render();document.querySelector('.planner-selected-date')?.scrollIntoView({behavior:'smooth',block:'nearest'})},'planner-month':()=>{const base=window.plannerMonth||today().slice(0,7);if(id==='today')window.plannerMonth=today().slice(0,7);else{const [year,month]=base.split('-').map(Number),next=new Date(year,month-1+(id==='next'?1:-1),1);window.plannerMonth=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')}window.plannerSelectedDate=null;render()},'go-ask':()=>{page='ask';render()},'toggle-task-section':()=>{window.taskSectionExpanded=(window.taskSectionExpanded||'open')===id?'':id;render();},'go-planner':()=>{page='planner';window.plannerView='All';render()},'go-udhaar':()=>{page='expenses';window.moneyTab='udhaar';render()},'go-money-reports':()=>{page='expenses';window.moneyTab='reports';window.expenseMonth=today().slice(0,7);render()},'go-knowledge':()=>{page='knowledge';render()},'toggle-task':()=>{let t=data.tasks.find(x=>x.id===id);if(!t)return;if(t.done){t.done=false;delete t.completedAt;t.updated=Date.now()}else completeTaskRecord(t);persist();render();toast(t.done?'Task marked complete':(t.repeatRule&&t.repeatRule!=='none'?'Next occurrence scheduled':'Task moved back to open tasks'))},'all-expenses':()=>{window.expenseMonth='';render()},'export-data':()=>exportData(),'restore-data':()=>restoreData(),'clear-data':()=>clearData(),'close-modal':()=>{window.oneActionReview=null;document.querySelector('#modal-root').innerHTML='';closeQuickAddMenu();document.querySelector('.floating-create-button')?.classList.remove('is-hidden')}};map[name]?.()}
 function confirmDelete(key,id){const item=data[key].find(x=>x.id===id);if(!item)return;if(confirm(`Delete "${item.title||item.name||item.description}"? This cannot be undone.`)){data[key]=data[key].filter(x=>x.id!==id);persist();render();toast('Deleted')}}
