@@ -59,7 +59,7 @@ function migrateData(raw){
  return next;
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
-let data=loadData(),page='overview',chatBusy=false,pendingAction=null;
+let data=loadData(),page='overview',chatBusy=false,pendingAction=null,pendingReminderClarification=null;
 let lastAskSubmission={query:'',at:0};
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
@@ -2435,7 +2435,47 @@ async function sendChat(question,targetDocId=null){
  };
  try{
   if(page==='ask'){render();scrollChatToBottom()}else render();
-  // Continue an in-progress multi-turn task/reminder draft before any AI, OCR or workspace lookup.
+  // Deterministic multi-turn reminder clarification. Keep the original title/date when
+  // the user answers a time-only follow-up such as "8 am"; never send it to OCR/RAG.
+  const parseReminderClock=value=>{
+   const match=String(value||'').trim().match(/^(?:at\\s*)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)?$/i);
+   if(!match)return '';
+   let hour=Number(match[1]),minute=Number(match[2]||0),period=String(match[3]||'').toLowerCase();
+   if(minute>59||hour<0||hour>23)return '';
+   if(period==='pm'&&hour<12)hour+=12;
+   if(period==='am'&&hour===12)hour=0;
+   if(!period&&hour>12)return '';
+   return String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+  };
+  const makeReminderConfirmation=(draft,clock)=>{
+   const record={id:uid(),title:draft.title,category:'Briefing',taskType:'reminder',isReminder:true,due:draft.due,reminderTime:clock,repeatRule:draft.repeatRule||'none',priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
+   pendingAction={type:'create-record',collection:'tasks',record,source:'Task Briefing',page:'overview',successMessage:'Reminder saved: '+record.title+' · '+dateFmt(record.due)+' at '+record.reminderTime+'.',requestedAt:Date.now()};
+   pendingReminderClarification=null;
+   return {answer:'Confirm reminder: '+record.title+' · '+dateFmt(record.due)+' at '+record.reminderTime+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:['Task Briefing','Planner']};
+  };
+  if(pendingReminderClarification){
+   if(/^(?:cancel|no|nahi|rehne do|stop)$/i.test(query)){pendingReminderClarification=null;reply({answer:'Reminder cancelled. Koi reminder save nahi hua.',sources:['Task Briefing']});return}
+   const clock=parseReminderClock(query);
+   if(!clock){reply({answer:'Time samajh nahi aaya. Time sirf is format mein bhejo: 8 am, 1:30 pm ya 20:00.',sources:['Task Briefing']});return}
+   reply(makeReminderConfirmation(pendingReminderClarification,clock));return;
+  }
+  if(deterministicReminderRequest&&!pendingAction){
+   const parsed=window.OneCommands?.parseCommand?.(query)||{};
+   let title=query.replace(/^\\s*(?:(?:please|kindly)\\s+)?remind\\s+me\\s+(?:(?:to|for)\\s+)?/i,'')
+    .replace(/\\b(?:today|tomorrow|kal|aaj|parso|parson|at|around|by|am|pm|baje|daily|every day|weekly|every week|monthly|every month|on)\\b/ig,' ')
+    .replace(/\\b\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|baje)?\\b/ig,' ')
+    .replace(/\\s+/g,' ').replace(/^[\\s,.:;-]+|[\\s,.:;-]+$/g,'').trim();
+   const due=parsed.date||'';
+   const recurrence=parsed.repeatRule||'none';
+   if(title&&due){
+    const draft={title,due,repeatRule:recurrence};
+    const clock=parsed.time||parseReminderClock(query);
+    if(clock){reply(makeReminderConfirmation(draft,clock));return}
+    pendingReminderClarification=draft;
+    reply({answer:'“'+title+'” ka reminder kal set karna hai. Kis time par? Jaise 8 am ya 1:30 pm.',sources:['Task Briefing']});return;
+   }
+  }
+    // Continue an in-progress multi-turn task/reminder draft before any AI, OCR or workspace lookup.
   // A reply such as "8 am" belongs to the reminder that just asked for a time.
   if(window.OneCommandCenter?.hasPendingDraft?.()){
     const continuation=await window.OneCommandCenter.continueDraft(query);
