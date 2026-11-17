@@ -1566,7 +1566,7 @@ async function requestAskOneActionPlan(question){
  const now=Date.now(),source='Ask One';
  const makeConfirm=(collection,record,page,success,extra={})=>{
   pendingAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
-  return {answer:'Confirm '+collection.slice(0,-1)+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
+  const label=record.isReminder===true||record.taskType==='reminder'||record.category==='Briefing'?'reminder':collection==='tasks'?'task':collection.slice(0,-1);\n  return {answer:'Confirm '+label+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
  if(Array.isArray(plan.actions)&&plan.actions.length>1){
   if(plan.actions.length>6)return {answer:'Ek request mein maximum 6 actions process kar sakta hoon. Isko chhote parts mein bhejo.',sources:[source]};
@@ -1577,7 +1577,7 @@ async function requestAskOneActionPlan(question){
     const title=clean(item.title,180),due=validDate(item.due_date)?item.due_date:'',clock=clean(item.reminder_time,5),repeat=['daily','weekly','monthly','none'].includes(item.repeat_rule)?item.repeat_rule:'none';
     if(!title||!due||!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return {answer:'Reminder ke liye title, valid date aur time chahiye. Koi change nahi kiya.',sources:[source]};
     if((data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'09:00')===clock))return {answer:'Same reminder pehle se saved hai. Koi change nahi kiya.',sources:[source]};
-    records.push({collection:'tasks',page:'planner',record:{id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'},success:'Reminder: '+title+' · '+due+' at '+clock});
+    records.push({collection:'tasks',page:'planner',record:{id:uid(),title,category:'Briefing',taskType:'reminder',isReminder:true,due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'},success:'Reminder: '+title+' · '+due+' at '+clock});
    }else if(type==='create_project'){
     const name=clean(item.name||item.title,180);if(!name)return {answer:'Project name missing hai. Koi change nahi kiya.',sources:[source]};
     records.push({collection:'projects',page:'projects',record:{id:uid(),name,description:clean(item.description,1000),status:'In progress',targetDate:validDate(item.due_date)?item.due_date:'',created:now,updated:now},success:'Project: '+name});
@@ -1610,7 +1610,7 @@ async function requestAskOneActionPlan(question){
   if(!title)return {answer:'Kis cheez ka reminder set karna hai?',sources:['Task Briefing']};
   if(!due)return {answer:'Reminder ki date batao. Example: Kal subah 9 baje assignment yaad dilana.',sources:['Task Briefing']};
   if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return {answer:'Reminder ka time batao. Example: 9:00 AM ya 18:30.',sources:['Task Briefing']};
-  const record={id:uid(),title,category:'Briefing',due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'};
+  const record={id:uid(),title,category:'Briefing',taskType:'reminder',isReminder:true,due,reminderTime:clock,repeatRule:repeat,priority:'Medium',done:false,created:now,updated:now,notes:'Reminder created through Ask One.'};
   const duplicate=(data.tasks||[]).some(t=>!t.done&&t.category==='Briefing'&&String(t.title||'').toLowerCase()===title.toLowerCase()&&String(t.due||'')===due&&String(t.reminderTime||'')===clock);
   if(duplicate)return {answer:'Ye reminder pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
   return makeConfirm('tasks',record,'overview',(repeat==='daily'?'Daily reminder set: ':'Reminder set: ')+title+' · '+due+' at '+clock+'. It will appear in Task Briefing. Enable notifications in One to receive browser alerts.');
