@@ -2450,12 +2450,13 @@ async function sendChat(question,targetDocId=null){
    reply(answerSpendingAmount(query));return;
   }
   // Deterministic creation intent must run before the AI planner.
-  const reminderCreateIntent=/^\\s*(?:(?:please|kindly)\\s+)?(?:remind\\s+me\\b|reminder\\b|set\\s+(?:a\\s+)?reminder\\b|yaad\\s+(?:dila|dilana|dila do|dila dena|rakhna)\\b|mat\\s+bhoolna\\b|bhoolna\\s+mat\\b)/i.test(query)
-    || /\\b(?:set|create|add|schedule)\\s+(?:a\\s+)?reminder\\b/i.test(query)
-    || /\\breminder\\s+(?:set|laga|lagao|laga do|set karo)\\b/i.test(query);
-  const taskCreateIntent=/^\\s*(?:(?:please|kindly)\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new|ek)\\s+)?(?:task|todo|assignment|homework|exam)\\b/i.test(query)
-    || /^\\s*(?:task|todo)\\s+(?:add|bana|create|make)\\b/i.test(query)
-    || /^\\s*(?:mujhe|mere liye)\\s+(?:ek\\s+)?(?:task|todo|assignment)\\s+(?:add|bana)\\b/i.test(query);
+  const reminderCreateIntent=/^\s*(?:(?:please|kindly)\s+)?(?:remind\s+me\b|reminder\b|set\s+(?:a\s+)?reminder\b|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)\b|mat\s+bhoolna\b|bhoolna\s+mat\b)/i.test(query)
+     || /\b(?:set|create|add|schedule)\s+(?:a\s+)?reminder\b/i.test(query)
+     || /\breminder\s+(?:set|laga|lagao|laga do|set karo|set kar do)\b/i.test(query);
+   const taskCreateIntent=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make)\s+(?:(?:a|an|new|ek)\s+)?(?:task|todo|assignment|homework|exam)\b/i.test(query)
+     || /^\s*(?:task|todo)\s+(?:add|bana|create|make)\b/i.test(query)
+     || /^\s*(?:mujhe|mere liye)\s+(?:ek\s+)?(?:task|todo|assignment)\s+(?:add|bana)\b/i.test(query)
+     || /\b(?:assignment|homework|exam)\b.*\b(?:reminder|yaad)\b.*\b(?:set|laga|kar do|bana)\b/i.test(query);
   if(reminderCreateIntent||taskCreateIntent){
     const explicitResult=await chatActionIntent(query);
     if(explicitResult){reply(explicitResult,{pendingAction:!!pendingAction});return}
