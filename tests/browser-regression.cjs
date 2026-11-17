@@ -12,6 +12,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await new Promise(resolve=>setTimeout(resolve,600));
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext();
+  await context.grantPermissions(['notifications'],{origin:'http://127.0.0.1:4173'});
   const page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
@@ -20,10 +21,20 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   });
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
-  await page.evaluate(()=>localStorage.setItem('student-brain-data-v1-guest',JSON.stringify({schemaVersion:2,notes:[],tasks:[],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[]})));
+  await page.evaluate(()=>{
+    const shifted=new Date(Date.now()-2*60*1000);
+    const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(shifted);
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(shifted).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const reminder={id:'browser-reminder-regression',title:'Browser notification regression',category:'Briefing',taskType:'reminder',isReminder:true,due:date,reminderTime:parts.hour+':'+parts.minute,repeatRule:'daily',priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
+    localStorage.setItem('student-brain-data-v1-guest',JSON.stringify({schemaVersion:4,notes:[],tasks:[reminder],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[]}));
+  });
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
   assert.ok(await page.locator('#page-content').innerText().then(t=>t.includes('Good to see you again')));
+  // Real Chromium notification path: the due reminder must surface through the active service worker.
+  await page.waitForFunction(async()=>{
+    try{const reg=await navigator.serviceWorker.ready;const items=await reg.getNotifications();return items.some(n=>n.title==='One · Task reminder'&&n.body.includes('Browser notification regression'))}catch{return false}
+  },null,{timeout:15000});
   // Exercise task creation through the actual planner UI and verify persistence.
   await page.locator('.stat-card[data-page="planner"]').first().click();
   await page.locator('[data-action="new-task"]').first().click();
@@ -124,7 +135,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   assert.deepEqual(mobileErrors,[]);
   await mobile.close();
   assert.deepEqual(errors,[]);
-  console.log('Playwright browser regression passed: app boot, task create, expense create, knowledge note create, reload persistence and offline shell navigation.');
+  console.log('Playwright browser regression passed: app boot, service-worker reminder notification, task create, expense create, knowledge note create, reload persistence and offline shell navigation.');
  }catch(err){console.error(err);process.exitCode=1}
  finally{if(browser)await browser.close();server.kill()}
 })();
