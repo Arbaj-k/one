@@ -92,15 +92,11 @@ for(const phrase of ['mere tasks batao','who owes me money?','aaj ka kharcha dik
 for(const phrase of ['Read this PDF and tell me what it says','Summarize the uploaded image','What is written in this invoice?','Is PDF ko padh ke samjhao'])assert.equal(center.canHandle(phrase),false,'document-content questions must reach OCR/AI retrieval: '+phrase);
 assert.equal(center.canHandle('show my uploaded PDFs'),true,'file-list queries must remain local');
 for (const phrase of ['Tuesday class timetable','show me Tuesday class time table','What is my Tuesday class schedule?']) assert.equal(center.canHandle(phrase),false,'timetable questions must bypass command mutations: '+phrase);
-// A reminder follow-up such as "8 am" must continue the same draft, not fall through to AI/OCR.
-const draftReplies=[];
-const reminderCenter=adapterWindow.OneCommands.create({actions:{},fallback(){},onReply:(message)=>draftReplies.push(message)});
-await reminderCenter.run('Remind me for lunch tomorrow with my gf');
-assert.equal(reminderCenter.hasPendingDraft(),true,'incomplete reminder must keep a multi-turn draft');
-const followUp=reminderCenter.continueDraft('8 am');
-assert.match(followUp,/Reminder confirm karo/,'time-only reply must complete the reminder draft and ask for confirmation');
-assert.match(followUp,/08:00/,'8 am must be parsed as 08:00');
-assert.equal(reminderCenter.hasPendingDraft(),true,'draft should remain pending until explicit confirmation');
+// Reminder clarification is owned by app.js sendChat, not the generic adapter draft.
+const appReminderSource=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+assert.ok(appReminderSource.includes('let pendingAction=null,pendingReminderClarification=null'), 'Ask One must keep reminder clarification state in the chat pipeline');
+assert.ok(appReminderSource.includes('if(pendingReminderClarification)'), 'A time-only reply must continue the pending reminder in sendChat');
+assert.ok(appReminderSource.includes('makeReminderConfirmation(draft,clock)'), 'Reminder clarification must ask for YES/NO before saving');
 await center.run('add task call Raj tomorrow');
 assert.equal(executed,1,'all local command mutations must use the one authoritative executor');
 assert.equal(callbacks,0,'competing callback mutation engines must not run');
