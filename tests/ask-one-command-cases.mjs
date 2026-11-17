@@ -116,6 +116,8 @@ assert.ok(persistCount>0,'expense save must call persistence');
 
 const pendingQuery=commandWindow.OneCommands.parseCommand('pending task batao');
 assert.equal(pendingQuery.action,'show','batao must never be confused with banao/add');
+const naturalReminderQuery=commandWindow.OneCommands.executeCommand('jo jo reminder set hai batao');
+assert.match(naturalReminderQuery.answer,/saved reminders/i,'natural Hinglish reminder-list request must use the reminder store');
 const reminderQuery=commandWindow.OneCommands.executeCommand('reminder mai ky set hai batao');
 assert.match(reminderQuery.answer,/active reminder saved nahi hai/i,'read-only reminder query must list, not create a reminder');
 assert.equal(commandData.tasks.length,0,'read-only reminder lookup must not create a task');
