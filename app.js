@@ -2540,8 +2540,8 @@ async function sendChat(question,targetDocId=null){
   if(deterministicReminderRequest)targetDocId=null;
   else if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
-  if(!targetDocId&&asksTimetableContext){
-   const latestUploaded=(data.documents||[]).filter(doc=>doc&&doc.id).sort((a,b)=>Number(b.createdAt||b.created||0)-Number(a.createdAt||a.created||0))[0];
+  if(!targetDocId&&asksTimetableContext&&/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|uploaded|pdf|document|file)\b/i.test(query)){
+   const latestUploaded=(data.documents||[]).filter(doc=>doc&&doc.id&&/time.?table|timetable|schedule|class/i.test(String(doc.name||'')+' '+String(doc.tags||''))).sort((a,b)=>Number(b.createdAt||b.created||0)-Number(a.createdAt||a.created||0))[0];
    if(latestUploaded)targetDocId=latestUploaded.id;
   }
   // Explicit reminder-list questions are workspace queries, not document/OCR questions.
@@ -2578,7 +2578,8 @@ async function sendChat(question,targetDocId=null){
   if(isDocumentContentQuestion(query)&&!targetDocId){
    reply({answer:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});return;
   }
-  if(isSpendingAmountQuestion(query)&&!targetDocId){
+  const explicitMoneyWriteIntent=/\b(?:add|save|record|log|spent|spend|earned|received|salary|kharcha|kharch|khaye|khaya|bought)\b/i.test(query)&&/\b(?:spending|expense|expenses|income|salary|rupee|rupees|rs\.?|₹|kharcha|kharch|biryani|food)\b/i.test(query);
+  if(isSpendingAmountQuestion(query)&&!targetDocId&&!explicitMoneyWriteIntent){
    reply(answerSpendingAmount(query));return;
   }
   // Deterministic creation intent must run before the AI planner.
