@@ -109,12 +109,15 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   return answer(count+' completed task'+(count===1?'':'s')+' mile. Kya sabhi delete kar doon? Reply YES to confirm or NO to cancel. Abhi kuch delete nahi hua.','Tasks');
  }
  if(pendingReminderDraft&&/^(?:cancel|no|nahi|rehne do|mat karo|stop)$/i.test(q)){pendingReminderDraft=null;reminderDraftExpiresAt=0;return answer('Reminder draft cancelled. Koi reminder save nahi hua.','Task Briefing')}
- const reminderLookup=/\b(?:reminders?|briefings?)\b/i.test(q)&&/\b(?:show|list|tell|what|which|when|batao|dikhao|kya|kaun|set|saved|scheduled|hai|hain)\b/i.test(q);
+ const reminderLookup=(/\b(?:reminders?|remind|briefings?)\b/i.test(q)||/\byaad\s+(?:dilane|dilane wale|dilana)\b/i.test(q))&&(/\b(?:show|list|tell|what|which|when|batao|dikhao|kya|kaun|sab|saare|saari|jo|saved|scheduled|hai|hain)\b/i.test(q)||/\bjo\s+jo\b/i.test(q));
  if(reminderLookup){
-  const rows=(data.tasks||[]).filter(item=>item.category==='Briefing'||item.isReminder===true||item.source==='reminder');
-  const active=rows.filter(item=>!item.done&&!item.paused).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))||String(a.reminderTime||'').localeCompare(String(b.reminderTime||'')));
-  const list=active.length?active.map((item,index)=>(index+1)+'. '+item.title+' · '+(item.due?dateFmt(item.due):'Date not set')+' at '+(item.reminderTime||'09:00')+((item.repeatRule&&item.repeatRule!=='none')?' · '+item.repeatRule:'')).join('\n'):'Abhi koi active reminder saved nahi hai.';
-  return answer('Your saved reminders:\n'+list,'Task Briefing');
+  const rows=(data.tasks||[]).filter(item=>item&&(item.category==='Briefing'||item.isReminder===true||item.taskType==='reminder'||item.source==='reminder'));
+  const all=rows.slice().sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))||String(a.reminderTime||'').localeCompare(String(b.reminderTime||'')));
+  const list=all.length?all.map((item,index)=>{
+   const status=item.done||item.completed?'Completed':item.paused?'Paused':'Active';
+   return (index+1)+'. '+(item.title||'Untitled reminder')+' · '+(item.due?dateFmt(item.due):'Date not set')+' at '+(item.reminderTime||'09:00')+((item.repeatRule&&item.repeatRule!=='none')?' · '+item.repeatRule:'')+' · '+status;
+  }).join('\\n'):'Aapke workspace mein abhi koi saved reminder nahi mila. Tasks aur reminders alag rakhe gaye hain.';
+  return answer('Aapke saved reminders ('+all.length+'):\\n'+list,'Reminders');
  }
  const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
  if(pendingReminderDraft&&Date.now()>reminderDraftExpiresAt)pendingReminderDraft=null;if(pendingReminderDraft&&/^(?:add|create|make|show|list|delete|remove|complete|mark|save|note|task|expense|income|udhaar|project|routine)\b/i.test(q)){pendingReminderDraft=null;}if(reminderCue||pendingReminderDraft){
