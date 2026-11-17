@@ -29,6 +29,7 @@ const commandAdapter = readFileSync(new URL('../one-commands.js', import.meta.ur
 assert.ok(commandAdapter.includes('if (readOnly && !localSection') && commandAdapter.includes('return localSection || explicitTaskCommand'), 'Local read/query commands must remain routable even when phrased as questions.');
 assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file questions must be routed to read-only answers.');
 assert.ok(app.includes('const asksAboutAttachedContent=/') && app.includes('if(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent)return {kind:\'none\',sources:[]}'), 'File context and read-only questions must never trigger a workspace action plan.');
+assert.ok(app.includes('const reminderListIntent=/') && app.includes('window.OneCommands?.executeCommand?.(query)'), 'Reminder-list requests must be routed to saved reminders before document/OCR fallback.');
 
 assert.ok(commandAdapter.includes('legacy.hasPending?.() || legacy.hasPendingReminder?.()') && commandAdapter.includes('if (createDraft || legacy.hasPending?.()'), 'Ask One must preserve explicit pending-action confirmations and reminder draft continuation.');
 assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('legacy.executeCommand(commandText)'), 'Ask One must support natural-language commands through the authoritative local executor.');
