@@ -30,7 +30,7 @@ assert.ok(commandAdapter.includes('if (readOnly && !localSection') && commandAda
 assert.ok(app.includes('const asksAboutAttachedContent=/'), 'Attached-file questions must be routed to read-only answers.');
 assert.ok(app.includes('const asksAboutAttachedContent=/') && app.includes('if(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent)return {kind:\'none\',sources:[]}'), 'File context and read-only questions must never trigger a workspace action plan.');
 
-assert.ok(commandAdapter.includes('if (legacy.hasPending?.() || legacy.hasPendingReminder?.()) return true;'), 'Ask One must preserve explicit pending-action confirmations.');
+assert.ok(commandAdapter.includes('legacy.hasPending?.() || legacy.hasPendingReminder?.()') && commandAdapter.includes('if (createDraft || legacy.hasPending?.()'), 'Ask One must preserve explicit pending-action confirmations and reminder draft continuation.');
 assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('legacy.executeCommand(commandText)'), 'Ask One must support natural-language commands through the authoritative local executor.');
 assert.ok(commandAdapter.includes("if (explicitReminder) {") && commandAdapter.includes("result = legacy.executeCommand(commandText);"), 'Reminder requests must bypass generic addTask callbacks and use the reminder-aware handler.');
 assert.ok(commandAdapter.includes("remind(?:er)?\\b") && commandAdapter.includes("schedule)\\s+"), 'Reminder routing must recognize reminder wording and schedule/create/add reminder phrases.');
