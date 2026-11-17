@@ -2508,7 +2508,13 @@ async function sendChat(question,targetDocId=null){
     const continuation=await window.OneCommandCenter.continueDraft(query);
     if(continuation){reply({answer:String(continuation),sources:['Ask One']},{pendingAction:true,pendingDraft:true});return}
   }
-    // A pending confirmation owns the next reply. Never fall through to Gemini,
+    // Local command confirmations (bulk delete, deadline/project updates) must
+  // receive YES/NO before the AI planner sees the reply.
+  if(window.OneCommands?.hasPending?.()){
+   const localConfirmation=window.OneCommands.executeCommand(query);
+   if(localConfirmation?.answer){reply(localConfirmation,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
+  }
+  // A pending confirmation owns the next reply. Never fall through to Gemini,
   // otherwise the confirmation result and an unrelated AI answer get appended together.
   if(pendingAction){
    const pendingResult=await chatActionIntent(query);
