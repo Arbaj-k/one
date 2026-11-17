@@ -113,7 +113,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b(?:lent|borrowed|paid|returned)\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/^\s*([\p{L}][\p{L}'-]*)\s+returned\b/iu)||[])[1]||'';
   if((/\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\b/.test(q)||udhaarType)&&amount)action='add';
   if(det.intent==='routines'&&/\b(routine|habit|daily|roz|roj|subah|raat|walk)\b/.test(q)&&!/\b(show|list|dikhao|batao|kitna|kya hai)\b/.test(q))action='add';
-  if(recurrence.repeatRule!=='none'&&!/\b(show|list|dikhao|batao|search|dhundo)\b/.test(q))action='add';
+  if(recurrence.repeatRule!=='none'&&explicitRecurringCommand&&!readVerb)action='add';
   if(action==='complete'&&!det.intent)det.intent='tasks';
   if(action==='delete'&&!det.intent)det.intent='tasks';
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
