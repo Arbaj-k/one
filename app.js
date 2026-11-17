@@ -2514,6 +2514,18 @@ async function sendChat(question,targetDocId=null){
    if(listed?.answer){reply(listed);return}
    reply({answer:'Reminder list abhi load nahi ho paayi. Koi data change nahi kiya.',sources:['Reminders']});return;
   }
+
+  // Route workspace list/search and explicit task/note/project/money management to
+  // the local command engine before AI planning, document retrieval or OCR fallback.
+  const parsedLocal=window.OneCommands?.parseCommand?.(query);
+  const localReadOrManage=parsedLocal?.section&&(
+    ['show','summary','delete','edit','complete','pause','resume'].includes(parsedLocal.action)
+    || /\\b(?:find|search|show|list|display|batao|dikhao|who owes|what do i owe|pending|completed|overdue|today|aaj|this month|november)\\b/i.test(query)
+  );
+  if(localReadOrManage){
+   const localResult=window.OneCommands?.executeCommand?.(query);
+   if(localResult?.answer){reply(localResult,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
+  }
   if(isDocumentContentQuestion(query)&&!targetDocId){
    reply({answer:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});return;
   }
