@@ -82,7 +82,8 @@
   const recurrence=parseRecurrence(q);
   const workTaskAdd=/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q)&&/\b(?:add|create|make|banao|bana|jodo|daalo|dalo|set|likho|save)\b/i.test(q);
   const taskManagementCue=/\b(?:mark|complete|finish|done|delete|remove|edit|update)\b/i.test(q)&&/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q);
-  const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:reminderCue?{intent:'reminders',ambiguous:false,matched:['reminders']}:workTaskAdd||taskManagementCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const taskListCue=/\b(?:tasks?|todo|to do|kaam)\b/i.test(q)&&/\b(?:show|list|display|tell|batao|dikhao|pending|completed|complete|done|all|saare|saari|sabhi|mere|my|find|search|today|aaj|overdue)\b/i.test(q);
+  const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:reminderCue?{intent:'reminders',ambiguous:false,matched:['reminders']}:workTaskAdd||taskManagementCue||taskListCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
