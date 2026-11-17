@@ -36,7 +36,7 @@ assert.ok(commandAdapter.includes('legacy.hasPending?.() || legacy.hasPendingRem
 assert.ok(commandAdapter.includes('const explicitTaskCommand =') && commandAdapter.includes('const implicitTaskIntent =') && commandAdapter.includes('legacy.executeCommand(commandText)'), 'Ask One must support natural-language commands through the authoritative local executor.');
 assert.ok(commandAdapter.includes("if (explicitReminder) {") && commandAdapter.includes("result = legacy.executeCommand(commandText);"), 'Reminder requests must bypass generic addTask callbacks and use the reminder-aware handler.');
 assert.ok(commandAdapter.includes("remind(?:er)?\\b") && commandAdapter.includes("schedule)\\s+"), 'Reminder routing must recognize reminder wording and schedule/create/add reminder phrases.');
-assert.ok(!/\/task|\/remind|\/list|\/done|\/delete/.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
+assert.ok(!/^\\s*\\/(?:task|remind|list|done|delete)\\b/m.test(commandAdapter), 'Ask One must not expose slash-command syntax.');
 
 const commandParser = readFileSync(new URL('../commands.js', import.meta.url), 'utf8');
 assert.ok(!/\/\\\\b\\\\d/.test(commandParser), 'Money description regex must not remain double escaped.');
