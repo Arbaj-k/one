@@ -179,4 +179,18 @@ const lendingHistory=parser.parseCommand('Show my lending history');
 assert.equal(lendingHistory.section,'money','lending history must route to Money');
 const allTasks=parser.parseCommand('Mere saare tasks batao');
 assert.equal(allTasks.section,'tasks','Hinglish all-task listing must route to Tasks');
+const isolatedDomains=[
+ ['Add task pay electricity bill tomorrow','task','tasks'],
+ ['Remind me to pay electricity bill tomorrow at 8 pm','reminder','reminders'],
+ ['Add expense 500 for electricity bill','expense','money'],
+ ['Add income 5000 salary','income','money'],
+ ['Raj ko 500 udhaar diye','udhaar','money'],
+ ['Save note electricity bill due date','note','notes']
+];
+for(const [phrase,domain,section] of isolatedDomains){
+ const parsed=parser.parseCommand(phrase);
+ assert.equal(parsed.domainIntent,domain,'intent must be isolated for: '+phrase);
+ assert.equal(parsed.section,section,'section must match intent for: '+phrase);
+}
+
 console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
