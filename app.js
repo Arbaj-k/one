@@ -1743,6 +1743,8 @@ function answerSpendingAmount(question){
 }
 function isSpendingAmountQuestion(question){
  const q=String(question||'').toLowerCase();
+ // Imperative transaction commands must never be answered with a spending summary.
+ if(/^\s*(?:please\s+)?(?:add|create|save|record|log|track|spend|spent|i\s+spent|maine\s+kharch)\b/i.test(q))return false;
  return /\b(spend|spent|spending|kharch|kharcha|kharchaa|खर्च|खर्चा)\b/.test(q)&&/\b(how much|kitna|kitne|kitni|total|amount|paisa|paise|rupees?|rs.?|₹|mera|meri|my|today|aaj|yesterday|kal|month|week|overall|all time)\b/.test(q);
 }
 function phase4SpendingInsights(){
@@ -2383,7 +2385,9 @@ async function chatActionIntent(question){
    .replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g,' ')
    .replace(/\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/ig,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
-  if(!Number.isFinite(amount)||amount<=0||!description)return {answer:'Amount aur description dono clear chahiye. Example: Add expense ₹250 for lunch today; income ₹500 from tutoring.',sources:['Money & Udhaar']};
+  if(!Number.isFinite(amount)||amount<=0)return {answer:'Valid amount clear nahi hua. Example: Add expense ₹250 for lunch today.',sources:['Money & Udhaar']};
+  if(!description&&/\b(?:spend|spent|spending|kharch|kharcha)\b/i.test(lower))description='General spending';
+  if(!description)return {answer:'Expense kis cheez ka tha? Example: Add expense ₹250 for lunch today.',sources:['Money & Udhaar']};
   const category=/food|lunch|dinner|breakfast|chai|coffee|snack|khana/i.test(description)?'Food':/bus|auto|cab|metro|fuel|petrol|travel/i.test(description)?'Travel':/book|stationery|pen|notebook/i.test(description)?'Books & supplies':/fee|college/i.test(description)?'College fees':/movie|game|entertainment/i.test(description)?'Entertainment':/shopping|clothes/i.test(description)?'Shopping':'Other';
   const duplicate=(data.expenses||[]).find(e=>(e.kind||'expense')===kind&&Number(e.amount)===amount&&String(e.description||'').toLowerCase()===description.toLowerCase()&&String(e.date||'')===date);
   if(duplicate)return {answer:'Matching money record already exists: '+fmtMoney(amount)+' for '+description+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
@@ -2590,7 +2594,7 @@ async function sendChat(question,targetDocId=null){
   }
   // Deterministic note, memory, project and Money writes must be handled locally
   // before the AI action planner can reinterpret or cross-route them.
-  const workspaceCreateIntent=/^\s*(?:(?:please|kindly)\s+)?(?:save|add|create|remember|record|log)\b.*\b(?:note|memory|project|expense|income|money|task|todo)\b/i.test(query)
+  const workspaceCreateIntent=/^\s*(?:(?:please|kindly)\s+)?(?:save|add|create|remember|record|log)\b.*\b(?:note|memory|project|expense|income|money|task|todo|spend|spent|spending)\b/i.test(query)
     ||/^\s*(?:remember|yaad rakhna)\b/i.test(query)
     ||/^\s*(?:i\s+)?(?:spent|paid|received|earned|lent|borrowed|repaid)\b/i.test(query)
     ||/^\s*[a-z][a-z'-]*\s+returned\b/i.test(query)
