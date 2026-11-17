@@ -159,4 +159,17 @@ const statusDraft=commandWindow.OneCommands.executeCommand('Update Hapn Website 
 assert.match(statusDraft.answer,/status/i,'project status update must ask for confirmation');
 commandWindow.OneCommands.executeCommand('yes');
 assert.equal(commandData.projects[0].status,'Active','project status should update after confirmation');
+
+const namedDate=parser.parseCommand('Remind me about my exam on 20 November');
+assert.equal(namedDate.date,'2026-11-20','named month dates must parse for reminders');
+const paidAmit=parser.parseCommand('I paid Amit 300 rupees');
+assert.equal(paidAmit.udhaarType,'borrowed_repayment','a payment made to a lender must reduce borrowed balance');
+assert.equal(paidAmit.person,'amit','repayment commands must capture the person');
+const returnedByRahul=parser.parseCommand('Rahul returned 500 rupees');
+assert.equal(returnedByRahul.udhaarType,'lent_repayment','money returned by a borrower must reduce lending balance');
+assert.equal(returnedByRahul.person,'rahul','returned-payment commands must capture the person');
+const lendingHistory=parser.parseCommand('Show my lending history');
+assert.equal(lendingHistory.section,'money','lending history must route to Money');
+const allTasks=parser.parseCommand('Mere saare tasks batao');
+assert.equal(allTasks.section,'tasks','Hinglish all-task listing must route to Tasks');
 console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
