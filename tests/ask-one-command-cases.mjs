@@ -11,14 +11,14 @@ const parser=window.OneCommands;
 assert.ok(parser,'local parser must expose OneCommands');
 
 const cases=[
- ['mere tasks batao','tasks'],['pending task batao','tasks'],['pending tasks dikhao','tasks'],['reminder mai ky set hai batao','tasks'],['show my saved reminders','tasks'],['who owes me money?','money'],['aaj ka kharcha dikhao','money'],
+ ['mere tasks batao','tasks'],['pending task batao','tasks'],['pending tasks dikhao','tasks'],['reminder mai ky set hai batao','reminders'],['show my saved reminders','reminders'],['who owes me money?','money'],['aaj ka kharcha dikhao','money'],
  ['show my pending tasks','tasks'],['list all notes','notes'],['mere projects dikhao','projects'],
  ['daily routine batao','routines'],['show my PDFs','files'],['add task submit assignment tomorrow','tasks'],
  ['create a task to call Raj','tasks'],['kal maths homework complete karna hai','tasks'],
  ['task add karo maths homework','tasks'],['assignment add kar do submit form','tasks'],['homework bana do science chapter 4','tasks'],
- ['remind me to pay 500 to Raj tomorrow at 8pm','tasks'],['kal subah 9 baje bill pay yaad dilana','tasks'],
- ['daily briefing at 8am','tasks'],['weekly reminder every Monday','tasks'],
- ['monthly reminder for rent','tasks'],['save note meeting with Raj','notes'],
+ ['remind me to pay 500 to Raj tomorrow at 8pm','reminders'],['kal subah 9 baje bill pay yaad dilana','reminders'],
+ ['daily briefing at 8am','reminders'],['weekly reminder every Monday','reminders'],
+ ['monthly reminder for rent','reminders'],['save note meeting with Raj','notes'],
  ['remember this idea build a campus app','notes'],['create project Hapn redesign','projects'],
  ['add milestone launch beta to Hapn project','projects'],['spent 250 on auto today','money'],
  ['add expense 500 rupees for groceries','money'],['record income salary 25000','money'],
@@ -70,7 +70,7 @@ const marked=parser.parseCommand('mark maths homework done');
 assert.equal(marked.section,'tasks','homework completion must route to Tasks');
 assert.equal(marked.action,'complete');
 const recurring=parser.parseCommand('weekly reminder every Monday');
-assert.equal(recurring.repeatRule,'weekly','weekly reminder recurrence must be parsed');
+assert.equal(recurring.repeatRule,'weekly','weekly reminder recurrence must be parsed');\nassert.equal(recurring.section,'reminders','recurring reminders must be routed separately from tasks');
 
 let executed=0,callbacks=0;
 const adapterWindow={OneCommands:{...parser,executeCommand(q){executed++;return {answer:'ok'}},hasPending:()=>false,hasPendingReminder:()=>false}};
