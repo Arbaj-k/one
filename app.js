@@ -2170,7 +2170,7 @@ async function chatActionIntent(question){
   if(!title)return {answer:'Kis cheez ka reminder chahiye? Example: Kal subah assignment likhna yaad dilana.',sources:['Task Briefing']};
   const duplicate=reminderDuplicate({title,due,reminderTime,repeatRule,category:'Briefing'});
   if(duplicate)return {answer:'Ye briefing pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
-  const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder/briefing command.'};
+  const task={id:uid(),title,category:'Briefing',taskType:'reminder',isReminder:true,due,reminderTime,repeatRule,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder/briefing command.'};
   pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task Briefing',page:'overview',successMessage:(daily?'Daily briefing':'Reminder')+' saved: '+title+' · '+(daily?'every day':dateFmt(due))+' at '+reminderTime+'.',requestedAt:Date.now()};
   return {answer:'Confirm '+(daily?'daily briefing':'reminder')+': '+title+' · '+(daily?'Every day':dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel. Ye Home ke Task Briefing mein dikhega.',sources:['Task Briefing','Planner']};
  }
@@ -2286,7 +2286,7 @@ async function chatActionIntent(question){
   const reminderTimeMatch=raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)\b/i);
   let reminderTime='09:00';
   if(reminderTimeMatch){let hour=Number(reminderTimeMatch[1]),minute=Number(reminderTimeMatch[2]||0),meridiem=(reminderTimeMatch[3]||'').toLowerCase();if(minute>59||hour>12||hour<0)return {answer:'Reminder time valid nahi hai. Example: 7:30 pm.',sources:['Planner']};if(meridiem==='pm'&&hour<12)hour+=12;if(meridiem==='am'&&hour===12)hour=0;if(meridiem==='baje'&&hour>23)return {answer:'Time 24-hour format mein do, jaise 19:00.',sources:['Planner']};reminderTime=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}
-  const task={id:uid(),title,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,reminderTime,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
+  const task={id:uid(),title,taskType:'task',isReminder:false,category:/assignment|submit/i.test(lower)?'Assignment':/exam/i.test(lower)?'Exam':/project/i.test(lower)?'Project':'Personal',due,reminderTime,notes,priority:/urgent|important|high priority/i.test(lower)?'High':'Medium',done:false,created:Date.now(),updated:Date.now()};
   pendingAction={type:'create-record',collection:'tasks',record:task,source:'Planner',page:'planner',successMessage:'Task saved in Planner: '+title+(due?' · Due '+dateFmt(due):' · No due date')+(notes?' · Notes: '+notes:'')+'. Saved task verify kar liya.',requestedAt:Date.now()};
   return {answer:'Please confirm task: '+title+(due?' · Due '+dateFmt(due):' · No due date')+'. Reply YES to save or NO to cancel. Abhi task add nahi hua.',sources:['Planner']};
  }
@@ -2442,6 +2442,17 @@ async function sendChat(question,targetDocId=null){
   }
   if(isSpendingAmountQuestion(query)&&!targetDocId){
    reply(answerSpendingAmount(query));return;
+  }
+  // Deterministic creation intent must run before the AI planner.
+  const reminderCreateIntent=/^\\s*(?:(?:please|kindly)\\s+)?(?:remind\\s+me\\b|reminder\\b|set\\s+(?:a\\s+)?reminder\\b|yaad\\s+(?:dila|dilana|dila do|dila dena|rakhna)\\b|mat\\s+bhoolna\\b|bhoolna\\s+mat\\b)/i.test(query)
+    || /\\b(?:set|create|add|schedule)\\s+(?:a\\s+)?reminder\\b/i.test(query)
+    || /\\breminder\\s+(?:set|laga|lagao|laga do|set karo)\\b/i.test(query);
+  const taskCreateIntent=/^\\s*(?:(?:please|kindly)\\s+)?(?:add|create|make)\\s+(?:(?:a|an|new|ek)\\s+)?(?:task|todo|assignment|homework|exam)\\b/i.test(query)
+    || /^\\s*(?:task|todo)\\s+(?:add|bana|create|make)\\b/i.test(query)
+    || /^\\s*(?:mujhe|mere liye)\\s+(?:ek\\s+)?(?:task|todo|assignment)\\s+(?:add|bana)\\b/i.test(query);
+  if(reminderCreateIntent||taskCreateIntent){
+    const explicitResult=await chatActionIntent(query);
+    if(explicitResult){reply(explicitResult,{pendingAction:!!pendingAction});return}
   }
   let semanticReadOnly=false;
   if(!targetDocId&&!isDocumentContentQuestion(query)){
