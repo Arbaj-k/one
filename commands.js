@@ -139,16 +139,16 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
  const taskRows=()=>Array.isArray(data.tasks)?data.tasks:[];
  const isReminderRow=x=>!!(x&&(x.isReminder===true||x.taskType==='reminder'||x.category==='Briefing'));
  const isDoneRow=x=>!!(x&&(x.done===true||x.completed===true||String(x.status||'').toLowerCase()==='completed'));
- const taskNameFrom=(raw,verbs)=>String(raw||'').replace(verbs,'').replace(/\\b(?:task|tasks|todo|assignment|homework|exam|deadline|due date|to|as|the|my|please|kindly)\\b/gi,' ').replace(/\\b(?:today|aaj|tomorrow|kal|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\\b/gi,' ').replace(/\\s+/g,' ').trim();
- if(/\\b(?:change|update|set|move)\\b/i.test(q)&&/\\b(?:deadline|due date|due)\\b/i.test(q)&&/\\b(?:task|assignment|homework|exam)\\b/i.test(q)){
+ const taskNameFrom=(raw,verbs)=>String(raw||'').replace(verbs,'').replace(/\b(?:task|tasks|todo|assignment|homework|exam|deadline|due date|to|as|the|my|please|kindly)\b/gi,' ').replace(/\b(?:today|aaj|tomorrow|kal|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/gi,' ').replace(/\s+/g,' ').trim();
+ if(/\b(?:change|update|set|move)\b/i.test(q)&&/\b(?:deadline|due date|due)\b/i.test(q)&&/\b(?:task|assignment|homework|exam)\b/i.test(q)){
   const due=parseDate(query);if(!due)return answer('Nayi deadline samajh nahi aayi. Example: Change DSA deadline to Friday.','Tasks');
-  const name=taskNameFrom(q,/^.*?\\b(?:change|update|set|move)\\b/i),tokens=name.split(' ').filter(t=>t.length>2&&!['deadline','due','date'].includes(t));
+  const name=taskNameFrom(q,/^.*?\b(?:change|update|set|move)\b/i),tokens=name.split(' ').filter(t=>t.length>2&&!['deadline','due','date'].includes(t));
   const matches=taskRows().filter(x=>!isReminderRow(x)&&tokens.some(t=>norm(x.title).includes(t)));
   if(matches.length!==1)return answer(matches.length?'Ek se zyada tasks match hue. Exact task title bhejo.':'Matching task nahi mila. Koi change nahi kiya.','Tasks');
   const item=matches[0],old=item.due||'';pending={apply:()=>{item.due=due;item.updated=Date.now();persist();render()},done:'Deadline updated: '+item.title+' · '+dateFmt(due)};pendingExpiresAt=Date.now()+120000;
   return answer('Task “'+item.title+'” ki deadline '+(old?dateFmt(old):'unset')+' se '+dateFmt(due)+' kar doon? YES / NO.','Tasks');
  }
- const projectStatus=q.match(/\\b(?:update|change|set)\\s+(.+?)\\s+project\\s+status\\s+to\\s+(active|paused|completed|complete|done|on hold|planning)\\b/i);
+ const projectStatus=q.match(/\b(?:update|change|set)\s+(.+?)\s+project\s+status\s+to\s+(active|paused|completed|complete|done|on hold|planning)\b/i);
  if(projectStatus){
   const key=norm(projectStatus[1]),matches=(data.projects||[]).filter(x=>norm(x.name||x.title).includes(key)||key.includes(norm(x.name||x.title)));
   if(matches.length!==1)return answer(matches.length?'Multiple projects match. Exact project name bhejo.':'Project nahi mila. Koi change nahi kiya.','Projects');
@@ -156,7 +156,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   pending={apply:()=>{item.status=next;item.updated=Date.now();persist();render()},done:'Project status updated: '+(item.name||item.title)+' · '+next};pendingExpiresAt=Date.now()+120000;
   return answer('“'+(item.name||item.title)+'” ka status '+old+' se '+next+' kar doon? YES / NO.','Projects');
  }
- const projectTask=q.match(/\\badd\\s+(?:a\\s+)?task\\s+to\\s+(.+?)\\s+project\\s*[:,-]\\s*(.+)$/i);
+ const projectTask=q.match(/\badd\s+(?:a\s+)?task\s+to\s+(.+?)\s+project\s*[:,-]\s*(.+)$/i);
  if(projectTask){
   const key=norm(projectTask[1]),project=(data.projects||[]).find(x=>norm(x.name||x.title)===key||norm(x.name||x.title).includes(key));
   if(!project)return answer('Project “'+projectTask[1]+'” nahi mila. Pehle project create karo.','Projects');
