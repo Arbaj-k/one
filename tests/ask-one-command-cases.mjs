@@ -81,7 +81,8 @@ const marked=parser.parseCommand('mark maths homework done');
 assert.equal(marked.section,'tasks','homework completion must route to Tasks');
 assert.equal(marked.action,'complete');
 const recurring=parser.parseCommand('weekly reminder every Monday');
-assert.equal(recurring.repeatRule,'weekly','weekly reminder recurrence must be parsed');\nassert.equal(recurring.section,'reminders','recurring reminders must be routed separately from tasks');
+assert.equal(recurring.repeatRule,'weekly','weekly reminder recurrence must be parsed');
+assert.equal(recurring.section,'reminders','recurring reminders must be routed separately from tasks');
 
 let executed=0,callbacks=0;
 const adapterWindow={OneCommands:{...parser,executeCommand(q){executed++;return {answer:'ok'}},hasPending:()=>false,hasPendingReminder:()=>false}};
