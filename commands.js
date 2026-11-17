@@ -82,7 +82,7 @@
   // even when it contains a weekday that could otherwise trigger recurrence.
   const conversationalQuestion=/\b(?:ky|kya|kaisa|kaisi|kaise|kaunsa|kaunsi)\b/i.test(q)&&/\b(?:hai|hain|hoga|hogi|batao|dikhao)\b/i.test(q);
   const explicitCommand=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make|save|record|log|schedule|set|remind|delete|remove|complete|finish|mark|update|change|pause|resume|task\s+add|todo\s+add)\b/i.test(q);
-  if(conversationalQuestion&&!explicitCommand)return {action:'question',section:null,domainIntent:null,ambiguous:false,matched:[],amount:parseAmount(query),date:null,time:null,title:'',projectName:'',query,summary:null,udhaarType:'',person:'',bulkDeleteCompletedTasks:false,repeatRule:'none',repeatDay:null};
+  if(conversationalQuestion&&!explicitCommand&&!/\\b(?:batao|dikhao|show|list|display|saved|scheduled)\\b/i.test(q))return {action:'question',section:null,domainIntent:null,ambiguous:false,matched:[],amount:parseAmount(query),date:null,time:null,title:'',projectName:'',query,summary:null,udhaarType:'',person:'',bulkDeleteCompletedTasks:false,repeatRule:'none',repeatDay:null};
   const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
   const bulkDeleteCompletedTasks=/\b(?:delete|remove|hatao|hata\s+do|mita\s+do|clear|saaf\s+(?:karo|kar\s+do))\b/i.test(q)&&/\b(?:completed|complete|done|finished|ho\s+gaye|ho\s+chuke)\b/i.test(q)&&/\b(?:tasks?|kaam)\b/i.test(q);
   const recurrence=parseRecurrence(q);
