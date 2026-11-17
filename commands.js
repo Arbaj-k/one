@@ -73,8 +73,8 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const writeVerb=/\b(?:add|create|make|save|record|log|schedule|set|lagao|laga|banao|bana|jodo|daalo|dalo|yaad\s+dila)\b/i.test(q);
   let action=bulkDeleteCompletedTasks?'delete':readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
-  const udhaarType=/\b(?:udhaar|lent|lend|gave|given|diye|diya|borrowed|borrow|liya|liye|repaid|repayment|settle|settled|paid back|wapas)\b/i.test(q)?(/\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
-  const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||[])[1]||'';
+  const udhaarType=/\b(?:udhaar|lent|lend|gave|given|diye|diya|borrowed|borrow|liya|liye|repaid|repayment|settle|settled|paid back|returned|return|paid|wapas)\b/i.test(q)?(/\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:paid|repaid|repayment|settle|settled|paid back|returned|return|wapas)\b/i.test(q)?(/\b(?:paid|borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
+  const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b(?:lent|borrowed|paid|returned)\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/^\s*([\p{L}][\p{L}'-]*)\s+returned\b/iu)||[])[1]||'';
   if((/\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\b/.test(q)||udhaarType)&&amount)action='add';
   if(det.intent==='routines'&&/\b(routine|habit|daily|roz|roj|subah|raat|walk)\b/.test(q)&&!/\b(show|list|dikhao|batao|kitna|kya hai)\b/.test(q))action='add';
   if(recurrence.repeatRule!=='none'&&!/\b(show|list|dikhao|batao|search|dhundo)\b/.test(q))action='add';
