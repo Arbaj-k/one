@@ -2435,7 +2435,13 @@ async function sendChat(question,targetDocId=null){
  };
  try{
   if(page==='ask'){render();scrollChatToBottom()}else render();
-  // A pending confirmation owns the next reply. Never fall through to Gemini,
+  // Continue an in-progress multi-turn task/reminder draft before any AI, OCR or workspace lookup.
+  // A reply such as "8 am" belongs to the reminder that just asked for a time.
+  if(window.OneCommandCenter?.hasPendingDraft?.()){
+    const continuation=await window.OneCommandCenter.continueDraft(query);
+    if(continuation){reply({answer:String(continuation),sources:['Ask One']},{pendingAction:true,pendingDraft:true});return}
+  }
+    // A pending confirmation owns the next reply. Never fall through to Gemini,
   // otherwise the confirmation result and an unrelated AI answer get appended together.
   if(pendingAction){
    const pendingResult=await chatActionIntent(query);
