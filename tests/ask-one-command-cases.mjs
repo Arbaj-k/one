@@ -141,4 +141,26 @@ const monthlyResult=commandWindow.OneCommands.executeCommand('monthly reminder f
 assert.equal(commandData.tasks.length,3,'monthly reminder without a fixed date must still be scheduled');
 assert.equal(commandData.tasks[2].repeatRule,'monthly');
 assert.equal(commandData.tasks[2].title,'rent');
+
+// Workspace filters, deadline edits and project operations must use the same local data store.
+commandData.tasks.push(
+ {id:'t-open',title:'DSA assignment',due:'2026-11-18',done:false},
+ {id:'t-done',title:'Maths homework',due:'2026-11-15',done:true,completedAt:1},
+ {id:'t-rem',title:'Call Rahul',due:'2026-11-16',reminderTime:'08:00',category:'Briefing',taskType:'reminder',isReminder:true,done:false}
+);
+const completedList=commandWindow.OneCommands.executeCommand('Show completed tasks');
+assert.match(completedList.answer,/Maths homework/,'completed-task filter must show completed records');
+assert.doesNotMatch(completedList.answer,/DSA assignment/,'completed-task filter must exclude open records');
+const todayList=commandWindow.OneCommands.executeCommand('Show my tasks for today');
+assert.match(todayList.answer,/Call Rahul/,'today reminder filter/list should be available in saved workspace');
+const deadlineDraft=commandWindow.OneCommands.executeCommand('Change DSA deadline to Friday');
+assert.match(deadlineDraft.answer,/deadline/,'deadline update must ask for confirmation');
+assert.equal(commandData.tasks.find(x=>x.id==='t-open').due,'2026-11-18','deadline must not change before confirmation');
+commandWindow.OneCommands.executeCommand('yes');
+assert.equal(commandData.tasks.find(x=>x.id==='t-open').due,'2026-11-20','Friday deadline should save after confirmation');
+commandData.projects.push({id:'p1',name:'Hapn Website',status:'Planning',milestones:[]});
+const statusDraft=commandWindow.OneCommands.executeCommand('Update Hapn Website project status to active');
+assert.match(statusDraft.answer,/status/i,'project status update must ask for confirmation');
+commandWindow.OneCommands.executeCommand('yes');
+assert.equal(commandData.projects[0].status,'Active','project status should update after confirmation');
 console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
