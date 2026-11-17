@@ -163,7 +163,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
  const isReminderRow=x=>!!(x&&(x.isReminder===true||x.taskType==='reminder'||x.category==='Briefing'));
  const isDoneRow=x=>!!(x&&(x.done===true||x.completed===true||String(x.status||'').toLowerCase()==='completed'));
  const taskNameFrom=(raw,verbs)=>String(raw||'').replace(verbs,'').replace(/\b(?:task|tasks|todo|assignment|homework|exam|deadline|due date|to|as|the|my|please|kindly)\b/gi,' ').replace(/\b(?:today|aaj|tomorrow|kal|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/gi,' ').replace(/\s+/g,' ').trim();
- if(/\b(?:change|update|set|move)\b/i.test(q)&&/\b(?:deadline|due date|due)\b/i.test(q)&&/\b(?:task|assignment|homework|exam)\b/i.test(q)){
+ if(/\b(?:change|update|set|move)\b/i.test(q)&&/\b(?:deadline|due date|due)\b/i.test(q)){
   const due=parseDate(query);if(!due)return answer('Nayi deadline samajh nahi aayi. Example: Change DSA deadline to Friday.','Tasks');
   const name=taskNameFrom(q,/^.*?\b(?:change|update|set|move)\b/i),tokens=name.split(' ').filter(t=>t.length>2&&!['deadline','due','date'].includes(t));
   const matches=taskRows().filter(x=>!isReminderRow(x)&&tokens.some(t=>norm(x.title).includes(t)));
