@@ -2,7 +2,7 @@
 (() => {
  const KEYWORDS={
   action:{add:['add','jodo','daalo','dalo','banao','create','likho','save','remember','note karo','lagao','set','remind','reminder','yaad dilao','yaad dilana'],show:['dikhao','batao','show','list','kya hai','kitna','kitni','kitne','search','dhundo','find','open','kholo'],edit:['badlo','change','update','edit','rename'],delete:['delete','hatao','mita do','remove'],complete:['complete','done','mark','finished','ho gaya','khatam','finish'],pause:['pause','paused','rok do','band karo'],resume:['resume','unpause','restart','chalu karo','phir se chalao']},
-  section:{tasks:['task','tasks','todo','to do','kaam'],reminders:['reminder','reminders','remind','yaad dilao','yaad dilana','briefing'],notes:['note','notes','memo','idea','likha'],projects:['project','projects','milestone','progress'],routines:['routine','routines','habit','daily','roz','subah','raat'],money:['paisa','paise','kharcha','kharch','expense','expenses','income','budget','balance','spent','salary','udhaar','money','received','credited','earned','paid','lent','lending','borrowed','borrowing','repayment','settle','settled','return','returned','paid back','lent','borrowed','received','paid'],files:['file','files','pdf','photo','image','document','bill','receipt'],scan:['scan','scanner']}
+  section:{tasks:['task','tasks','todo','to do','kaam'],reminders:['reminder','reminders','remind','yaad dilao','yaad dilana','briefing'],notes:['note','notes','memo','idea','likha'],projects:['project','projects','milestone','progress'],routines:['routine','routines','habit','daily','roz','subah','raat'],money:['spending','lending','borrowing','paisa','paise','kharcha','kharch','expense','expenses','income','budget','balance','spent','salary','udhaar','money','received','credited','earned','paid','lent','lending','borrowed','borrowing','repayment','settle','settled','return','returned','paid back','lent','borrowed','received','paid'],files:['file','files','pdf','photo','image','document','bill','receipt'],scan:['scan','scanner']}
  };
  const norm=s=>String(s||'').toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}\s₹./:-]/gu,' ').replace(/\s+/g,' ').trim();
  const lev=(a,b)=>{if(Math.abs(a.length-b.length)>1)return 2;let r=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let n=[i];for(let j=1;j<=b.length;j++)n[j]=Math.min(n[j-1]+1,r[j]+1,r[j-1]+(a[i-1]===b[j-1]?0:1));if(Math.min(...n)>1)return 2;r=n;}return r[b.length]};
@@ -25,7 +25,29 @@
   }
   return found?total+cur:0;
  }
- function parseDate(text){const q=norm(text),d=new Date(today()+'T12:00:00');if(/\b(aaj|today)\b/.test(q))return today();if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);else{let m=q.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.toISOString().slice(0,10)}else{const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};let day=Object.keys(days).find(k=>q.includes(k));if(!day)return '';let delta=(days[day]-d.getDay()+7)%7;if(!delta||q.includes('agle'))delta=delta||7;d.setDate(d.getDate()+delta)}}return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+ function parseDate(text){
+  const q=norm(text),d=new Date(today()+'T12:00:00');
+  if(/\\b(aaj|today)\\b/.test(q))return today();
+  if(/\\b(kal|tomorrow)\\b/.test(q))d.setDate(d.getDate()+1);
+  else if(/\\b(parso|parson)\\b/.test(q))d.setDate(d.getDate()+2);
+  else{
+   const months={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sep:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
+   const monthNames=Object.keys(months).join('|');
+   const named=q.match(new RegExp('\\\\b(\\\\d{1,2})\\\\s+('+monthNames+')(?:\\\\s+(\\\\d{4}))?\\\\b','i'))||q.match(new RegExp('\\\\b('+monthNames+')\\\\s+(\\\\d{1,2})(?:,?\\\\s+(\\\\d{4}))?\\\\b','i'));
+   if(named){
+    const day=Number(named[1]&&/^\\d+$/.test(named[1])?named[1]:named[2]),month=months[String(named[1]&&/^\\d+$/.test(named[1])?named[2]:named[1]).toLowerCase()],year=Number(named[3]||named[4]||today().slice(0,4)),x=new Date(year,month,day,12);
+    if(x.getDate()===day&&x.getMonth()===month)return x.getFullYear()+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+   }
+   const m=q.match(/\\b(\\d{1,2})[/-](\\d{1,2})(?:[/-](\\d{2,4}))?\\b/);
+   if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
+   const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};
+   const day=Object.keys(days).find(k=>q.includes(k));
+   if(!day)return '';
+   let delta=(days[day]-d.getDay()+7)%7;if(!delta||q.includes('agle'))delta=delta||7;d.setDate(d.getDate()+delta);
+  }
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+ }
+
  function parseTime(text){
   const q=norm(text);
   const match=q.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))\s*(am|pm)?(?=\s|$)|\b(\d{1,2})\s*(am|pm|baje)(?=\s|$)|\b(subah|morning|shaam|sham|evening|raat|night)\s+(\d{1,2})(?::(\d{2}))?(?=\s|$)/i);
