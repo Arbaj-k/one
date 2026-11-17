@@ -23,7 +23,7 @@ assert.equal(bearerPattern.exec('Basic test-token'), null, 'Document JSON must r
 assert.ok(source.includes('const asksTasks=overviewIntent||'), 'Ask One task context must be intent-gated');
 assert.ok(source.includes('const asksMoney=overviewIntent||'), 'Ask One money context must be intent-gated');
 assert.ok(source.includes('function isDocumentContentQuestion(question)'), 'Document Q&A intent detection is missing');
-assert.ok(source.includes('if(!targetDocId&&asksTimetableContext)'), 'Timetable questions must explicitly select the latest uploaded document before generic intent routing');
+assert.ok(source.includes('if(!targetDocId&&asksTimetableContext&&'), 'Only explicit timetable/document questions may select a timetable upload; weekday chat must not auto-select an unrelated file');
 assert.ok(source.includes('const asksTimetable=/\\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)'), 'Timetable questions must use uploaded document context even when the user does not mention PDF/image');
 assert.ok(source.includes('(hasUploadedDocuments&&(asksTimetable||'), 'Uploaded timetable and referenced-document questions must bypass Tasks/Notes clarification');
 assert.ok(source.includes('pdf|image|photo|document|file)\\s+(?:se|mein|me|ka|ki|ke|ko|par|about|from)'), 'Hindi/Hinglish document references must trigger document Q&A');
