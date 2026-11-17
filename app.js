@@ -2488,9 +2488,10 @@ async function sendChat(question,targetDocId=null){
   if(deterministicReminderRequest&&!pendingAction){
    const parsed=window.OneCommands?.parseCommand?.(query)||{};
    let title=query.replace(/^\\s*(?:(?:please|kindly)\\s+)?remind\\s+me\\s+(?:(?:to|for)\\s+)?/i,'')
-    .replace(/\\b(?:today|tomorrow|kal|aaj|parso|parson|at|around|by|am|pm|baje|daily|every day|weekly|every week|monthly|every month|on)\\b/ig,' ')
-    .replace(/\\b\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|baje)?\\b/ig,' ')
-    .replace(/\\s+/g,' ').replace(/^[\\s,.:;-]+|[\\s,.:;-]+$/g,'').trim();
+    .replace(/\b(?:today|tomorrow|kal|aaj|parso|parson|at|around|by|am|pm|baje|daily|every day|weekly|every week|monthly|every month|on|about|my)\b/ig,' ')
+    .replace(/\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/ig,' ')
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ')
+    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
    const due=parsed.date||'';
    const recurrence=parsed.repeatRule||'none';
    if(title&&due){
