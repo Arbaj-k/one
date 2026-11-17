@@ -2162,13 +2162,16 @@ async function chatActionIntent(question){
  }
  if(!pendingAction&&reminderCommandIntent){
   const daily=/\b(?:daily|every\s+day|roz|har\s+roz|har\s+din)\b/i.test(lower);
+  const weekly=/\b(?:weekly|every\s+week|every\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|har\s+hafte)\b/i.test(lower);
+  const monthly=/\b(?:monthly|every\s+month|each\s+month|har\s+mahine)\b/i.test(lower);
+  const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none';
   const due=daily?today():parseDate();
   if(!due)return {answer:'Reminder/briefing ki date batao. Example: Kal subah assignment likhna yaad dilana, ya roz subah 9 baje project update batana.',sources:['Task Briefing','Planner']};
   const timeMatch=raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)\b/i),clockMatch=raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
   let reminderTime=/\b(?:shaam|sham|evening|raat|night)\b/i.test(lower)?'19:00':'09:00';
   if(clockMatch)reminderTime=String(Number(clockMatch[1])).padStart(2,'0')+':'+clockMatch[2];
   else if(timeMatch){let h=Number(timeMatch[1]),m=Number(timeMatch[2]||0),mer=timeMatch[3].toLowerCase();if(h<1||h>12||m>59)return {answer:'Time valid nahi hai. Example: 9 am ya 7:30 pm.',sources:['Task Briefing']};if(mer==='pm'&&h<12)h+=12;if(mer==='am'&&h===12)h=0;reminderTime=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
-  const title=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:mujhe|mere|ko|roz|daily|every\s+day|har\s+roz|har\s+din|subah|morning|shaam|sham|evening|raat|night|briefing|brief\s+me|remind\s+me|reminder|yaad|dila(?:na|\s+dena|\s+do)?|bata\s+dena|batana|mat\s+bhoolna|don't\s+let\s+me\s+forget|please|on|at|by|around|baje|am|pm|today|tomorrow|kal|aaj|next\s+week|agle\s+hafte)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
+  const title=raw.replace(/^\s*(?:please\s+)?/i,'').replace(/\b(?:mujhe|mere|ko|roz|daily|every\s+day|har\s+roz|har\s+din|subah|morning|shaam|sham|evening|raat|night|briefing|brief\s+me|remind\s+me|reminder|yaad|dila(?:na|\s+dena|\s+do)?|bata\s+dena|batana|mat\s+bhoolna|don't\s+let\s+me\s+forget|please|to|on|at|by|around|baje|am|pm|today|tomorrow|kal|aaj|next\s+week|agle\s+hafte)\b/ig,' ').replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   if(!title)return {answer:'Kis cheez ka reminder chahiye? Example: Kal subah assignment likhna yaad dilana.',sources:['Task Briefing']};
   const duplicate=reminderDuplicate({title,due,reminderTime,repeatRule,category:'Briefing'});
   if(duplicate)return {answer:'Ye briefing pehle se scheduled hai. Duplicate nahi banaya.',sources:['Task Briefing']};
@@ -2412,6 +2415,7 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
 async function sendChat(question,targetDocId=null){
  const query=String(question||'').trim();
  if(!query||chatBusy)return;
+ const deterministicReminderRequest=/^\s*(?:(?:please|kindly)\s+)?(?:remind\s+me\b|reminder\b|set\s+(?:a\s+)?reminder\b|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)\b|mat\s+bhoolna\b|bhoolna\s+mat\b)/i.test(query)||/\b(?:set|create|add|schedule)\s+(?:a\s+)?reminder\b/i.test(query)||/\breminder\s+(?:set|laga|lagao|laga do|set karo|set kar do)\b/i.test(query);
  const now=Date.now();
  if(lastAskSubmission.query===query&&now-lastAskSubmission.at<5000)return;
  lastAskSubmission={query,at:now};
@@ -2437,7 +2441,9 @@ async function sendChat(question,targetDocId=null){
    const pendingResult=await chatActionIntent(query);
    if(pendingResult){reply(pendingResult,{pendingAction:!!pendingAction});return}
   }
-  if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
+  // Reminder commands are app actions, never document questions. Ignore any stale selected document.
+  if(deterministicReminderRequest)targetDocId=null;
+  else if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
   if(!targetDocId&&asksTimetableContext){
    const latestUploaded=(data.documents||[]).filter(doc=>doc&&doc.id).sort((a,b)=>Number(b.createdAt||b.created||0)-Number(a.createdAt||a.created||0))[0];
@@ -2493,7 +2499,7 @@ async function sendChat(question,targetDocId=null){
   reply(result);
  }catch(error){
   console.warn('Ask One reply failed:',error);
-  const fallback=aiAnswer(query),hasFallback=Array.isArray(fallback.sources)&&fallback.sources.length>0;
+  const fallback=deterministicReminderRequest?{answer:'Reminder command process mein error aaya. Koi purana PDF/OCR result use nahi kiya gaya. Please retry karein.',sources:['Task Briefing']}:aiAnswer(query),hasFallback=Array.isArray(fallback.sources)&&fallback.sources.length>0;
   const signIn=!cloudUser?' Sign in for Gemini AI replies.':'';
   reply({answer:(hasFallback?fallback.answer+'\n\n':'')+'AI unavailable: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing local results from your saved workspace.':'\nYour saved data remains available locally.')+signIn,sources:hasFallback?fallback.sources:[]});
  }finally{
