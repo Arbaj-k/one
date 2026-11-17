@@ -2495,6 +2495,15 @@ async function sendChat(question,targetDocId=null){
    const latestUploaded=(data.documents||[]).filter(doc=>doc&&doc.id).sort((a,b)=>Number(b.createdAt||b.created||0)-Number(a.createdAt||a.created||0))[0];
    if(latestUploaded)targetDocId=latestUploaded.id;
   }
+  // Explicit reminder-list questions are workspace queries, not document/OCR questions.
+  // Route them to the local reminder store before the generic document classifier.
+  const reminderListIntent=/\\b(?:jo\\s+jo|saare|saari|sabhi|all|my|mere|meri)\\b.*\\b(?:reminders?|briefings?)\\b|\\b(?:reminders?|briefings?)\\b.*\\b(?:list|show|batao|dikhao|set|saved|scheduled|hai|hain)\\b/i.test(query)
+    ||/\\b(?:what|which)\\s+(?:are\\s+)?my\\s+reminders?\\b/i.test(query);
+  if(reminderListIntent){
+   const listed=window.OneCommands?.executeCommand?.(query);
+   if(listed?.answer){reply(listed);return}
+   reply({answer:'Reminder list abhi load nahi ho paayi. Koi data change nahi kiya.',sources:['Reminders']});return;
+  }
   if(isDocumentContentQuestion(query)&&!targetDocId){
    reply({answer:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});return;
   }
