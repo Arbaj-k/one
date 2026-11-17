@@ -1566,7 +1566,8 @@ async function requestAskOneActionPlan(question){
  const now=Date.now(),source='Ask One';
  const makeConfirm=(collection,record,page,success,extra={})=>{
   pendingAction={type:'create-record',collection,record,source,page,successMessage:success,requestedAt:now,...extra};
-  const label=record.isReminder===true||record.taskType==='reminder'||record.category==='Briefing'?'reminder':collection==='tasks'?'task':collection.slice(0,-1);\n  return {answer:'Confirm '+label+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
+  const label=record.isReminder===true||record.taskType==='reminder'||record.category==='Briefing'?'reminder':collection==='tasks'?'task':collection.slice(0,-1);
+  return {answer:'Confirm '+label+': '+(record.title||record.name||record.description||record.content||'new record')+'. Reply YES to save or NO to cancel. Abhi save nahi hua.',sources:[source]};
  };
  if(Array.isArray(plan.actions)&&plan.actions.length>1){
   if(plan.actions.length>6)return {answer:'Ek request mein maximum 6 actions process kar sakta hoon. Isko chhote parts mein bhejo.',sources:[source]};
