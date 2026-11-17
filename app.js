@@ -2041,6 +2041,14 @@ async function chatActionIntent(question){
     const sync=await syncResult();render();
     return {answer:'All '+pending.records.length+' actions saved and verified.'+sync,sources:[pending.source||'Ask One']};
    }
+   if(pending.type==='update-memory'){
+    const memory=(data.memories||[]).find(item=>item.id===pending.id);
+    if(!memory)return {answer:'Saved memory nahi mili. Koi change nahi kiya.',sources:['Personal Memory']};
+    const previous=memory.content;memory.content=pending.content;memory.title=pending.content.split(/[.!?]/)[0].slice(0,72)||'Remembered detail';memory.updated=Date.now();persist();
+    const verified=(()=>{try{return JSON.parse(localStorage.getItem(workspaceStorageKey())||'{}').memories?.some(item=>item.id===memory.id&&item.content===pending.content)}catch{return false}})();
+    if(!verified){memory.content=previous;persist();return {answer:'Memory update verify nahi hua. Purani preference ko preserve kiya hai.',sources:['Personal Memory']};}
+    const sync=await syncResult();page='memory';render();return {answer:'Personal Memory updated: '+memory.content+'.'+sync,sources:['Personal Memory']};
+   }
    if(pending.type==='create-record'){
     const allowed={tasks:'Planner',notes:'Notes & Memory',projects:'Projects',expenses:'Money & Udhaar'};
     if(!allowed[pending.collection]||!pending.record)return {answer:'This action is no longer valid. No data was changed.',sources:[]};
@@ -2102,6 +2110,22 @@ async function chatActionIntent(question){
   if(!diskVerified){data.memories=data.memories.filter(m=>m.id!==memory.id);return {answer:'Memory save verify nahi hua. Kuch saved claim nahi kar raha.',sources:[]}}
   const sync=await syncResult();page='memory';render();
   return {answer:'Saved to Personal Memory: '+content+'. You can review or delete it anytime in Personal Memory.'+sync,sources:['Personal Memory']};
+ }
+ const memoryListIntent=/\b(?:what do you remember about me|show all my memories|show my saved memories|list my memories|meri memory batao|mere baare mein kya yaad hai)\b/i.test(lower);
+ if(memoryListIntent){
+  const memories=Array.isArray(data.memories)?data.memories:[];
+  return {answer:memories.length?'Personal Memory ('+memories.length+'):\n'+memories.map((item,index)=>(index+1)+'. '+(item.content||item.title||'Saved memory')).join('\n'):'Abhi Personal Memory mein kuch saved nahi hai. Example: Remember that I prefer short answers.','sources':['Personal Memory']};
+ }
+ const memoryUpdateIntent=/\b(?:update|change|edit)\b.*\b(?:saved preference|personal memory|memory)\b/i.test(lower);
+ if(memoryUpdateIntent){
+  const replacement=raw.match(/\b(?:to|as)\s+(.+)$/i);
+  const memories=Array.isArray(data.memories)?data.memories:[];
+  if(!replacement)return {answer:'Kaunsi saved preference update karni hai, aur nayi value kya honi chahiye? Example: Update my saved preference to detailed answers.','sources':['Personal Memory']};
+  if(!memories.length)return {answer:'Abhi koi saved preference nahi hai. Pehle “Remember that …” se save karo.','sources':['Personal Memory']};
+  const memory=memories.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0))[0],content=replacement[1].trim();
+  if(content.length<3)return {answer:'Nayi preference thodi detail mein likho.','sources':['Personal Memory']};
+  pendingAction={type:'update-memory',id:memory.id,content,source:'Personal Memory',requestedAt:Date.now()};
+  return {answer:'Latest saved preference “'+(memory.content||memory.title)+'” ko “'+content+'” se replace kar doon? YES / NO.','sources':['Personal Memory']};
  }
  const parseDate=()=>{
   const addDays=n=>{const [y,m,d]=today().split('-').map(Number),date=new Date(y,m-1,d+n,12,0,0);return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0')};
@@ -2545,6 +2569,12 @@ async function sendChat(question,targetDocId=null){
   if(reminderCreateIntent||taskCreateIntent){
     const explicitResult=await chatActionIntent(query);
     if(explicitResult){reply(explicitResult,{pendingAction:!!pendingAction});return}
+  }
+  const memoryReadIntent=/\b(?:what do you remember about me|show all my memories|show my saved memories|list my memories|meri memory batao|mere baare mein kya yaad hai)\b/i.test(query);
+  const memoryUpdateIntent=/\b(?:update|change|edit)\b.*\b(?:saved preference|personal memory|memory)\b/i.test(query);
+  if(memoryReadIntent||memoryUpdateIntent){
+    const memoryResult=await chatActionIntent(query);
+    if(memoryResult){reply(memoryResult,{pendingAction:!!pendingAction});return}
   }
   // Deterministic note, memory, project and Money writes must be handled locally
   // before the AI action planner can reinterpret or cross-route them.
