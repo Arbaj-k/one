@@ -83,7 +83,14 @@
   const workTaskAdd=/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q)&&/\b(?:add|create|make|banao|bana|jodo|daalo|dalo|set|likho|save)\b/i.test(q);
   const taskManagementCue=/\b(?:mark|complete|finish|done|delete|remove|edit|update)\b/i.test(q)&&/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q);
   const taskListCue=/\b(?:tasks?|todo|to do|kaam)\b/i.test(q)&&/\b(?:show|list|display|tell|batao|dikhao|pending|completed|complete|done|all|saare|saari|sabhi|mere|my|find|search|today|aaj|overdue)\b/i.test(q);
-  const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:reminderCue?{intent:'reminders',ambiguous:false,matched:['reminders']}:workTaskAdd||taskManagementCue||taskListCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const explicitTaskCue=workTaskAdd||taskManagementCue||taskListCue||/\\b(?:add|create|make|delete|remove|complete|finish|mark|update|change)\\b.*\\b(?:task|todo|assignment|homework|exam)\\b/i.test(q);
+  const explicitNoteCue=/\\b(?:note|notes|memo)\\b/i.test(q)||/^(?:remember|yaad rakhna)\\b/i.test(q);
+  const explicitUdhaarCue=/\\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye)\\b/i.test(q);
+  const explicitIncomeCue=/\\b(?:income|salary|earned|earning|received|credited|kamai|mila|mili)\\b/i.test(q);
+  const explicitExpenseCue=/\\b(?:expense|expenses|kharcha|kharch|spent|spending|purchase|bought)\\b/i.test(q);
+  const domainIntent=reminderCue?'reminder':explicitTaskCue?'task':explicitUdhaarCue?'udhaar':explicitIncomeCue?'income':explicitExpenseCue?'expense':explicitNoteCue?'note':null;
+  const explicitSection=domainIntent==='reminder'?'reminders':domainIntent==='task'?'tasks':domainIntent==='note'?'notes':['udhaar','income','expense'].includes(domainIntent)?'money':null;
+  const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:explicitSection?{intent:explicitSection,ambiguous:false,matched:[explicitSection]}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
@@ -116,7 +123,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
   const summary=planSummary?'today-plan':weeklySpending?'week-spending':dailySpending?'today-spending':udhaarSummary?'udhaar-summary':null;
-  return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,bulkDeleteCompletedTasks,...recurrence};
+  return {action,section:det.intent,domainIntent:domainIntent||({tasks:'task',reminders:'reminder',notes:'note',money:udhaarType?'udhaar':'money'}[det.intent]||det.intent),ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,bulkDeleteCompletedTasks,...recurrence};
  }
 
  let pending=null, pendingReminderDraft=null, pendingExpiresAt=0, reminderDraftExpiresAt=0;
