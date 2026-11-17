@@ -2444,7 +2444,7 @@ async function sendChat(question,targetDocId=null){
    if(minute>59||hour<0||hour>23)return '';
    if(period==='pm'&&hour<12)hour+=12;
    if(period==='am'&&hour===12)hour=0;
-   if(!period&&hour>12)return '';
+   if(!period&&hour>12&&!match[2])return '';
    return String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
   };
   const makeReminderConfirmation=(draft,clock)=>{
@@ -2457,7 +2457,7 @@ async function sendChat(question,targetDocId=null){
    if(/^(?:cancel|no|nahi|rehne do|stop)$/i.test(query)){pendingReminderClarification=null;reply({answer:'Reminder cancelled. Koi reminder save nahi hua.',sources:['Task Briefing']});return}
    const clock=parseReminderClock(query);
    if(!clock){reply({answer:'Time samajh nahi aaya. Time sirf is format mein bhejo: 8 am, 1:30 pm ya 20:00.',sources:['Task Briefing']});return}
-   reply(makeReminderConfirmation(pendingReminderClarification,clock));return;
+   reply(makeReminderConfirmation(pendingReminderClarification,clock),{pendingAction:true});return;
   }
   if(deterministicReminderRequest&&!pendingAction){
    const parsed=window.OneCommands?.parseCommand?.(query)||{};
@@ -2470,9 +2470,9 @@ async function sendChat(question,targetDocId=null){
    if(title&&due){
     const draft={title,due,repeatRule:recurrence};
     const clock=parsed.time||parseReminderClock(query);
-    if(clock){reply(makeReminderConfirmation(draft,clock));return}
+    if(clock){reply(makeReminderConfirmation(draft,clock),{pendingAction:true});return}
     pendingReminderClarification=draft;
-    reply({answer:'“'+title+'” ka reminder kal set karna hai. Kis time par? Jaise 8 am ya 1:30 pm.',sources:['Task Briefing']});return;
+    reply({answer:'“'+title+'” ka reminder '+dateFmt(due)+' ko set karna hai. Kis time par? Jaise 8 am ya 1:30 pm.',sources:['Task Briefing']},{pendingDraft:true});return;
    }
   }
     // Continue an in-progress multi-turn task/reminder draft before any AI, OCR or workspace lookup.
