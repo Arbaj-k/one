@@ -1546,6 +1546,8 @@ function isAskOneReadOnlyQuestion(question){
  if(!q)return false;
  const explicitTaskCommand=/^\s*(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|(?:^|\s)(?:(?:please|kindly)\s+)?(?:can|could|would)\s+you\s+(?:please\s+)?(?:add|create|make)\s+(?:(?:a|an|new)\s+)?(?:task|todo)\b|^\s*(?:task|todo)\s+(?:add|bana|create|make)\s+(?:kar\s+do|karo|do)\b|^\s*(?:task bana do|task add kar do|todo bana do)\b/i.test(q);
  if(explicitTaskCommand)return false;
+ const explicitWrite=/^\s*(?:(?:please|kindly)\s+)?(?:add|create|make|save|record|log|schedule|set|remind|delete|remove|complete|finish|mark|update|change|pause|resume|spent|earned|received|lent|borrowed|repaid)\b/i.test(q);
+ if(!explicitWrite&&/\b(?:batao|dikhao|show|list|display|pending|completed|overdue|kitna|kitni|kitne|who owes|what do i owe|how much|kya hai|ky hai|kya set hai|mere saare|meri saari)\b/i.test(q))return true;
  return /[?？]\s*$/.test(q)||/^\s*(?:what|what's|whats|which|who|when|where|why|how|can|could|would|should|do|does|did|is|are|was|were|tell me|explain|describe|help me understand|i want to know|what should i|how do i|how can i|should i|can i|kya|kaise|kyun|kyu|kab|kahan|kitna|kitne|kitni|kaun|kis|क्या|कैसे|क्यों|कब|कहाँ|कितना|कितने|कितनी|कौन)\b/i.test(q);
 }
 async function requestAskOneActionPlan(question){
