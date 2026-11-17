@@ -505,7 +505,7 @@ assert.ok(app.includes('linked to project '), 'AI document evidence must identif
 assert.ok(app.includes('const ASK_ONE_INTENT_MAP={') && app.includes('function detectIntent(query){') && app.includes('function answerQuery(intent,query){'), 'Ask One must expose a maintainable local intent map and separate detect/answer functions.');
 assert.ok(app.includes('function askOneLevenshtein(a,b){') && app.includes('askOneLevenshtein(token,key)<=1'), 'Ask One must support one-edit fuzzy keyword matches.');
 assert.ok(app.includes("tasks:['task','tasks','todo','to do','kaam'") && app.includes("notes:['note','notes','likha'") && app.includes("projects:['project','projects','milestone'") && app.includes("routines:['routine','routines','habit'") && app.includes("money:['paisa','paise','kharcha'"), 'Ask One must include English and Hindi/Hinglish keywords for all five sections.');
-assert.ok(app.includes("content:'Aap '+choices.join(' ya ')+' ke baare mein pooch rahe ho?'"), 'Ask One must clarify zero-score and tied intent matches.');
+assert.ok(app.includes('winners.length===1?winners[0]:null') && app.includes('ambiguous:winners.length>1'), 'Ask One must leave zero-score and tied intent matches unclassified.');
 assert.ok(app.includes('Mujhe iske baare mein kuch nahi mila, aap Tasks, Notes, Projects, Routines ya Money try kar sakte ho.'), 'Ask One must show the friendly no-result fallback.');
 assert.ok(app.includes('if(detected.intent){') && app.includes('answerQuery(detected.intent,query)'), 'Ask One chat must route recognized queries to local saved-data answers.');
 assert.ok(app.includes("filter(item=>!item.done)"), 'Ask One task intent must filter pending tasks.');
