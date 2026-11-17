@@ -210,4 +210,4 @@ console.log('Student Brain smoke checks passed: syntax, app shell, core features
 
 assert.ok(source.includes('const refersToCurrentFile='), 'Follow-up questions must resolve against uploaded file context');
 assert.ok(source.includes('const asksDocumentField='), 'Generic document field questions must route to uploaded files');
-assert.ok(source.includes("if(isSpendingAmountQuestion(query)&&!targetDocId)"), 'Money spending shortcut must not intercept a selected document question');
+assert.ok(source.includes('if(isSpendingAmountQuestion(query)&&!targetDocId&&!explicitMoneyWriteIntent)'), 'Money summary shortcut must not intercept explicit expense/income writes or selected document questions');
