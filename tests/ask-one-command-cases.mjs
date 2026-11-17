@@ -140,7 +140,7 @@ assert.equal(commandData.tasks[2].title,'rent');
 
 // Workspace filters, deadline edits and project operations must use the same local data store.
 commandData.tasks.push(
- {id:'t-open',title:'DSA assignment',due:'2026-11-18',done:false},
+ {id:'t-open',title:'DSA assignment',due:'2026-11-16',done:false},
  {id:'t-done',title:'Maths homework',due:'2026-11-15',done:true,completedAt:1},
  {id:'t-rem',title:'Call Rahul',due:'2026-11-16',reminderTime:'08:00',category:'Briefing',taskType:'reminder',isReminder:true,done:false}
 );
@@ -148,10 +148,10 @@ const completedList=commandWindow.OneCommands.executeCommand('Show completed tas
 assert.match(completedList.answer,/Maths homework/,'completed-task filter must show completed records');
 assert.doesNotMatch(completedList.answer,/DSA assignment/,'completed-task filter must exclude open records');
 const todayList=commandWindow.OneCommands.executeCommand('Show my tasks for today');
-assert.match(todayList.answer,/Call Rahul/,'today reminder filter/list should be available in saved workspace');
+assert.match(todayList.answer,/DSA assignment/,'today task filter must show tasks due today');
 const deadlineDraft=commandWindow.OneCommands.executeCommand('Change DSA deadline to Friday');
 assert.match(deadlineDraft.answer,/deadline/,'deadline update must ask for confirmation');
-assert.equal(commandData.tasks.find(x=>x.id==='t-open').due,'2026-11-18','deadline must not change before confirmation');
+assert.equal(commandData.tasks.find(x=>x.id==='t-open').due,'2026-11-16','deadline must not change before confirmation');
 commandWindow.OneCommands.executeCommand('yes');
 assert.equal(commandData.tasks.find(x=>x.id==='t-open').due,'2026-11-20','Friday deadline should save after confirmation');
 commandData.projects.push({id:'p1',name:'Hapn Website',status:'Planning',milestones:[]});
