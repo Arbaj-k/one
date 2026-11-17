@@ -2518,10 +2518,10 @@ async function sendChat(question,targetDocId=null){
   // Route workspace list/search and explicit task/note/project/money management to
   // the local command engine before AI planning, document retrieval or OCR fallback.
   const parsedLocal=window.OneCommands?.parseCommand?.(query);
-  const localReadOrManage=parsedLocal?.section&&(
+  const localReadOrManage=(parsedLocal?.section&&(
     ['show','summary','delete','edit','complete','pause','resume'].includes(parsedLocal.action)
     || /\b(?:find|search|show|list|display|batao|dikhao|who owes|what do i owe|pending|completed|overdue|today|aaj|this month|november)\b/i.test(query)
-  );
+  ))||(/\b(?:change|update|set|move)\b.*\b(?:deadline|due date)\b/i.test(query));
   if(localReadOrManage){
    const localResult=window.OneCommands?.executeCommand?.(query);
    if(localResult?.answer){reply(localResult,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
