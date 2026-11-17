@@ -179,7 +179,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   pending={apply:()=>{item.status=next;item.updated=Date.now();persist();render()},done:'Project status updated: '+(item.name||item.title)+' · '+next};pendingExpiresAt=Date.now()+120000;
   return answer('“'+(item.name||item.title)+'” ka status '+old+' se '+next+' kar doon? YES / NO.','Projects');
  }
- const projectTask=q.match(/\badd\s+(?:a\s+)?task\s+to\s+(.+?)\s+project\s*[:,-]\s*(.+)$/i);
+ const projectTask=String(query||'').match(/\badd\s+(?:a\s+)?task\s+to\s+(.+?)\s+project\s*[:,-]?\s*(.+)$/i);
  if(projectTask){
   const key=norm(projectTask[1]),project=(data.projects||[]).find(x=>norm(x.name||x.title)===key||norm(x.name||x.title).includes(key));
   if(!project)return answer('Project “'+projectTask[1]+'” nahi mila. Pehle project create karo.','Projects');
