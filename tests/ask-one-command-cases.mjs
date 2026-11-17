@@ -184,6 +184,7 @@ const isolatedDomains=[
  ['Remind me to pay electricity bill tomorrow at 8 pm','reminder','reminders'],
  ['Add expense 500 for electricity bill','expense','money'],
  ['Add income 5000 salary','income','money'],
+ ['Add 50 rupee on spending','expense','money'],
  ['Raj ko 500 udhaar diye','udhaar','money'],
  ['Save note electricity bill due date','note','notes']
 ];
