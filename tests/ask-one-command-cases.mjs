@@ -179,6 +179,14 @@ const lendingHistory=parser.parseCommand('Show my lending history');
 assert.equal(lendingHistory.section,'money','lending history must route to Money');
 const allTasks=parser.parseCommand('Mere saare tasks batao');
 assert.equal(allTasks.section,'tasks','Hinglish all-task listing must route to Tasks');
+const mondayQuestion=parser.parseCommand('monday ko refreshment ky hai');
+assert.equal(mondayQuestion.action,'question','Hinglish weekday question must remain read-only');
+assert.equal(mondayQuestion.section,null,'weekday question must not route to Tasks');
+assert.equal(mondayQuestion.repeatRule,'none','weekday question must not create a weekly recurrence');
+const mondayReminder=parser.parseCommand('Remind me every Monday to check timetable');
+assert.equal(mondayReminder.section,'reminders','explicit Monday reminder must route to Reminders');
+assert.equal(mondayReminder.repeatRule,'weekly','explicit recurring reminder must preserve weekly recurrence');
+
 const isolatedDomains=[
  ['Add task pay electricity bill tomorrow','task','tasks'],
  ['Remind me to pay electricity bill tomorrow at 8 pm','reminder','reminders'],
