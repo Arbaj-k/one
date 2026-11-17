@@ -43,6 +43,10 @@ const pay=parser.parseCommand('500 rupees chai pe kharcha add karo');
 assert.equal(pay.amount,500);
 assert.ok(!parserSource.includes('/\\\\b\\\\d'), 'money regex must use real word-boundary tokens');
 
+const lunchReminder=parser.parseCommand('Remind me for lunch tomorrow with my gf');
+assert.equal(lunchReminder.section,'reminders');
+assert.equal(lunchReminder.title,'lunch with my gf','reminder title should preserve the subject and relationship context');
+assert.equal(lunchReminder.date,'2026-11-17','tomorrow should be resolved to the next local date');
 const timedReminder=parser.parseCommand('remind me to pay rent tomorrow at 8pm');
 assert.equal(timedReminder.time,'20:00','8pm must parse as a reminder time');
 const clockReminder=parser.parseCommand('remind me to call Raj on 20/11 at 18:30');
