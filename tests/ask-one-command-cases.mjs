@@ -116,7 +116,7 @@ assert.equal(pendingQuery.action,'show','batao must never be confused with banao
 const naturalReminderQuery=commandWindow.OneCommands.executeCommand('jo jo reminder set hai batao');
 assert.match(naturalReminderQuery.answer,/saved reminders/i,'natural Hinglish reminder-list request must use the reminder store');
 const reminderQuery=commandWindow.OneCommands.executeCommand('reminder mai ky set hai batao');
-assert.match(reminderQuery.answer,/active reminder saved nahi hai/i,'read-only reminder query must list, not create a reminder');
+assert.match(reminderQuery.answer,/saved reminders \(0\)/i,'read-only reminder query must list the saved reminder collection without creating a reminder');
 assert.equal(commandData.tasks.length,0,'read-only reminder lookup must not create a task');
 commandData.tasks.push({id:'r1',title:'Pay rent',category:'Briefing',due:'2026-11-20',reminderTime:'09:00',repeatRule:'monthly',done:false});
 const savedReminders=commandWindow.OneCommands.executeCommand('reminder mai ky set hai batao');
