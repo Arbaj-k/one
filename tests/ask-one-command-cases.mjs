@@ -160,6 +160,13 @@ assert.match(statusDraft.answer,/status/i,'project status update must ask for co
 commandWindow.OneCommands.executeCommand('yes');
 assert.equal(commandData.projects[0].status,'Active','project status should update after confirmation');
 
+const projectTaskDraft=commandWindow.OneCommands.executeCommand('Add a task to Hapn Website project: Fix login');
+assert.match(projectTaskDraft.answer,/Project task add/i,'project task command must ask before saving');
+assert.equal(commandData.tasks.some(x=>x.title==='Fix login'),false,'project task must not save before confirmation');
+commandWindow.OneCommands.executeCommand('yes');
+assert.ok(commandData.tasks.some(x=>x.title==='Fix login'&&x.projectId==='p1'),'project task must save with its project relationship');
+
+
 const namedDate=parser.parseCommand('Remind me about my exam on 20 November');
 assert.equal(namedDate.date,'2026-11-20','named month dates must parse for reminders');
 const paidAmit=parser.parseCommand('I paid Amit 300 rupees');
