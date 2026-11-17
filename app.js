@@ -2577,6 +2577,11 @@ async function sendChat(question,targetDocId=null){
     const explicitResult=await chatActionIntent(query);
     if(explicitResult){reply(explicitResult,{pendingAction:!!pendingAction});return}
   }
+  const projectTaskCommand=/\badd\s+(?:a\s+)?task\s+to\s+.+?\s+project\s*[:,-]\s*.+/i.test(query);
+  if(projectTaskCommand){
+    const projectTaskResult=window.OneCommands?.executeCommand?.(query);
+    if(projectTaskResult?.answer){reply(projectTaskResult,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
+  }
   const memoryReadIntent=/\b(?:what do you remember about me|show all my memories|show my saved memories|list my memories|meri memory batao|mere baare mein kya yaad hai)\b/i.test(query);
   const memoryUpdateIntent=/\b(?:update|change|edit)\b.*\b(?:saved preference|personal memory|memory)\b/i.test(query);
   if(memoryReadIntent||memoryUpdateIntent){
