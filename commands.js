@@ -133,7 +133,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   window.OneCommandsShowUndo?.();render();
   return answer('Reminder set: '+r.title+' · '+dateFmt(r.due)+' at '+r.reminderTime+(repeatRule!=='none'?' · Repeats '+repeatRule:''),'Task Briefing');
  }
- const p=parseCommand(query),s=p.section;if(!s)return null;
+ const p=parseCommand(query),s=p.section;
 
  // Deterministic, account-local workspace commands. Keep these ahead of generic AI routing.
  const taskRows=()=>Array.isArray(data.tasks)?data.tasks:[];
@@ -164,6 +164,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   pending={apply:()=>{data.tasks.push(record);persist();render()},done:'Task added to '+(project.name||project.title)+': '+title};pendingExpiresAt=Date.now()+120000;
   return answer('Project task add kar doon? “'+title+'” → '+(project.name||project.title)+'. YES / NO. Abhi save nahi hua.','Projects');
  }
+ if(!s)return null;
  const collection={tasks:'tasks',reminders:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
  const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','pending','complete','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please','mere','mera','meri','my','all','aaj','today','who','owes','me','ka','ki','ke'].includes(t));
  const statusCompleted=/\\b(?:completed|complete|done|finished)\\b/i.test(q),statusPending=/\\b(?:pending|incomplete|open|baaki)\\b/i.test(q),statusToday=/\\b(?:today|aaj)\\b/i.test(q),statusOverdue=/\\b(?:overdue|late)\\b/i.test(q),monthMatch=q.match(/\\b(?:this month|is month|november|december|january|february|march|april|may|june|july|august|september|october)\\b/i);
