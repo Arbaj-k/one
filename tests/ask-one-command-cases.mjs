@@ -26,10 +26,17 @@ const cases=[
  ['borrowed 2000 from Aman','money'],['settled 300 with Raj','money'],
  ['how much did I spend this week?','money'],['aaj ka income dikhao','money'],
  ['delete task call Raj','tasks'],['mark maths homework done','tasks'],
+ ['itne bhi task completed hai sabko delete kardo','tasks'],['delete all completed tasks','tasks'],['remove done tasks','tasks'],
  ['edit task gym to evening gym','tasks'],['search notes about exam','notes'],['search notes about homework','notes'],['find notes about assignment','notes'],
  ['what are my project deadlines?','projects'],['routine roz 7am walk','routines']
 ];
 // A weekday in a timetable question is a lookup filter, never a task command.
+for (const phrase of ['itne bhi task completed hai sabko delete kardo','delete all completed tasks','remove done tasks']) {
+ const parsed=parser.parseCommand(phrase);
+ assert.equal(parsed.section,'tasks',phrase+' should route to tasks');
+ assert.equal(parsed.action,'delete',phrase+' should be recognized as bulk delete');
+ assert.equal(parsed.bulkDeleteCompletedTasks,true,phrase+' should be flagged for bulk deletion');
+}
 for (const phrase of ['Tuesday class timetable','show me Tuesday class time table','What is my Tuesday class schedule?']) {
  const result=parser.parseCommand(phrase);
  assert.equal(result.section,null,'weekday timetable question must stay read-only: '+phrase);
