@@ -27,18 +27,18 @@
  }
  function parseDate(text){
   const q=norm(text),d=new Date(today()+'T12:00:00');
-  if(/\\b(aaj|today)\\b/.test(q))return today();
-  if(/\\b(kal|tomorrow)\\b/.test(q))d.setDate(d.getDate()+1);
-  else if(/\\b(parso|parson)\\b/.test(q))d.setDate(d.getDate()+2);
+  if(/\b(aaj|today)\b/.test(q))return today();
+  if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);
+  else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);
   else{
    const months={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sep:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
-   const monthNames=Object.keys(months).join('|');
-   const named=q.match(new RegExp('\\\\b(\\\\d{1,2})\\\\s+('+monthNames+')(?:\\\\s+(\\\\d{4}))?\\\\b','i'))||q.match(new RegExp('\\\\b('+monthNames+')\\\\s+(\\\\d{1,2})(?:,?\\\\s+(\\\\d{4}))?\\\\b','i'));
+   const named=q.match(/\b(\d{1,2})\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?\b/i)
+    ||q.match(/\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i);
    if(named){
-    const day=Number(named[1]&&/^\\d+$/.test(named[1])?named[1]:named[2]),month=months[String(named[1]&&/^\\d+$/.test(named[1])?named[2]:named[1]).toLowerCase()],year=Number(named[3]||named[4]||today().slice(0,4)),x=new Date(year,month,day,12);
+    const firstIsDay=/^\d+$/.test(named[1]),day=Number(firstIsDay?named[1]:named[2]),month=months[String(firstIsDay?named[2]:named[1]).toLowerCase()],year=Number(named[3]||today().slice(0,4)),x=new Date(year,month,day,12);
     if(x.getDate()===day&&x.getMonth()===month)return x.getFullYear()+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
    }
-   const m=q.match(/\\b(\\d{1,2})[/-](\\d{1,2})(?:[/-](\\d{2,4}))?\\b/);
+   const m=q.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
    if(m){let y=m[3]?Number(m[3]):Number(today().slice(0,4));if(y<100)y+=2000;const x=new Date(y,+m[2]-1,+m[1],12);if(x.getDate()===+m[1]&&x.getMonth()===+m[2]-1)return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
    const days={somvar:1,monday:1,mangalvar:2,tuesday:2,budhvar:3,wednesday:3,guruwar:4,thursday:4,shukravar:5,friday:5,shanivar:6,saturday:6,ravivar:0,sunday:0};
    const day=Object.keys(days).find(k=>q.includes(k));
