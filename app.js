@@ -2579,6 +2579,7 @@ async function sendChat(question,targetDocId=null){
   // Deterministic note, memory, project and Money writes must be handled locally
   // before the AI action planner can reinterpret or cross-route them.
   const workspaceCreateIntent=/^\s*(?:(?:please|kindly)\s+)?(?:save|add|create|remember|record|log)\b.*\b(?:note|memory|project|expense|income|money|task|todo)\b/i.test(query)
+    ||/^\s*(?:remember|yaad rakhna)\b/i.test(query)
     ||/^\s*(?:i\s+)?(?:spent|paid|received|earned|lent|borrowed|repaid)\b/i.test(query)
     ||/^\s*[a-z][a-z'-]*\s+returned\b/i.test(query);
   if(workspaceCreateIntent){
