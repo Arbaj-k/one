@@ -2499,6 +2499,16 @@ async function sendChat(question,targetDocId=null){
   // Route them to the local reminder store before the generic document classifier.
   const reminderListIntent=/\\b(?:jo\\s+jo|saare|saari|sabhi|all|my|mere|meri)\\b.*\\b(?:reminders?|briefings?)\\b|\\b(?:reminders?|briefings?)\\b.*\\b(?:list|show|batao|dikhao|set|saved|scheduled|hai|hain)\\b/i.test(query)
     ||/\\b(?:what|which)\\s+(?:are\\s+)?my\\s+reminders?\\b/i.test(query);
+  // Bulk completed-task deletion is a workspace command, not a named open-task lookup.
+  // Handle it before the generic planner/action matcher which otherwise searches for an open title.
+  const bulkCompletedDeleteIntent=/\\b(?:delete|remove|hatao|hata\\s+do|mita\\s+do|clear|saaf\\s+(?:karo|kar\\s+do))\\b/i.test(query)
+    &&/\\b(?:completed|complete|done|finished|ho\\s+gaye|ho\\s+chuke)\\b/i.test(query)
+    &&/\\b(?:tasks?|kaam)\\b/i.test(query);
+  if(bulkCompletedDeleteIntent){
+   const result=window.OneCommands?.executeCommand?.(query);
+   if(result?.answer){reply(result,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
+   reply({answer:'Completed tasks ka command process nahi ho paaya. Koi change nahi kiya.',sources:['Tasks']});return;
+  }
   if(reminderListIntent){
    const listed=window.OneCommands?.executeCommand?.(query);
    if(listed?.answer){reply(listed);return}
