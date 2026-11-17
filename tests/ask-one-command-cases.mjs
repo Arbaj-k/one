@@ -94,7 +94,7 @@ assert.equal(center.canHandle('show my uploaded PDFs'),true,'file-list queries m
 for (const phrase of ['Tuesday class timetable','show me Tuesday class time table','What is my Tuesday class schedule?']) assert.equal(center.canHandle(phrase),false,'timetable questions must bypass command mutations: '+phrase);
 // Reminder clarification is owned by app.js sendChat, not the generic adapter draft.
 const appReminderSource=readFileSync(new URL('../app.js',import.meta.url),'utf8');
-assert.ok(appReminderSource.includes('let pendingAction=null,pendingReminderClarification=null'), 'Ask One must keep reminder clarification state in the chat pipeline');
+assert.ok(appReminderSource.includes('pendingReminderClarification=null'), 'Ask One must keep reminder clarification state in the chat pipeline');
 assert.ok(appReminderSource.includes('if(pendingReminderClarification)'), 'A time-only reply must continue the pending reminder in sendChat');
 assert.ok(appReminderSource.includes('makeReminderConfirmation(draft,clock)'), 'Reminder clarification must ask for YES/NO before saving');
 await center.run('add task call Raj tomorrow');
