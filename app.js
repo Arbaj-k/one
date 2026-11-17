@@ -1550,6 +1550,9 @@ function isAskOneReadOnlyQuestion(question){
 }
 async function requestAskOneActionPlan(question){
  const q=String(question||'').trim();
+ // Conversational questions (including Hinglish "ky/kya ... hai") are read-only.
+ // Never let the action planner turn a timetable/food question into a recurring task.
+ if(/\b(?:ky|kya|kaisa|kaisi|kaise|kaunsa|kaunsi|kab|kahan|kitna|kitni|kitne|what|which|when|where|why|how)\b/i.test(q)&&/\b(?:hai|hain|hoga|hogi|honge|batao|dikhao|tell|show|what|which|when|where|how)\b/i.test(q))return {kind:'none',sources:[]};
  const asksAboutAttachedContent=/\b(?:this|that|these|those|attached|uploaded|file|pdf|image|document|screenshot|photo|iska|iske|iski|isme|isey|isse|yeh|ye|इसका|इसकी|इसके|इसमें|इसे|यह|ये)\b/i.test(q);
  if(isAskOneReadOnlyQuestion(q)||asksAboutAttachedContent)return {kind:'none',sources:[]};
  const result=await requestStudentBrainAI(question,null,'action_plan');
@@ -1648,7 +1651,7 @@ async function requestAskOneActionPlan(question){
   if(!Number.isFinite(amount)||amount<=0||!person)return {answer:'Udhaar ke liye amount aur person ka naam batao. Example: Raj ko 500 udhaar diye.',sources:['Money & Udhaar']};
   const date=validDate(plan.date)?plan.date:today();
   const record={id:uid(),amount:String(amount),person,kind,description:'Udhaar · '+person,date,created:now,updated:now};
-  return makeConfirm('expenses',record,'expenses','Udhaar saved: '+fmtMoney(amount)+' · '+person+'.',{moneyTab:'udhaar',expenseMonth:date.slice(0,7)});
+  return makeConfirm('expenses',record,'expenses','Udhaar saved: '+fmtMoney(amount)+' · '+person+'.',{moneyTab:udhaarCommand?'udhaar':kind==='income'?'income':'spending',expenseMonth:date.slice(0,7)});
  }
 
  const findTask=target=>{
@@ -2207,20 +2210,29 @@ async function chatActionIntent(question){
  }
 
  const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
- const moneyAddIntent=!!moneyAmountMatch&&/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar|borrowed|borrow|paid|returned|return|repaid|repayment)\b/i.test(lower)&&(/\b(?:ko|to|from)\s+[a-z][a-z'-]*/i.test(lower)||/\b(?:lent|borrowed|paid|returned)\s+[a-z][a-z'-]*/i.test(lower)||/^\s*[a-z][a-z'-]*\s+returned\b/i.test(lower));
+ const udhaarCommand=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|paid back|returned|return|wapas|diye|diya|liya|liye)\b/i.test(lower);
+ const explicitExpenseCommand=/\b(?:expense|expenses|spending|spend|spent|kharcha|kharch|khaye|khaya|ate|bought|purchase)\b/i.test(lower);
+ const explicitIncomeCommand=/\b(?:income|salary|earned|earning|received|credited|kamai)\b/i.test(lower);
+ const moneyAddIntent=!!moneyAmountMatch&&(/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar|borrowed|borrow|paid|returned|return|repaid|repayment|spend|spent|expense|income|earned|received)\b/i.test(lower))&&(udhaarCommand||explicitExpenseCommand||explicitIncomeCommand||/\b(?:ko|to|from)\s+[a-z][a-z'-]*/i.test(lower));
+ if((explicitExpenseCommand||explicitIncomeCommand)&&!moneyAmountMatch&&!udhaarCommand&&/\b(?:khaye|khaya|ate|bought|spent|spending|expense|income|salary|earned|received)\b/i.test(lower)){
+  return {answer:'Money record banana hai. Amount kitna tha? Example: “₹50 biryani par spend kiye”. Abhi kuch save nahi hua.',sources:['Money & Udhaar']};
+ }
  if(moneyAddIntent){
   const amount=Number(moneyAmountMatch[1].replace(/,/g,'')),person=extractMoneyPerson(raw),dateMatches=[...raw.matchAll(/\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/ig)];
   const monthMap={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
   const parsedDate=m=>{if(!m)return '';const month=monthMap[m[2].slice(0,3).toLowerCase()],year=Number(m[3]||new Date().getFullYear()),day=Number(m[1]),d=new Date(year,month,day);return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):''};
   const transactionDate=parsedDate(dateMatches[0])||today(),dueDate=parsedDate(dateMatches[1])||'';
   if(!person||!Number.isFinite(amount)||amount<=0)return {answer:'Person aur valid amount clear nahi hua, isliye kuch save nahi kiya. Example: Arbaj ko ₹10 diye 10 Nov ko, 15 Nov ko wapas lene hain.',sources:['Money & Udhaar']};
-  const kind=/\b(?:borrowed|borrow)\b/i.test(lower)?'borrowed':/\b(?:returned|return|repaid|repayment|paid back)\b/i.test(lower)?'lent_repayment':/\bpaid\b/i.test(lower)?'borrowed_repayment':'lent';
-  const description=kind==='borrowed'?'Borrowed from '+person:kind==='lent_repayment'?'Returned by '+person:kind==='borrowed_repayment'?'Repaid to '+person:'Lent to '+person;
+  const kind=udhaarCommand?(/\b(?:borrowed|borrow|liya|liye)\b/i.test(lower)?'borrowed':/\b(?:returned|return|repaid|repayment|paid back|wapas)\b/i.test(lower)?'lent_repayment':/\bpaid\b/i.test(lower)?'borrowed_repayment':'lent'):explicitIncomeCommand?'income':'expense';
+  if(udhaarCommand&&!person)return {answer:'Udhaar record ke liye person ka naam bhi chahiye. Example: “Raj ko ₹500 udhaar diye”. Koi record save nahi hua.',sources:['Money & Udhaar']};
+  const description=udhaarCommand?(kind==='borrowed'?'Borrowed from '+person:kind==='lent_repayment'?'Returned by '+person:kind==='borrowed_repayment'?'Repaid to '+person:'Lent to '+person):raw.replace(/^\s*(?:please\s+)?(?:add|save|record|log|track)\s+/i,'').replace(/\b(?:₹|rs\.?\s*)?\d[\d,]*(?:\.\d+)?\s*(?:rupees?|rs\.?)?/ig,'').replace(/\b(?:on|for|to|in|my|the|spending|spend|spent|expense|expenses|income|salary|earned|received|credited|rupees?|rs\.?)\b/ig,' ').replace(/\s+/g,' ').trim()||(kind==='income'?'Income':'Expense');
+  if(kind==='expense'&&/biryani|food|lunch|dinner|breakfast|khana|khaye|khaya|ate/i.test(lower))category='Food';
+  if(kind==='income')category='Income';
   const duplicate=(data.expenses||[]).find(e=>e.kind===kind&&String(e.person||'').toLowerCase()===person.toLowerCase()&&Number(e.amount)===amount&&e.date===transactionDate);
   if(duplicate)return {answer:'Yeh record pehle se saved hai: '+fmtMoney(amount)+' · '+description+'. Duplicate nahi banaya.',sources:['Money & Udhaar']};
-  const record={id:uid(),description,person,amount:String(amount),category:'Udhaar',date:transactionDate,dueDate,kind,updated:Date.now(),created:Date.now()};
+  const record={id:uid(),description,person:person||'',amount:String(amount),category,date:transactionDate,dueDate,kind,updated:Date.now(),created:Date.now()};
   pendingAction={type:'create-record',collection:'expenses',record,source:'Money & Udhaar',page:'expenses',moneyTab:'udhaar',expenseMonth:transactionDate.slice(0,7),successMessage:'Money & Udhaar mein saved: '+fmtMoney(amount)+' · '+description+(dueDate?' · due '+dateFmt(dueDate):'')+'. Record verify kar liya hai.',requestedAt:Date.now()};
-  return {answer:'Please confirm this money record: '+fmtMoney(amount)+' · '+description+(dueDate?' · due '+dateFmt(dueDate):'')+'. Reply YES to save or NO to cancel. Abhi koi record add nahi hua.',sources:['Money & Udhaar']};
+  return {answer:'Please confirm '+(kind==='expense'?'expense':kind==='income'?'income':'udhaar record')+': '+fmtMoney(amount)+' · '+description+(dueDate?' · due '+dateFmt(dueDate):'')+'. Reply YES to save or NO to cancel. Abhi koi record add nahi hua.',sources:['Money & Udhaar']};
  }
  const noteReminderIntent=/\b(?:is|iss|us|uss|ye|this|that)\s+(?:note|notes)\s+(?:ka|ki|ke)?\s*(?:reminder|yaad)\b|\b(?:is|iss|us|uss|iska|uska|in notes? ka|note ka|note ki)\s+(?:reminder|yaad|laga do|set karo|set kar do)\b|\b(?:remind me|yaad dilana|yaad dila do)\s+(?:about|for|from)\s+(?:my\s+)?notes?\b/i.test(lower);
  if(noteReminderIntent){
