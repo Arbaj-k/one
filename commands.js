@@ -114,7 +114,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ').replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim().replace(/^(?:to|for)\s+/i,'');
   if(!title){pendingReminderDraft=combined;reminderDraftExpiresAt=Date.now()+120000;return answer('Kis baat ka reminder set karna hai? Example: assignment, bill pay karna, ya kisi ko call karna.','Task Briefing')}
   if(!due){pendingReminderDraft=combined;reminderDraftExpiresAt=Date.now()+120000;return answer('“'+title+'” ka reminder kis din set karna hai? Jaise kal, Friday ya 20/11.','Task Briefing')}
-  const r={id:uid(),title,due:due||(repeatRule!=='none'?today():''),reminderTime:time||'09:00',priority:'Medium',category:'Briefing',repeatRule,repeatDay:repeat.repeatDay,done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
+  const r={id:uid(),title,due:due||(repeatRule!=='none'?today():''),reminderTime:time||'09:00',priority:'Medium',category:'Briefing',taskType:'reminder',isReminder:true,repeatRule,repeatDay:repeat.repeatDay,done:false,created:Date.now(),updated:Date.now(),notes:'Created through Ask One reminder command.'};
   pendingReminderDraft=null;data.tasks.push(r);persist();
   window.OneCommandsUndo=()=>{data.tasks=data.tasks.filter(x=>x.id!==r.id);persist();render()};
   window.OneCommandsShowUndo?.();render();
