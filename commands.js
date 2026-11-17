@@ -112,7 +112,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
  const reminderLookup=(/\b(?:reminders?|remind|briefings?)\b/i.test(q)||/\byaad\s+(?:dilane|dilane wale|dilana)\b/i.test(q))&&(/\b(?:show|list|tell|what|which|when|batao|dikhao|kya|kaun|sab|saare|saari|jo|saved|scheduled|hai|hain)\b/i.test(q)||/\bjo\s+jo\b/i.test(q));
  if(reminderLookup){
   const rows=(data.tasks||[]).filter(item=>item&&(item.category==='Briefing'||item.isReminder===true||item.taskType==='reminder'||item.source==='reminder'));
-  const all=rows.filter(item=>!(/\\b(?:today|aaj)\\b/i.test(q))||String(item.due||'')===today()).slice().sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))||String(a.reminderTime||'').localeCompare(String(b.reminderTime||'')));
+  const all=rows.filter(item=>(!q.includes('today')&&!q.includes('aaj'))||String(item.due||'')===today()).slice().sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))||String(a.reminderTime||'').localeCompare(String(b.reminderTime||'')));
   const list=all.length?all.map((item,index)=>{
    const status=item.done||item.completed?'Completed':item.paused?'Paused':'Active';
    return (index+1)+'. '+(item.title||'Untitled reminder')+' · '+(item.due?dateFmt(item.due):'Date not set')+' at '+(item.reminderTime||'09:00')+((item.repeatRule&&item.repeatRule!=='none')?' · '+item.repeatRule:'')+' · '+status;
