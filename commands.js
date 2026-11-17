@@ -56,10 +56,11 @@
  }
  function parseCommand(query){
   const q=norm(query),reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
+  const bulkDeleteCompletedTasks=/\b(?:delete|remove|hatao|hata\s+do|mita\s+do|clear|saaf\s+(?:karo|kar\s+do))\b/i.test(q)&&/\b(?:completed|complete|done|finished|ho\s+gaye|ho\s+chuke)\b/i.test(q)&&/\b(?:tasks?|kaam)\b/i.test(q);
   const recurrence=parseRecurrence(q);
   const workTaskAdd=/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q)&&/\b(?:add|create|make|banao|bana|jodo|daalo|dalo|set|likho|save)\b/i.test(q);
   const taskManagementCue=/\b(?:mark|complete|finish|done|delete|remove|edit|update)\b/i.test(q)&&/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q);
-  const det=reminderCue?{intent:'reminders',ambiguous:false,matched:['reminders']}:workTaskAdd||taskManagementCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
+  const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:reminderCue?{intent:'reminders',ambiguous:false,matched:['reminders']}:workTaskAdd||taskManagementCue?{intent:'tasks',ambiguous:false,matched:['tasks']}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
@@ -70,7 +71,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   if(planSummary)det.intent='tasks';
   const readVerb=/\b(?:show|list|display|tell|batao|dikhao|sunao|what|which|when|where|how|kitna|kitne|kitni|kya\s+(?:set|saved|scheduled|hai))\b/i.test(q);
   const writeVerb=/\b(?:add|create|make|save|record|log|schedule|set|lagao|laga|banao|bana|jodo|daalo|dalo|yaad\s+dila)\b/i.test(q);
-  let action=readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
+  let action=bulkDeleteCompletedTasks?'delete':readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
   const udhaarType=/\b(?:udhaar|lent|lend|gave|given|diye|diya|borrowed|borrow|liya|liye|repaid|repayment|settle|settled|paid back|wapas)\b/i.test(q)?(/\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
   const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||[])[1]||'';
@@ -92,12 +93,21 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
   const summary=planSummary?'today-plan':weeklySpending?'week-spending':dailySpending?'today-spending':udhaarSummary?'udhaar-summary':null;
-  return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,...recurrence};
+  return {action,section:det.intent,ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,bulkDeleteCompletedTasks,...recurrence};
  }
 
  let pending=null, pendingReminderDraft=null, pendingExpiresAt=0, reminderDraftExpiresAt=0;
  function answer(text,source){return {answer:text,sources:[source||'Ask One']}}
  function executeCommand(query){const q=norm(query);if(pending&&Date.now()>pendingExpiresAt){pending=null;pendingExpiresAt=0;}if(pending&&!/^(?:haan|ha|yes|y|ok|okay|theek hai|theek|kar do|confirm|proceed|nahi|na|no|n|cancel|rehne do|mat karo|stop|\d+)$/i.test(q)){pending=null;pendingExpiresAt=0;}if(pending){const p=pending;if(p.choose){const n=Number(q);if(!Number.isInteger(n)||n<1||n>p.choose.length)return answer('List me se number reply karo, jaise 1 ya 2.');const item=p.choose[n-1];pending=null;if(p.action==='delete'){pending={apply:()=>{data[p.collection]=data[p.collection].filter(x=>x.id!==item.id);persist();render()},done:'Deleted '+(item.title||item.name||item.description)};return answer('Ye delete karna hai: "'+(item.title||item.name||item.description)+'"? Haan / Nahi bolo.')}if(p.action==='complete'&&p.collection==='tasks'){pending={apply:()=>{item.done=true;item.completedAt=Date.now();persist();render()},done:'Completed '+item.title};return answer('Mark "'+item.title+'" complete? Haan / Nahi bolo.')}return answer(item.title||item.name||item.description||'Selected item')}pending=null;if(/^(haan|ha|yes|y|ok|okay|theek hai|theek|confirm|kar do|proceed)$/.test(q)){p.apply();return answer(p.done,'Ask One')}if(/^(nahi|na|no|n|cancel|rehne do|mat karo|stop)$/.test(q))return answer('Cancelled. Koi change nahi kiya.');pending=p;return answer('Pending action ke liye Haan ya Nahi bolo.')}
+ if(/\b(?:delete|remove|hatao|hata\s+do|mita\s+do|clear|saaf\s+(?:karo|kar\s+do))\b/i.test(q)&&/\b(?:completed|complete|done|finished|ho\s+gaye|ho\s+chuke)\b/i.test(q)&&/\b(?:tasks?|kaam)\b/i.test(q)){
+  const isCompleted=item=>!!item&&(item.done===true||item.completed===true||String(item.status||'').toLowerCase()==='completed');
+  const completed=(data.tasks||[]).filter(isCompleted);
+  if(!completed.length)return answer('Koi completed task nahi mila. Koi change nahi kiya.','Tasks');
+  const before=(data.tasks||[]).slice(),count=completed.length;
+  pending={apply:()=>{data.tasks=(data.tasks||[]).filter(item=>!isCompleted(item));persist();window.OneCommandsUndo=()=>{data.tasks=before;persist();render()};window.OneCommandsShowUndo?.();render()},done:count+' completed task'+(count===1?'':'s')+' deleted'};
+  pendingExpiresAt=Date.now()+120000;
+  return answer(count+' completed task'+(count===1?'':'s')+' mile. Kya sabhi delete kar doon? Reply YES to confirm or NO to cancel. Abhi kuch delete nahi hua.','Tasks');
+ }
  if(pendingReminderDraft&&/^(?:cancel|no|nahi|rehne do|mat karo|stop)$/i.test(q)){pendingReminderDraft=null;reminderDraftExpiresAt=0;return answer('Reminder draft cancelled. Koi reminder save nahi hua.','Task Briefing')}
  const reminderLookup=/\b(?:reminders?|briefings?)\b/i.test(q)&&/\b(?:show|list|tell|what|which|when|batao|dikhao|kya|kaun|set|saved|scheduled|hai|hain)\b/i.test(q);
  if(reminderLookup){
