@@ -214,4 +214,35 @@ for(const [phrase,domain,section] of isolatedDomains){
  assert.equal(parsed.section,section,'section must match intent for: '+phrase);
 }
 
+
+// Ask One money parser regression: ordinary expenses must not require a person.
+const appSource=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const moneyStart=appSource.indexOf('const moneyAmountMatch=raw.match');
+const moneyEnd=appSource.indexOf('\n const noteReminderIntent=',moneyStart);
+assert.ok(moneyStart>=0&&moneyEnd>moneyStart,'Ask One money action block must be present');
+const moneyBlock=appSource.slice(moneyStart,moneyEnd);
+function runMoneyAction(raw){
+ const lower=raw.toLowerCase(),data={expenses:[]};let pendingAction=null;
+ const today=()=> '2026-11-18',dateFmt=d=>d;
+ const uid=()=> 'test-id',fmtMoney=n=>'₹'+n;
+ const extractMoneyPerson=q=>{const m=q.match(/\bto\s+([a-z][a-z'-]*)/i)||q.match(/\bfrom\s+([a-z][a-z'-]*)/i)||q.match(/\b([a-z][a-z'-]*)\s+ko\b/i);return m?m[1]:''};
+ return vm.runInNewContext('(function(){'+moneyBlock+';return pendingAction})()', {raw,lower,data,pendingAction,today,dateFmt,uid,fmtMoney,extractMoneyPerson});
+}
+const noPersonExpense=runMoneyAction('/expense add 50 ruppee in expense');
+assert.ok(noPersonExpense,'₹50 simple expense should draft without requiring person name');
+assert.equal(noPersonExpense.record.kind,'expense','expense command must not be classified as lending');
+assert.equal(noPersonExpense.record.person,'','normal expense should not require or invent a person');
+assert.equal(noPersonExpense.record.amount,'50','amount parser should accept misspelled ruppee suffix');
+assert.equal(noPersonExpense.moneyTab,'spending','normal expense should route to spending tab');
+const autoExpense=runMoneyAction('/expense spent 100 on auto');
+assert.equal(autoExpense.record.category,'Travel','auto/cab expense should be Travel');
+assert.equal(autoExpense.record.description,'auto','description should cleanly keep transport label');
+const foodExpense=runMoneyAction('/expense 250 food');
+assert.equal(foodExpense.record.category,'Food','food expense should be auto-categorized');
+const lendingDraft=runMoneyAction('/money lent 500 to Arbaj');
+assert.ok(lendingDraft,'explicit lending should produce confirmation');
+assert.equal(lendingDraft.record.kind,'lent','lent should preserve lending type');
+assert.equal(lendingDraft.record.person,'Arbaj','lending should extract person');
+assert.equal(lendingDraft.moneyTab,'udhaar','lending should route to Udhaar');
+
 console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
