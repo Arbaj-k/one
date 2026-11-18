@@ -75,6 +75,14 @@ const homework=parser.parseCommand('homework bana do science chapter 4');
 assert.equal(homework.section,'tasks');
 assert.equal(homework.title,'science chapter 4','homework task titles should preserve the actual task');
 const taskIntentSource=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+
+assert.ok(taskIntentSource.includes('const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|project|memory)'), 'slash command prefix must be detected');
+assert.ok(taskIntentSource.includes("query='add task '+body"), '/task natural phrasing should normalize to task creation intent');
+assert.ok(taskIntentSource.includes("query='add expense '+body"), '/expense free-form entry should normalize to expense creation intent');
+const slashTask=parser.parseCommand('add task assignment karna hai kal 7 baje');
+assert.equal(slashTask.section,'tasks','slash task body should route to task parser');
+assert.equal(slashTask.date,'2026-11-17','slash task tomorrow should resolve the correct date');
+
 assert.ok(taskIntentSource.includes('const originalQuery=String(question||')&&taskIntentSource.includes('const commandPrefix=query.match'), 'slash commands must normalize to deterministic action intents before routing');
 const prefixedTask=parser.parseCommand('add task assignment karna hai kal 7 baje');
 assert.equal(prefixedTask.section,'tasks','normalized /task requests must be routed to task section');
