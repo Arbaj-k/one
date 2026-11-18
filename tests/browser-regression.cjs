@@ -31,7 +31,18 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
   assert.ok(await page.locator('#page-content').innerText().then(t=>t.includes('Good to see you again')));
+  // Routine notifications also use the same Asia/Kolkata clock, independent of browser timezone.
+  await page.evaluate(()=>{
+    const shifted=new Date(Date.now()-2*60*1000);
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(shifted).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const routine={id:'browser-routine-regression',title:'Browser daily routine',repeatRule:'daily',time:parts.hour+':'+parts.minute,created:Date.now()};
+    const key='student-brain-data-v1-guest',data=JSON.parse(localStorage.getItem(key)||'{}');
+    data.routines=[routine];localStorage.setItem(key,JSON.stringify(data));
+  });
   // Real Chromium notification path: the due reminder must surface through the active service worker.
+  await page.waitForFunction(async()=>{
+    try{const reg=await navigator.serviceWorker.ready;const items=await reg.getNotifications();return items.some(n=>n.title==='One · Routine reminder'&&n.body.includes('Browser daily routine'))}catch{return false}
+  },null,{timeout:15000});
   await page.waitForFunction(async()=>{
     try{const reg=await navigator.serviceWorker.ready;const items=await reg.getNotifications();return items.some(n=>n.title==='One · Task reminder'&&n.body.includes('Browser notification regression'))}catch{return false}
   },null,{timeout:15000});
