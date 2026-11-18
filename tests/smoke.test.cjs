@@ -174,7 +174,7 @@ for (const token of [
   'function render()', 'function aiAnswer(question)', 'function processUploadedDocuments',
   'const structuredDocuments=rankedJson.map(({doc})=>',
   'item.score>0||isDocumentContentQuestion(question)',
-  '(targetDocId||documentQuestion)&&!matching.length',
+  'targetDocId&&!matching.length',
   'const documentQuestion=/\\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?|saved info(?:rmation)?|my knowledge|uploaded|saved file|saved document)\\b',
   'if(!doc.extractedJson?.structured_data)await convertDocumentToJSON(doc.id)',
   'function persist()', 'function migrateData(raw)', 'function restoreData()',
