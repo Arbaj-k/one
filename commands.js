@@ -94,6 +94,7 @@
   const explicitUdhaarCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye)\b/i.test(q);
   const explicitIncomeCue=/\b(?:income|salary|earned|earning|received|credited|kamai|mila|mili)\b/i.test(q);
   const explicitExpenseCue=/\b(?:expense|expenses|kharcha|kharch|spent|spending|purchase|bought)\b/i.test(q);
+  const personPaymentCue=/\bpaid\s+[\p{L}][\p{L}'-]*\s+\d/i.test(q)&&!explicitExpenseCue;
   const domainIntent=reminderCue?'reminder':explicitTaskCue?'task':explicitExpenseCue?'expense':explicitIncomeCue?'income':(explicitUdhaarCue||personPaymentCue)?'udhaar':explicitNoteCue?'note':null;
   const explicitSection=domainIntent==='reminder'?'reminders':domainIntent==='task'?'tasks':domainIntent==='note'?'notes':['udhaar','income','expense'].includes(domainIntent)?'money':null;
   const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:explicitSection?{intent:explicitSection,ambiguous:false,matched:[explicitSection]}:detectIntent(q);
@@ -110,7 +111,6 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   let action=bulkDeleteCompletedTasks?'delete':readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
   const explicitLoanCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|liya|liye|wapas)\b/i.test(q);
-  const personPaymentCue=/\bpaid\s+[\p{L}][\p{L}'-]*\s+\d/i.test(q)&&!explicitExpenseCue;
   const udhaarType=personPaymentCue?'borrowed_repayment':explicitLoanCue?( /\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|returned|return|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
   const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b(?:lent|borrowed|paid|returned)\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/^\s*([\p{L}][\p{L}'-]*)\s+returned\b/iu)||[])[1]||'';
   if((/\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\b/.test(q)||udhaarType)&&amount)action='add';
