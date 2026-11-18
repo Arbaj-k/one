@@ -1328,8 +1328,10 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
   // A saved document must remain discoverable even when the user's wording does not
   // share OCR keywords (for example, short Hinglish questions like 'info batao').
   // Fall back to the newest saved document only for explicit document/knowledge queries.
-  if((targetDocId||documentQuestion)&&!matching.length){
-   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,targetDocId?24:12));
+  if(targetDocId&&!matching.length){
+   // Only fall back to unranked chunks for a specifically selected document.
+   // Generic document questions must not silently inject unrelated file contents.
+   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,24));
    return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:1};
   }
   return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
