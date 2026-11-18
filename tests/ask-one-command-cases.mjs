@@ -195,8 +195,9 @@ assert.ok(commandData.tasks.some(x=>x.title==='Fix login'&&x.projectId==='p1'),'
 const namedDate=parser.parseCommand('Remind me about my exam on 20 November');
 assert.equal(namedDate.date,'2026-11-20','named month dates must parse for reminders');
 const paidAmit=parser.parseCommand('I paid Amit 300 rupees');
-assert.equal(paidAmit.udhaarType,'borrowed_repayment','a payment made to a lender must reduce borrowed balance');
-assert.equal(paidAmit.person,'amit','repayment commands must capture the person');
+assert.equal(paidAmit.udhaarType,'borrowed_repayment','payment to a named person without expense cue should be treated as repayment');
+assert.equal(paidAmit.person,'amit','person-payment cue must capture the lender');
+
 const returnedByRahul=parser.parseCommand('Rahul returned 500 rupees');
 assert.equal(returnedByRahul.udhaarType,'lent_repayment','money returned by a borrower must reduce lending balance');
 assert.equal(returnedByRahul.person,'rahul','returned-payment commands must capture the person');
