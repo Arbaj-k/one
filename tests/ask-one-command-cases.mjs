@@ -232,4 +232,20 @@ assert.match(moneyBlock,/category='Food'/,'food category detection must exist');
 assert.match(moneyBlock,/category='Travel'/,'travel category detection must exist');
 assert.match(moneyBlock,/const record=\{id:uid\(\),description,person:person\|\|''/,'money record construction must preserve optional person');
 assert.match(moneyBlock,/pendingAction=\{type:'create-record',collection:'expenses',record/,'money action must create a confirmation draft');
+// End-to-end local executor coverage: deterministic create + readback for the core workspace.
+const taskCreate=commandWindow.OneCommands.executeCommand('Add task E2E audit deliverable tomorrow');
+assert.match(taskCreate.answer,/Task added:/,'Task command should return a successful local-save response');
+assert.ok(commandData.tasks.some(x=>/E2E audit deliverable/i.test(x.title)),'Task command should persist a task record');
+const noteCreate=commandWindow.OneCommands.executeCommand('Save note E2E audit unique note text');
+assert.match(noteCreate.answer,/Note saved/i,'Note command should confirm local persistence');
+assert.ok(commandData.notes.some(x=>/E2E audit unique note text/i.test(x.content)),'Note command should persist the note body');
+const projectCreate=commandWindow.OneCommands.executeCommand('Create project E2E Audit Unique');
+assert.match(projectCreate.answer,/Project created:/,'Project command should confirm creation');
+assert.ok(commandData.projects.some(x=>/E2E Audit Unique/i.test(x.name)),'Project command should persist the project');
+const routineCreate=commandWindow.OneCommands.executeCommand('routine daily E2E audit morning walk');
+assert.match(routineCreate.answer,/Routine added:/,'Routine command should confirm creation');
+assert.ok(commandData.routines.some(x=>/E2E audit morning walk/i.test(x.title)),'Routine command should persist routine');
+const noteRead=commandWindow.OneCommands.executeCommand('search notes E2E audit unique note text');
+assert.match(noteRead.answer,/E2E audit unique note text/i,'Notes retrieval should return the just-saved unique note');
+
 console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
