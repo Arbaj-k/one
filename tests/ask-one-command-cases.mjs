@@ -237,6 +237,8 @@ const moneyEnd=appSource.indexOf('\n const noteReminderIntent=',moneyStart);
 assert.ok(moneyStart>=0&&moneyEnd>moneyStart,'Ask One money action block must be present');
 const moneyBlock=appSource.slice(moneyStart,moneyEnd);
 assert.match(moneyBlock,/explicitExpenseCommand=/,'expense intent classification must exist');
+assert.match(moneyBlock,/explicitLendingCommand=/,'explicit lending markers must be distinguished from expense wording');
+assert.match(moneyBlock,/!explicitExpenseCommand&&/,'ambiguous Hindi lending verb must not override explicit expense');
 assert.match(moneyBlock,/explicitIncomeCommand=/,'income intent classification must exist');
 assert.match(moneyBlock,/udhaarCommand=/,'Udhaar intent classification must exist');
 assert.match(moneyBlock,/if\(isLoan&&!person\)/,'only lending records require a person');
