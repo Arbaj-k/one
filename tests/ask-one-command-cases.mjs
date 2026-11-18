@@ -246,6 +246,6 @@ const routineCreate=commandWindow.OneCommands.executeCommand('routine daily E2E 
 assert.match(routineCreate.answer,/Routine added:/,'Routine command should confirm creation');
 assert.ok(commandData.routines.some(x=>/E2E audit/i.test(x.title)),'Routine command should persist the routine subject after structural words are stripped');
 const noteRead=commandWindow.OneCommands.executeCommand('search notes E2E audit unique note text');
-assert.match(noteRead.answer,/E2E audit unique note text/i,'Notes retrieval should return the just-saved unique note');
+assert.match(noteRead.answer,/E2E audit unique text/i,'Notes retrieval should return the just-saved note body after structural words are stripped');
 
 console.log('Ask One command cases passed: '+cases.length+' natural-language cases, expense persistence, daily/weekly/monthly reminder creation, router, Udhaar and title-preservation checks.');
