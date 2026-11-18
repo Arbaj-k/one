@@ -37,4 +37,18 @@ has("const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/p
 has("const needsPdf=valid.some(file=>normalizedDocumentMime(file)==='application/pdf');","PDF library loading must recognize extension-only PDFs");
 has("doc.mimeType=mimeType;","OCR retry must preserve the normalized MIME type");
 assert.ok(auth.includes("from('profiles').upsert(profile"),'Authentication must upsert the deployed profiles table');
+// Document retrieval scope: generic queries must not fall back to unrelated OCR content.
+const docEvidenceStart=app.indexOf('function aiBuildDocumentEvidence(');
+const docEvidenceEnd=app.indexOf('\nasync function buildStudentBrainAIRequest',docEvidenceStart);
+assert.ok(docEvidenceStart>=0&&docEvidenceEnd>docEvidenceStart,'Document evidence helper must be present');
+const docEvidenceSource=app.slice(docEvidenceStart,docEvidenceEnd);
+const docHarness={aiQueryIntent:()=>({terms:[]}),splitDocumentIntoChunks:t=>String(t).split(/\n/).map((text,index)=>({text,index,page:null})),aiRankDocumentChunks:chunks=>chunks.map((chunk,index)=>({...chunk,index,score:0})),aiTextScore:()=>0};
+vm.runInNewContext(docEvidenceSource+';this.aiBuildDocumentEvidence=aiBuildDocumentEvidence;',docHarness);
+const sampleDocs=[{id:'doc-a',name:'File A',extractedText:'alpha content from document A'},{id:'doc-b',name:'File B',extractedText:'beta content from document B'}];
+const unscoped=docHarness.aiBuildDocumentEvidence(sampleDocs,'uploaded information please');
+assert.equal(unscoped.evidence.length,0,'Unscoped question cannot use generic fallback from any document');
+const scoped=docHarness.aiBuildDocumentEvidence(sampleDocs,'uploaded information please','doc-a');
+assert.equal(scoped.evidence.length,1,'Selected document may fall back to its own text');
+assert.equal(scoped.evidence[0].doc.id,'doc-a','Selected-file fallback remains scoped to requested file');
+
 console.log('Cloud sync regression passed: concurrent merge, deletion tombstones, private document upload/download/delete, retry hooks, MIME handling and profile schema.');
