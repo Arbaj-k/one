@@ -51,4 +51,10 @@ const scoped=docHarness.aiBuildDocumentEvidence(sampleDocs,'uploaded information
 assert.equal(scoped.evidence.length,1,'Selected document may fall back to its own text');
 assert.equal(scoped.evidence[0].doc.id,'doc-a','Selected-file fallback remains scoped to requested file');
 
+const switchStart=app.indexOf('function switchAccountWorkspace(');
+const switchEnd=app.indexOf('\nwindow.OneWorkspace=',switchStart);
+assert.ok(switchStart>=0&&switchEnd>switchStart,'Account workspace switching function must exist');
+const switchSource=app.slice(switchStart,switchEnd);
+assert.match(switchSource,/stopWorkspaceRealtime\(\);[\s\S]*Promise\.allSettled\(\[\.\.\.cloudRefreshInFlight\.values\(\)\]\)/,'Account switching must stop realtime and drain in-flight cloud refreshes before changing storage scope');
+
 console.log('Cloud sync regression passed: concurrent merge, deletion tombstones, private document upload/download/delete, retry hooks, MIME handling and profile schema.');
