@@ -2214,8 +2214,8 @@ async function chatActionIntent(question){
  const moneyAmountMatch=raw.match(/(?:₹|rs\.?\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:rupees?|rs\.?|रुपये|रुपए))?/i);
  const explicitExpenseCommand=/\b(?:expense|expenses|spending|spend|spent|kharcha|kharch|khaye|khaya|ate|bought|purchase)\b/i.test(lower);
  const explicitIncomeCommand=/\b(?:income|salary|earned|earning|received|credited|kamai)\b/i.test(lower);
- const udhaarCommand=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|paid back|returned|return|wapas|liya|liye)\b/i.test(lower)
-  ||(/\b(?:diye|diya)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*\b/i.test(lower)&&!explicitExpenseCommand);
+ const explicitLendingCommand=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|liya|liye|wapas)\b/i.test(lower);
+ const udhaarCommand=explicitLendingCommand||(!explicitExpenseCommand&&/\b(?:diye|diya)\b/i.test(lower)&&/\b(?:ko|to)\s+[a-z][a-z'-]*\b/i.test(lower));
  const moneyAddIntent=!!moneyAmountMatch&&(/\b(?:add|save|record|note|write|likh|jod|karo|kar\s+do|diye|diya|gave|lend|lent|udhaar|borrowed|borrow|paid|returned|return|repaid|repayment|spend|spent|expense|income|earned|received|rupees?|rs\.?|ruppee|rupee)\b/i.test(lower)||explicitExpenseCommand||explicitIncomeCommand||udhaarCommand);
  if((explicitExpenseCommand||explicitIncomeCommand)&&!moneyAmountMatch&&!udhaarCommand&&/\b(?:khaye|khaya|ate|bought|spent|spending|expense|income|salary|earned|received)\b/i.test(lower))return {answer:'Money record banana hai. Amount kitna tha? Example: “₹50 biryani par spend ki”. Abhi kuch save nahi hua.',sources:['Money & Udhaar']};
  if(moneyAddIntent){

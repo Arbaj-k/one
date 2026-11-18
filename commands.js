@@ -94,7 +94,7 @@
   const explicitUdhaarCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye)\b/i.test(q);
   const explicitIncomeCue=/\b(?:income|salary|earned|earning|received|credited|kamai|mila|mili)\b/i.test(q);
   const explicitExpenseCue=/\b(?:expense|expenses|kharcha|kharch|spent|spending|purchase|bought)\b/i.test(q);
-  const domainIntent=reminderCue?'reminder':explicitTaskCue?'task':explicitUdhaarCue?'udhaar':explicitIncomeCue?'income':explicitExpenseCue?'expense':explicitNoteCue?'note':null;
+  const domainIntent=reminderCue?'reminder':explicitTaskCue?'task':explicitExpenseCue?'expense':explicitIncomeCue?'income':explicitUdhaarCue?'udhaar':explicitNoteCue?'note':null;
   const explicitSection=domainIntent==='reminder'?'reminders':domainIntent==='task'?'tasks':domainIntent==='note'?'notes':['udhaar','income','expense'].includes(domainIntent)?'money':null;
   const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:explicitSection?{intent:explicitSection,ambiguous:false,matched:[explicitSection]}:detectIntent(q);
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
@@ -109,7 +109,8 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const writeVerb=/\b(?:add|create|make|save|record|log|schedule|set|lagao|laga|banao|bana|jodo|daalo|dalo|yaad\s+dila)\b/i.test(q);
   let action=bulkDeleteCompletedTasks?'delete':readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
   const amount=parseAmount(query);
-  const udhaarType=/\b(?:udhaar|lent|lend|gave|given|diye|diya|borrowed|borrow|liya|liye|repaid|repayment|settle|settled|paid back|returned|return|paid|wapas)\b/i.test(q)?(/\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:paid|repaid|repayment|settle|settled|paid back|returned|return|wapas)\b/i.test(q)?(/\b(?:paid|borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
+  const explicitLoanCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|liya|liye|wapas)\b/i.test(q);
+  const udhaarType=explicitLoanCue?(/\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|returned|return|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
   const person=(q.match(/\bto\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b([\p{L}][\p{L}'-]*)\s+ko\b/iu)||q.match(/\bfrom\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\bwith\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/\b(?:lent|borrowed|paid|returned)\s+([\p{L}][\p{L}'-]*)/iu)||q.match(/^\s*([\p{L}][\p{L}'-]*)\s+returned\b/iu)||[])[1]||'';
   if((/\b(salary|income|received|credited|kamai|mila|mili|expense|kharcha|kharch|spent)\b/.test(q)||udhaarType)&&amount)action='add';
   if(det.intent==='routines'&&/\b(routine|habit|daily|roz|roj|subah|raat|walk)\b/.test(q)&&!/\b(show|list|dikhao|batao|kitna|kya hai)\b/.test(q))action='add';
