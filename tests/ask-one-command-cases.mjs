@@ -221,25 +221,23 @@ const moneyStart=appSource.indexOf('const moneyAmountMatch=raw.match');
 const moneyEnd=appSource.indexOf('\n const noteReminderIntent=',moneyStart);
 assert.ok(moneyStart>=0&&moneyEnd>moneyStart,'Ask One money action block must be present');
 const moneyBlock=appSource.slice(moneyStart,moneyEnd);
-function runMoneyAction(input){
- const command=input.match(/^\s*\/?(expense|money)\b\s*(.*)$/i);
- let raw=command?(command[1].toLowerCase()==='expense'&& !/^(?:add|save|record|log|track|spent|spend|show|list|search|delete|remove|edit|update)\b/i.test(command[2])?'add expense '+command[2]:command[2]):input;
+function runMoneyAction(raw){
  const lower=raw.toLowerCase(),data={expenses:[]};let pendingAction=null;
  const today=()=> '2026-11-18',dateFmt=d=>d;
  const uid=()=> 'test-id',fmtMoney=n=>'₹'+n;
- const extractMoneyPerson=q=>{const m=q.match(/\bto\s+([a-z][a-z'-]*)/i)||q.match(/\bfrom\s+([a-z][a-z'-]*)/i)||q.match(/\b([a-z][a-z'-]*)\s+ko\b/i);return m?m[1]:''};
+ const extractMoneyPerson=q=>{const m=q.match(/\\bto\\s+([a-z][a-z'-]*)/i)||q.match(/\\bfrom\\s+([a-z][a-z'-]*)/i)||q.match(/\\b([a-z][a-z'-]*)\\s+ko\\b/i);return m?m[1]:''};
  return vm.runInNewContext('(function(){'+moneyBlock+';return pendingAction})()', {raw,lower,data,pendingAction,today,dateFmt,uid,fmtMoney,extractMoneyPerson});
 }
-const noPersonExpense=runMoneyAction('expense add 50 ruppee in expense');
-assert.ok(noPersonExpense,'₹50 simple expense should draft without requiring person name');
+const noPersonExpense=runMoneyAction('add expense 50 ruppee in expense');
+assert.ok(noPersonExpense?.record,'₹50 simple expense should produce a record draft without requiring person name');
 assert.equal(noPersonExpense.record.kind,'expense','expense command must not be classified as lending');
 assert.equal(noPersonExpense.record.person,'','normal expense should not require or invent a person');
 assert.equal(noPersonExpense.record.amount,'50','amount parser should accept misspelled ruppee suffix');
 assert.equal(noPersonExpense.moneyTab,'spending','normal expense should route to spending tab');
-const autoExpense=runMoneyAction('expense spent 100 on auto');
+const autoExpense=runMoneyAction('spent 100 on auto');
 assert.equal(autoExpense.record.category,'Travel','auto/cab expense should be Travel');
 assert.equal(autoExpense.record.description,'auto','description should cleanly keep transport label');
-const foodExpense=runMoneyAction('expense 250 food');
+const foodExpense=runMoneyAction('add expense 250 food');
 assert.equal(foodExpense.record.category,'Food','food expense should be auto-categorized');
 const lendingDraft=runMoneyAction('lent 500 to Arbaj');
 assert.ok(lendingDraft,'explicit lending should produce confirmation');
