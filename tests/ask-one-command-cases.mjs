@@ -150,6 +150,19 @@ assert.equal(commandData.tasks.length,3,'monthly reminder without a fixed date m
 assert.equal(commandData.tasks[2].repeatRule,'monthly');
 assert.equal(commandData.tasks[2].title,'rent');
 
+// Explicit expenses must override overlapping Hindi money verbs; explicit lending stays Udhaar.
+const expenseOnly=parser.parseCommand('expense add 50 rupee');
+assert.equal(expenseOnly.domainIntent,'expense','explicit expense command must win over overlapping money verbs');
+assert.equal(expenseOnly.udhaarType,'','explicit expense with no lender must not be Udhaar');
+const expensePersonMention=parser.parseCommand('expense add 50 to Rahul for lunch');
+assert.equal(expensePersonMention.domainIntent,'expense','person/preposition in expense must not change money domain');
+assert.equal(expensePersonMention.udhaarType,'','normal expense mention of a person must not be lending');
+const clearLending=parser.parseCommand('Raj ko 500 udhaar diye');
+assert.equal(clearLending.domainIntent,'udhaar','explicit udhaar must remain lending');
+assert.equal(clearLending.udhaarType,'lent','explicit lending direction should stay lent');
+const clearBorrowing=parser.parseCommand('borrowed 2000 from Aman');
+assert.equal(clearBorrowing.udhaarType,'borrowed','explicit borrowing must remain borrowed');
+
 // Workspace filters, deadline edits and project operations must use the same local data store.
 commandData.tasks.push(
  {id:'t-open',title:'DSA assignment',due:'2026-11-16',done:false},
