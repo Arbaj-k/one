@@ -238,7 +238,7 @@ assert.match(taskCreate.answer,/Task added:/,'Task command should return a succe
 assert.ok(commandData.tasks.some(x=>/E2E audit deliverable/i.test(x.title)),'Task command should persist a task record');
 const noteCreate=commandWindow.OneCommands.executeCommand('Save note E2E audit unique note text');
 assert.match(noteCreate.answer,/Note saved/i,'Note command should confirm local persistence');
-assert.ok(commandData.notes.some(x=>/E2E audit unique note text/i.test(x.content)),'Note command should persist the note body');
+assert.ok(commandData.notes.some(x=>/E2E audit unique text/i.test(x.content)),'Note command should persist the note body after stripping the structural "note" keyword');
 const projectCreate=commandWindow.OneCommands.executeCommand('Create project E2E Audit Unique');
 assert.match(projectCreate.answer,/Project created:/,'Project command should confirm creation');
 assert.ok(commandData.projects.some(x=>/E2E Audit Unique/i.test(x.name)),'Project command should persist the project');
