@@ -13,6 +13,7 @@
     const cfg = config || {};
     let recognition = null;
     let listening = false;
+    let lastSubmittedTranscript = '';
     const reply = (message, ok = true) => {
       if (typeof cfg.onReply === 'function') cfg.onReply(String(message), !!ok);
       if (cfg.speak && 'speechSynthesis' in global && typeof global.SpeechSynthesisUtterance === 'function') {
@@ -170,6 +171,7 @@
       if (listening) return true;
       try {
         recognition = new SpeechRecognition();
+        lastSubmittedTranscript = '';
         recognition.lang = cfg.lang || 'hi-IN';
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
@@ -178,7 +180,10 @@
           const transcript = Array.from(event.results).map(item => item[0]?.transcript || '').join(' ').trim();
           cfg.onHeard?.(transcript);
           const last = event.results[event.results.length - 1];
-          if (last?.isFinal && transcript) {
+          if (last?.isFinal && transcript && transcript !== lastSubmittedTranscript) {
+            // Speech engines can replay the same final result across onresult events.
+            // Submit once per recognition session to avoid duplicate mutations.
+            lastSubmittedTranscript = transcript;
             if (typeof cfg.onVoiceSubmit === 'function') cfg.onVoiceSubmit(transcript);
             else run(transcript);
           }
