@@ -3043,8 +3043,17 @@ function switchAccountWorkspace(user){
  const nextUserId=user?.id||null;
  workspaceSwitchQueue=workspaceSwitchQueue.catch(()=>{}).then(async()=>{
   if(nextUserId===activeWorkspaceUserId&&(!nextUserId||cloudReady))return;
-  try{await workspaceWriteQueue;await syncQueue}catch(_){}
-  stopWorkspaceRealtime();cloudReady=false;cloudUser=null;
+  // Stop incoming realtime updates first, then drain active-account sync reads/writes
+  // before switching storage keys. Otherwise a late refresh can write Account A data
+  // after Account B has become the active workspace.
+  stopWorkspaceRealtime();
+  try{
+   await workspaceWriteQueue;
+   await syncQueue;
+   await Promise.allSettled([...cloudRefreshInFlight.values()]);
+   await workspaceWriteQueue;
+  }catch(_){}
+  cloudReady=false;cloudUser=null;
   if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
   activeWorkspaceUserId=nextUserId;
   activeWorkspaceKey=nextUserId?KEY+'-user-'+nextUserId:KEY+'-guest';
