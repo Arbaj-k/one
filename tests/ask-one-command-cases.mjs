@@ -222,7 +222,7 @@ const moneyEnd=appSource.indexOf('\n const noteReminderIntent=',moneyStart);
 assert.ok(moneyStart>=0&&moneyEnd>moneyStart,'Ask One money action block must be present');
 const moneyBlock=appSource.slice(moneyStart,moneyEnd);
 function runMoneyAction(input){
- const command=input.match(/^\s*\/(expense|money)\b\s*(.*)$/i);
+ const command=input.match(/^\s*\/?(expense|money)\b\s*(.*)$/i);
  let raw=command?(command[1].toLowerCase()==='expense'&& !/^(?:add|save|record|log|track|spent|spend|show|list|search|delete|remove|edit|update)\b/i.test(command[2])?'add expense '+command[2]:command[2]):input;
  const lower=raw.toLowerCase(),data={expenses:[]};let pendingAction=null;
  const today=()=> '2026-11-18',dateFmt=d=>d;
