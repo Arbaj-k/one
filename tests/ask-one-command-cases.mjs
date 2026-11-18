@@ -228,18 +228,18 @@ function runMoneyAction(raw){
  const extractMoneyPerson=q=>{const m=q.match(/\bto\s+([a-z][a-z'-]*)/i)||q.match(/\bfrom\s+([a-z][a-z'-]*)/i)||q.match(/\b([a-z][a-z'-]*)\s+ko\b/i);return m?m[1]:''};
  return vm.runInNewContext('(function(){'+moneyBlock+';return pendingAction})()', {raw,lower,data,pendingAction,today,dateFmt,uid,fmtMoney,extractMoneyPerson});
 }
-const noPersonExpense=runMoneyAction('/expense add 50 ruppee in expense');
+const noPersonExpense=runMoneyAction('expense add 50 ruppee in expense');
 assert.ok(noPersonExpense,'₹50 simple expense should draft without requiring person name');
 assert.equal(noPersonExpense.record.kind,'expense','expense command must not be classified as lending');
 assert.equal(noPersonExpense.record.person,'','normal expense should not require or invent a person');
 assert.equal(noPersonExpense.record.amount,'50','amount parser should accept misspelled ruppee suffix');
 assert.equal(noPersonExpense.moneyTab,'spending','normal expense should route to spending tab');
-const autoExpense=runMoneyAction('/expense spent 100 on auto');
+const autoExpense=runMoneyAction('expense spent 100 on auto');
 assert.equal(autoExpense.record.category,'Travel','auto/cab expense should be Travel');
 assert.equal(autoExpense.record.description,'auto','description should cleanly keep transport label');
-const foodExpense=runMoneyAction('/expense 250 food');
+const foodExpense=runMoneyAction('expense 250 food');
 assert.equal(foodExpense.record.category,'Food','food expense should be auto-categorized');
-const lendingDraft=runMoneyAction('/money lent 500 to Arbaj');
+const lendingDraft=runMoneyAction('lent 500 to Arbaj');
 assert.ok(lendingDraft,'explicit lending should produce confirmation');
 assert.equal(lendingDraft.record.kind,'lent','lent should preserve lending type');
 assert.equal(lendingDraft.record.person,'Arbaj','lending should extract person');
