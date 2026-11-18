@@ -90,6 +90,16 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   await page.getByText('Browser regression expense',{exact:true}).waitFor();
   saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
   assert.ok(saved.expenses.some(e=>e.description==='Browser regression expense'&&Number(e.amount)===125),'Expense UI save must persist its description and amount.');
+  // Verify slash-command expense routing through Ask One end-to-end (no AI dependency).
+  await page.locator('button[data-page="ask"]').first().click();
+  const askInput=page.locator('#chat-input');
+  await askInput.fill('/expense add 50 ruppee in expense');
+  await page.locator('#chat-form button[type="submit"]').click();
+  await page.getByText(/confirm expense\/income:.*₹50/i).waitFor({timeout:15000});
+  await page.locator('[data-action="confirm-pending-action"]').last().click();
+  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('student-brain-data-v1-guest')||'{}').expenses?.some(e=>Number(e.amount)===50&&e.kind==='expense')}catch{return false}},null,{timeout:10000});
+  saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('student-brain-data-v1-guest')));
+  assert.ok(saved.expenses.some(e=>Number(e.amount)===50&&e.kind==='expense'&&e.description==='Other'),'Ask One slash expense command should save a normal expense without person name.');
 
   // Return home before opening the Notes dashboard shortcut.
   await page.locator('.back-home-icon').click();
