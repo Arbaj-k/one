@@ -59,7 +59,7 @@ function migrateData(raw){
  return next;
 }
 try{if(!localStorage.getItem(LEGACY_OWNER_KEY)&&!localStorage.getItem(KEY+'-guest')&&localStorage.getItem(KEY))localStorage.setItem(KEY+'-guest',localStorage.getItem(KEY))}catch(error){console.warn("Operation failed; diagnostic details redacted.")}
-let data=loadData(),page='overview',chatBusy=false,pendingAction=null,pendingReminderClarification=null;
+let data=loadData(),page='overview',chatBusy=false,pendingAction=null,pendingReminderClarification=null,activeAskTurnId=null;
 let lastAskSubmission={query:'',at:0};
 let cloudClient=null,cloudUser=null,cloudReady=false;
 const CLOUD_URL='https://tcthrfpkydcmenxwajfg.supabase.co';
@@ -2449,7 +2449,8 @@ window.ensureOneCommandCenter=window.ensureOneCommandCenter||function(){
  window.OneCommandCenter=window.OneCommands.create({
   lang:document.querySelector('#one-voice-language')?.value||'hi-IN',
   speak:false, // voice.js speaks rendered replies once, avoiding duplicate speech
-  onReply:(message)=>{if(chatBusy)return;const content=String(message||'').trim();if(!content)return;const latestUser=[...(data.messages||[])].reverse().find(item=>item?.role==='user');if(!latestUser)return;if(data.messages.some(item=>item?.role==='assistant'&&item.replyTo===latestUser.id))return;const latest=(data.messages||[]).slice(-1)[0];if(latest?.role==='assistant'&&String(latest.content||'').trim()===content&&Date.now()-Number(latest.createdAt||0)<8000)return;data.messages.push({id:uid(),role:'assistant',content,sources:['Ask One'],replyTo:latestUser.id,createdAt:Date.now(),pendingAction:!!(window.OneCommands?.hasPending?.()||window.OneCommands?.hasPendingReminder?.()),pendingDraft:!!window.OneCommands?.hasPendingReminder?.()});persist();render();scrollChatToBottom();},
+  // Side-channel replies may be stale or duplicated. sendChat owns one reply per turn.
+  onReply:()=>{},
   onHeard:(transcript)=>{const input=document.querySelector('#chat-input')||document.querySelector('#home-brain-query');if(input)input.value=transcript;window.OneVoice?.setTranscript?.(transcript);},
   onListening:(active)=>{const mic=document.querySelector('#one-voice-mic');mic?.classList.toggle('mic-on',active);const status=document.querySelector('#one-voice-status');if(status)status.textContent=active?'Listening…':'Processing voice command…';window.OneVoice?.setListening?.(active);},
   onVoiceSubmit:(transcript)=>{const input=document.querySelector('#chat-input');if(input)input.value=transcript;sendChat(transcript);}
@@ -2468,11 +2469,13 @@ async function sendChat(question,targetDocId=null){
  const chatInput=document.querySelector('#chat-input');
  if(chatInput&&chatInput.value.trim()===query)chatInput.value='';
  const userMessage={id:uid(),role:'user',content:query,createdAt:Date.now()};
+ activeAskTurnId=userMessage.id;
  data.messages=Array.isArray(data.messages)?data.messages:[];
  data.messages.push(userMessage);
  if(window.OneAnalytics)window.OneAnalytics.trackEvent('ask_one_message',page);
  persist();
  const reply=(result,extra={})=>{
+  if(activeAskTurnId!==userMessage.id)return;
   if(data.messages.some(message=>message?.role==='assistant'&&message.replyTo===userMessage.id))return;
   data.messages.push({id:uid(),role:'assistant',content:String(result?.answer||'I could not prepare an answer for that question.'),sources:Array.isArray(result?.sources)?result.sources:[],replyTo:userMessage.id,createdAt:Date.now(),...extra});
   persist();
@@ -2654,6 +2657,7 @@ async function sendChat(question,targetDocId=null){
   const signIn=!cloudUser?' Sign in for Gemini AI replies.':'';
   reply({answer:(hasFallback?fallback.answer+'\n\n':'')+'AI unavailable: '+(error.message||'Unable to reach the AI service.')+(hasFallback?'\nShowing local results from your saved workspace.':'\nYour saved data remains available locally.')+signIn,sources:hasFallback?fallback.sources:[]});
  }finally{
+  if(activeAskTurnId===userMessage.id)activeAskTurnId=null;
   chatBusy=false;
   persist();
   if(page==='ask'){render();scrollChatToBottom()}
