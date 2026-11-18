@@ -95,6 +95,10 @@ for (const action of [
   'new-expense', 'new-project', 'quick-add-upload'
 ]) {
   assert.ok(app.includes("action:'" + action + "'"), 'Quick Add radial option is missing: ' + action);
+// Voice recognition may repeat the same final transcript; command submission must be deduplicated per session.
+const voiceAdapterSource=readFileSync(new URL('../one-commands.js',import.meta.url),'utf8');
+assert.ok(voiceAdapterSource.includes('lastSubmittedTranscript = \'\'') && voiceAdapterSource.includes('transcript !== lastSubmittedTranscript'), 'Voice adapter must suppress duplicate final transcript submissions per session');
+
 }
 assert.ok(app.includes("'new-knowledge-entry':()=>openForm('note')"), 'Quick Add Note action must open the Note form.');
 assert.ok(app.includes('function openKnowledgeEntry(){'), 'Knowledge Entry title/content form is missing.');
