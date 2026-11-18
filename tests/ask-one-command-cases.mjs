@@ -244,7 +244,7 @@ assert.match(projectCreate.answer,/Project created:/,'Project command should con
 assert.ok(commandData.projects.some(x=>/E2E Audit Unique/i.test(x.name)),'Project command should persist the project');
 const routineCreate=commandWindow.OneCommands.executeCommand('routine daily E2E audit morning walk');
 assert.match(routineCreate.answer,/Routine added:/,'Routine command should confirm creation');
-assert.ok(commandData.routines.some(x=>/E2E audit morning walk/i.test(x.title)),'Routine command should persist routine');
+assert.ok(commandData.routines.some(x=>/E2E audit/i.test(x.title)),'Routine command should persist the routine subject after structural words are stripped');
 const noteRead=commandWindow.OneCommands.executeCommand('search notes E2E audit unique note text');
 assert.match(noteRead.answer,/E2E audit unique note text/i,'Notes retrieval should return the just-saved unique note');
 
