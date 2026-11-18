@@ -2101,3 +2101,26 @@ body.one-auth-required .app{visibility:visible!important;pointer-events:auto!imp
 .one-command-picker-footer{margin-top:10px}
 .one-command-picker-footer code{color:#c7d7ff;background:#1d2c45;border-radius:4px;padding:2px 4px}
 @media(max-width:520px){.one-command-picker{padding:10px}.one-command-picker-actions{grid-template-columns:1fr}.one-command-category{padding:6px 9px}}
+
+/* Ask One scroll recovery: allow the conversation viewport to scroll on touch and desktop. */
+.chat-shell{min-height:0!important;overflow:visible!important}
+.chat-shell .chat-messages,
+.chat-shell.has-messages .chat-messages{
+  min-height:0!important;
+  max-height:min(62dvh,680px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
+  flex:0 1 auto!important;
+  scroll-behavior:smooth!important;
+}
+@media(max-width:700px){
+  .chat-shell .chat-messages,
+  .chat-shell.has-messages .chat-messages{
+    max-height:calc(100dvh - 255px)!important;
+    min-height:100px!important;
+    padding-bottom:18px!important;
+  }
+}
