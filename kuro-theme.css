@@ -465,3 +465,13 @@ body.kuro .one-account-menu{margin-left:2px!important}
 body.kuro .one-account-menu .one-profile-trigger{width:38px!important;height:38px!important;border:1px solid var(--k-line-2)!important;background:var(--k-panel)!important}
 body.kuro .one-account-menu .one-profile-avatar{display:grid!important;place-items:center!important;background:var(--k-sunk)!important;color:var(--k-ink)!important}
 @media(max-width:800px){body.kuro .one-account-menu .one-profile-trigger{width:36px!important;height:36px!important}body.kuro .one-account-menu .one-profile-avatar{width:34px!important;height:34px!important}}
+
+/* Final authenticated topbar: a single neutral account icon, no extra avatar or sync dot. */
+body.kuro .topbar-right .demo-pill{display:none!important}
+body.kuro .topbar-right [class*="avatar"]:not(.one-profile-avatar){display:none!important}
+body.kuro.one-is-authenticated #one-signin,
+body.kuro.one-is-authenticated .one-signin-button,
+body.kuro.one-is-authenticated #kuro-signin-proxy,
+body.kuro #one-signin[hidden]{display:none!important;visibility:hidden!important}
+body.kuro .one-account-menu .one-profile-icon{display:grid!important;place-items:center!important}
+body.kuro .one-account-menu .one-profile-icon svg{width:19px!important;height:19px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
