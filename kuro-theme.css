@@ -451,3 +451,17 @@ body.kuro .one-account-menu .one-profile-avatar{width:36px!important;height:36px
  body.kuro .one-account-menu .one-profile-trigger{width:34px!important;height:34px!important}
  body.kuro .one-account-menu .one-profile-avatar{width:32px!important;height:32px!important}
 }
+
+
+/* Auth header truth-state fix: render exactly one account control and no decorative sync dot. */
+body.kuro #one-signin[hidden],
+body.kuro.one-is-authenticated #one-signin,
+body.kuro.one-is-authenticated .one-signin-button,
+body.kuro.one-is-authenticated #kuro-signin-proxy{display:none!important;visibility:hidden!important}
+body.kuro .topbar-right .demo-pill{display:none!important;visibility:hidden!important}
+body.kuro .topbar-right>.avatar,
+body.kuro .topbar-right .avatar:not(.one-profile-avatar){display:none!important}
+body.kuro .one-account-menu{margin-left:2px!important}
+body.kuro .one-account-menu .one-profile-trigger{width:38px!important;height:38px!important;border:1px solid var(--k-line-2)!important;background:var(--k-panel)!important}
+body.kuro .one-account-menu .one-profile-avatar{display:grid!important;place-items:center!important;background:var(--k-sunk)!important;color:var(--k-ink)!important}
+@media(max-width:800px){body.kuro .one-account-menu .one-profile-trigger{width:36px!important;height:36px!important}body.kuro .one-account-menu .one-profile-avatar{width:34px!important;height:34px!important}}
