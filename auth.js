@@ -84,7 +84,7 @@
   }
   function paintUser(user){
     window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user}}));
-    const signIn=$('#one-signin');if(signIn)signIn.hidden=true;
+    const signIn=$('#one-signin');if(signIn)signIn.hidden=true;document.body.classList.add('one-is-authenticated');
     const top=$('.topbar-right');
     if(top&&!$('#one-account-menu')){
       const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';
@@ -115,7 +115,7 @@
       }
       const {error}=await getClient().auth.signOut();if(error)throw error;
       session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
-      $('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;close();
+      $('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn)signIn.hidden=false;close();
       const s=$('#cloud-status');if(s)s.textContent=clearLocal?'Local data cleared':'Saved on this device';
     }catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out safely. Please try again.',true)}
   }
@@ -129,7 +129,7 @@
       if(!response.ok)throw new Error('Deletion request failed');
       await window.OneWorkspace?.purgeUserLocalData(user.id);
       await getClient().auth.signOut({scope:'local'});session=null;
-      window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();
+      window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');
       const signIn=$('#one-signin');if(signIn)signIn.hidden=false;
       alert('Your One account and cloud data have been deleted.');
     }catch(error){console.warn("Operation failed; diagnostic details redacted.");status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
@@ -137,8 +137,8 @@
   async function boot(){
     
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
-      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
-      if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
+      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
+      if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{document.body.classList.remove('one-is-authenticated');window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('update');status('Choose a new password.');}
     }catch(err){console.warn("Operation failed; diagnostic details redacted.");close();}
