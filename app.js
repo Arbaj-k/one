@@ -1058,6 +1058,7 @@ async function processUploadedDocuments(files,sourceNoteId=null){
  const setStatus=message=>{const status=document.querySelector('#quick-add-upload-status')||document.querySelector('#document-upload-status');if(status)status.textContent=message;const live=document.querySelector('#ocr-live-status');if(live)live.textContent=message};
  const setProgress=(percent,label)=>setStatus(label+' · '+Math.max(0,Math.min(100,Math.round(percent)))+'%');
  for(const file of list){
+  const uploadStartedAt=Date.now();
   if(!file||file.size===0){setStatus((file?.name||'Selected file')+' is empty.');toast('Empty file cannot be processed');continue}
   if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB.');toast('File is over 12 MB');continue}
   const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';
@@ -1102,7 +1103,17 @@ async function processUploadedDocuments(files,sourceNoteId=null){
    const extractedJson=documentTextToJSON(file.name,extractedText);
    const documentRecord={id,name:file.name,originalName:file.name,type:isPdf?'pdf':'image',mimeType,size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete',cloudUploadStatus:'pending'};data.documents.push(documentRecord);
    persist();if(cloudReady&&cloudUser){documentRecord.cloudUploadStatus='uploading';try{await syncOriginalDocumentToCloud(documentRecord,file)}catch(uploadError){documentRecord.cloudUploadStatus='pending';documentRecord.cloudUploadError=String(uploadError.message||'Cloud upload failed').slice(0,300);persist();toast('File saved locally. Cloud upload will retry when connected.')}}if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');if(!ocrFailed){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else{toast('File saved, but no readable text was extracted. Retry OCR from Uploaded Items.')}
-  }catch(err){console.warn("Operation failed; diagnostic details redacted.");setStatus('Could not read '+file.name+': '+(err.message||'unknown error'));toast('Extraction failed. See upload status.')}
+  }catch(err){
+   console.warn('Document extraction failed; attempting to preserve the original upload.');
+   const alreadySaved=(data.documents||[]).some(item=>item.originalName===file.name&&Number(item.size)===Number(file.size)&&Number(item.created||0)>=uploadStartedAt-1000);
+   if(!alreadySaved){
+    const id=uid();let fileStored=false;try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file storage failed; metadata-only recovery will be attempted.');}
+    const fallback={id,name:file.name,originalName:file.name,type:normalizedDocumentMime(file)==='application/pdf'?'pdf':'image',mimeType:normalizedDocumentMime(file),size:file.size,extractedText:'[Text extraction could not finish. Original file is saved for later retry.]',extractedJson:documentTextToJSON(file.name,''),chunks:[],ocrQuality:0,ocrEngine:'pending',created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'pending',ocrStatus:'failed',cloudUploadStatus:'pending',uploadError:String(err.message||'Document processing failed').slice(0,240)};
+    data.documents=data.documents||[];data.documents.push(fallback);persist();
+    if(cloudReady&&cloudUser&&fileStored){try{await syncOriginalDocumentToCloud(fallback,file)}catch(cloudError){fallback.cloudUploadError=String(cloudError.message||'Cloud upload failed').slice(0,240);persist()}}
+    render();setStatus(fileStored?'Original file saved. Text extraction can be retried later.':'Upload details saved, but browser storage could not keep the original file. Try a smaller file.');toast(fileStored?'File saved; text extraction can be retried.':'File could not be fully saved. Try a smaller file.');
+   }else{setStatus('Original file is saved. Some processing could not finish; retry extraction from the file menu.');toast('File saved; some processing needs retry.')}
+  }
  }
 }
 
