@@ -182,3 +182,52 @@ body.kuro .toast,body.kuro [role=dialog],body.kuro .modal,body.kuro .modal-conte
  body.kuro .one-more-nav{background:var(--k-panel)!important;border-color:var(--k-line-2)!important}
  body.kuro .content{padding-bottom:112px!important}
 }
+
+/* Readable system typography: self-hosted/system fonts avoid blocked remote font imports. */
+body.kuro,body.kuro button,body.kuro input,body.kuro textarea,body.kuro select,
+body.kuro #page-content,body.kuro .modal,body.kuro .toast{
+ font-family:Inter,Arial,Helvetica,system-ui,-apple-system,"Segoe UI",sans-serif!important;
+ font-size:14px;
+ line-height:1.55;
+ letter-spacing:normal;
+}
+body.kuro #page-content h1{font-size:clamp(29px,4vw,40px)!important;line-height:1.16!important;font-weight:700!important;letter-spacing:-.025em!important}
+body.kuro #page-content h2{font-size:clamp(19px,2.5vw,24px)!important;line-height:1.3!important;font-weight:650!important}
+body.kuro #page-content h3,body.kuro #page-content h4{font-size:16px!important;line-height:1.4!important;font-weight:650!important}
+body.kuro #page-content p,body.kuro #page-content li,body.kuro #page-content label,
+body.kuro #page-content input,body.kuro #page-content textarea,body.kuro #page-content select,
+body.kuro #page-content button,body.kuro .modal p,body.kuro .modal label{
+ font-size:14px!important;line-height:1.55!important;
+}
+body.kuro #page-content small,body.kuro #page-content .muted,body.kuro #page-content .subtitle,
+body.kuro #page-content .stat-note,body.kuro #page-content .field-help,
+body.kuro #page-content .empty-state,body.kuro .modal small{
+ color:var(--k-mute)!important;font-size:12px!important;line-height:1.5!important;
+}
+body.kuro #page-content .eyebrow,body.kuro #page-content .stat-label,
+body.kuro .kuro-chip,body.kuro .demo-pill{
+ font-size:11px!important;letter-spacing:.08em!important;font-weight:650!important;
+}
+body.kuro #page-content input,body.kuro #page-content textarea,body.kuro #page-content select{
+ min-height:42px;padding:10px 12px!important;font-size:14px!important;
+}
+body.kuro #page-content textarea{min-height:110px}
+body.kuro #page-content button,body.kuro .kuro-nav button,body.kuro .kuro-side-foot button,
+body.kuro .mobile-nav button,body.kuro .one-more-nav button{min-height:40px}
+body.kuro #page-content .card,body.kuro #page-content .panel,body.kuro .modal{
+ color:var(--k-ink)!important;background:var(--k-panel)!important;
+}
+body.kuro .modal-backdrop{background:rgba(0,0,0,.68)!important}
+body.kuro .modal{max-height:calc(100dvh - 24px)!important;overflow:auto!important}
+body.kuro .one-mobile-theme-toggle{font-weight:700!important;text-align:left;border:1px solid var(--k-line-2)!important;background:var(--k-solid)!important;color:var(--k-on-solid)!important;padding:12px 14px!important}
+body.kuro #document-upload-status,body.kuro #quick-add-upload-status,body.kuro #ocr-live-status{
+ display:block;color:var(--k-ink)!important;font-size:13px!important;line-height:1.55!important;overflow-wrap:anywhere;
+}
+body.kuro .upload-label{display:inline-flex!important;align-items:center;justify-content:center;min-height:44px;padding:11px 15px!important}
+@media(max-width:800px){
+ body.kuro .one-more-nav{max-height:calc(100dvh - 145px);overflow:auto;grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.kuro .one-mobile-theme-toggle{grid-column:1/-1}
+ body.kuro #page-content h1{font-size:29px!important}
+ body.kuro #page-content .stat-label{font-size:11px!important}
+ body.kuro .mobile-nav button{font-size:12px!important;min-height:44px}
+}
