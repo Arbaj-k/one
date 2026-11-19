@@ -327,3 +327,20 @@ body.kuro #page-content p,body.kuro #page-content li,body.kuro #page-content lab
 body.kuro #page-content small,body.kuro #page-content .stat-note,body.kuro #page-content .field-help{font-size:12.5px!important;line-height:1.55!important}
 body.kuro .topbar .mobile-brand{font-weight:700!important;letter-spacing:-.04em!important}
 @media(max-width:800px){body.kuro #page-content .chat-shell{padding:12px!important}body.kuro #page-content .chat-shell .bubble{max-width:94%!important;font-size:15px!important;padding:13px 14px!important}body.kuro #page-content .chat-shell .chat-form{bottom:calc(66px + env(safe-area-inset-bottom))!important}body.kuro #page-content .chat-shell .chat-form #chat-input{font-size:16px!important}body.kuro #page-content .chat-shell .chat-note{font-size:11.5px!important}}
+
+/* Always-visible, compact mobile theme control in the top bar. */
+body.kuro .mobile-theme-toggle{display:none}
+@media(max-width:800px){
+ body.kuro .topbar-right{display:flex!important;align-items:center!important;gap:8px!important}
+ body.kuro .mobile-theme-toggle{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:5px!important;flex:0 0 auto!important;height:34px!important;min-height:34px!important;
+  padding:0 9px!important;border:1px solid var(--k-line-2)!important;
+  border-radius:4px!important;background:var(--k-panel)!important;
+  color:var(--k-ink)!important;font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+  white-space:nowrap!important;box-shadow:none!important;
+ }
+ body.kuro .mobile-theme-toggle svg{width:15px!important;height:15px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important;flex:0 0 15px!important}
+ body.kuro .mobile-theme-toggle span{color:var(--k-ink)!important;font-size:12px!important}
+}
+@media(max-width:360px){body.kuro .mobile-theme-toggle{padding:0 7px!important;gap:4px!important}body.kuro .mobile-theme-toggle span{font-size:11px!important}}
