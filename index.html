@@ -5,45 +5,42 @@
 <title>One — Your personal AI assistant</title>
 <meta name="description" content="One is your personal AI assistant to organize notes, tasks, projects, routines and money — all in one private workspace.">
 <link rel="canonical" href="https://arbaj-k.github.io/one/">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="One">
-<meta property="og:title" content="One — Your personal AI assistant">
-<meta property="og:description" content="Your personal space to organize notes, tasks, projects, routines and money. Simple, private and all in one place.">
-<meta property="og:url" content="https://arbaj-k.github.io/one/">
-<meta property="og:image" content="https://arbaj-k.github.io/one/icons/student-brain.svg">
-<meta property="og:image:alt" content="One — Your personal AI assistant">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="One — Your personal AI assistant">
-<meta name="twitter:description" content="Your personal space to organize notes, tasks, projects, routines and money.">
-<meta name="twitter:image" content="https://arbaj-k.github.io/one/icons/student-brain.svg">
-<link rel="stylesheet" href="styles.css">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4169e1">
-<meta name="google-site-verification" content="j7p1r3NhJxaOUtzdJwzkjT3_l3Y61bnObboSkIlghSs">
-<link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
+<meta property="og:type" content="website"><meta property="og:site_name" content="One"><meta property="og:title" content="One — Your personal AI assistant"><meta property="og:description" content="Your personal space to organize notes, tasks, projects, routines and money. Simple, private and all in one place."><meta property="og:url" content="https://arbaj-k.github.io/one/"><meta property="og:image" content="https://arbaj-k.github.io/one/icons/student-brain.svg"><meta property="og:image:alt" content="One — Your personal AI assistant">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="One — Your personal AI assistant"><meta name="twitter:description" content="Your personal space to organize notes, tasks, projects, routines and money."><meta name="twitter:image" content="https://arbaj-k.github.io/one/icons/student-brain.svg">
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="kuro-theme.css"><script src="kuro-theme-init.js"></script>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f4f4f1"><meta name="google-site-verification" content="j7p1r3NhJxaOUtzdJwzkjT3_l3Y61bnObboSkIlghSs"><link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
 </head>
-<body>
+<body class="kuro">
 <div class="app">
-  <main class="main">
-    <header class="topbar"><div class="mobile-brand">✦ One</div><div class="topbar-right"><button type="button" class="notification-bell" data-action="open-notifications" aria-label="Open notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-badge" id="notification-unread-count" hidden>0</span></button><button id="install-app" class="install-app" aria-label="Install One" title="Install app" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" /></svg></button><span class="demo-pill" aria-label="Connection status" title="Workspace sync status"><i></i><span id="cloud-status">Local</span></span><div class="avatar" aria-hidden="true">O</div><button id="one-signin" class="one-signin-button" type="button">Sign in</button></div></header>
-    <nav class="workspace-shortcuts" aria-label="Workspace navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money</button><button type="button" data-page="ask">Ask One</button><button type="button" data-page="analytics">Analytics</button></nav><nav class="mobile-nav" aria-label="Primary navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="ask">Ask One</button><button type="button" data-action="toggle-more-nav" aria-expanded="false">More</button></nav><div id="one-more-nav" class="one-more-nav" hidden><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money & Udhaar</button><button type="button" data-page="analytics">Analytics</button><button type="button" data-page="study">Routines / Study</button><button type="button" data-page="memory">Personal Memory</button><button type="button" data-page="settings">Settings</button></div>
-    <section id="page-content" class="content"></section>
-    
-  </main>
-</div>
-<div id="modal-root"></div>
-<div id="one-auth-root" hidden></div>
-<div id="toast" class="toast"></div>
+<aside class="kuro-sidebar" aria-label="Sidebar">
+<div class="kuro-brand"><span class="kuro-wordmark">one</span><span class="kuro-chip" id="kuro-chip"><i></i><span id="kuro-chip-text">LOCAL</span></span></div>
+<nav class="kuro-nav" aria-label="Workspace">
+<button type="button" data-page="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>Today</span></button>
+<button type="button" data-page="tasks"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></svg><span>Tasks</span></button>
+<button type="button" data-page="notes"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7"/></svg><span>Notes</span></button>
+<button type="button" data-page="vault"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><circle cx="12" cy="12.5" r="3"/></svg><span>Vault</span></button>
+<button type="button" data-page="projects"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Projects</span></button>
+<button type="button" data-page="expenses"><svg viewBox="0 0 24 24"><path d="M7 5h10M7 9h10M9 5c4 0 6 2 6 4s-2 4-6 4l6 6"/></svg><span>Money</span></button>
+<button type="button" data-page="ask"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg><span>Ask One</span></button>
+<button type="button" data-page="analytics"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span>Analytics</span></button>
+</nav>
+<div class="kuro-side-foot">
+<button type="button" data-page="memory"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3zM9.5 20h5"/></svg><span>Personal memory</span></button>
+<button type="button" data-page="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span>Settings</span></button>
+<button type="button" id="kuro-theme-toggle" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><span>Dark mode</span></button>
+<button type="button" id="kuro-signin-proxy"><svg viewBox="0 0 24 24"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h10"/></svg><span>Sign in</span></button>
+</div></aside>
+<main class="main">
+<header class="topbar"><div class="mobile-brand">✦ One</div><div class="topbar-right">
+<button type="button" class="notification-bell" data-action="open-notifications" aria-label="Open notifications" title="Notifications"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-badge" id="notification-unread-count" hidden>0</span></button>
+<button id="install-app" class="install-app" aria-label="Install One" title="Install app" hidden><svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button>
+<span class="demo-pill" aria-label="Connection status" title="Workspace sync status"><i></i><span id="cloud-status">Local</span></span><div class="avatar" aria-hidden="true">O</div><button id="one-signin" class="one-signin-button" type="button">Sign in</button>
+</div></header>
+<nav class="workspace-shortcuts" aria-label="Workspace navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money</button><button type="button" data-page="ask">Ask One</button><button type="button" data-page="analytics">Analytics</button></nav>
+<nav class="mobile-nav" aria-label="Primary navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="ask">Ask One</button><button type="button" data-action="toggle-more-nav" aria-expanded="false">More</button></nav>
+<div id="one-more-nav" class="one-more-nav" hidden><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money &amp; Udhaar</button><button type="button" data-page="analytics">Analytics</button><button type="button" data-page="study">Routines / Study</button><button type="button" data-page="memory">Personal Memory</button><button type="button" data-page="settings">Settings</button></div>
+<section id="page-content" class="content"></section></main></div>
+<div id="modal-root"></div><div id="one-auth-root" hidden></div><div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="document-extractor.js"></script>
-<script src="supabase-client.js"></script>
-<script src="app.js"></script>
-<script src="workspace-intelligence.js"></script>
-<script src="analytics.js"></script>
-<script src="auth.js"></script>
-<script src="commands.js"></script>
-<script src="one-commands.js"></script>
-<script src="ask-one-command-ui.js"></script>
-<script src="voice.js"></script>
-<script src="pwa-init.js" defer></script>
+<script src="document-extractor.js"></script><script src="supabase-client.js"></script><script src="app.js"></script><script src="workspace-intelligence.js"></script><script src="analytics.js"></script><script src="auth.js"></script><script src="commands.js"></script><script src="one-commands.js"></script><script src="ask-one-command-ui.js"></script><script src="voice.js"></script><script src="kuro-shell.js"></script><script src="pwa-init.js" defer></script>
 </body></html>
