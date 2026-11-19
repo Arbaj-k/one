@@ -1,6 +1,6 @@
 /* One PWA service worker. Bump version on each release. */
-const CACHE_VERSION="one-shell-v29",ASSET_CACHE="one-assets-v28";
-const PRECACHE=["./","./index.html","./404.html","./supabase-client.js","./pwa-init.js","./analytics.js","./workspace-intelligence.js","./styles.css","./app.js","./commands.js","./one-commands.js","./voice.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./icons/student-brain.svg"];
+const CACHE_VERSION="one-shell-v30",ASSET_CACHE="one-assets-v29";
+const PRECACHE=["./","./index.html","./404.html","./supabase-client.js","./pwa-init.js","./analytics.js","./workspace-intelligence.js","./styles.css","./kuro-theme.css","./kuro-theme-init.js","./kuro-shell.js","./app.js","./commands.js","./one-commands.js","./voice.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./icons/student-brain.svg"];
 const OFFLINE_PAGE="./index.html";
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_VERSION).then(c=>c.addAll(PRECACHE))));
 self.addEventListener("activate",e=>e.waitUntil((async()=>{const keep=new Set([CACHE_VERSION,ASSET_CACHE]);const keys=await caches.keys();await Promise.all(keys.filter(k=>/^(one-shell-|one-assets-|student-brain-shell-)/.test(k)&&!keep.has(k)).map(k=>caches.delete(k)));await self.clients.claim()})()));
