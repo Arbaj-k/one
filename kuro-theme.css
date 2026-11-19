@@ -475,3 +475,104 @@ body.kuro.one-is-authenticated #kuro-signin-proxy,
 body.kuro #one-signin[hidden]{display:none!important;visibility:hidden!important}
 body.kuro .one-account-menu .one-profile-icon{display:grid!important;place-items:center!important}
 body.kuro .one-account-menu .one-profile-icon svg{width:19px!important;height:19px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+
+
+/* ONE INTELLIGENCE — readable reminder typography */
+body.kuro .smart-briefing{
+  font-family:var(--k-sans);
+  letter-spacing:normal;
+}
+body.kuro .smart-briefing .eyebrow{
+  color:var(--k-ink-2)!important;
+  font-size:11px!important;
+  line-height:1.4!important;
+  font-weight:750!important;
+  letter-spacing:.13em!important;
+  margin-bottom:7px!important;
+}
+body.kuro .smart-briefing h2{
+  color:var(--k-ink)!important;
+  font-size:clamp(21px,2vw,25px)!important;
+  line-height:1.2!important;
+  font-weight:750!important;
+  letter-spacing:-.035em!important;
+  margin:0 0 7px!important;
+}
+body.kuro .smart-briefing p{
+  color:var(--k-ink-2)!important;
+  font-size:14px!important;
+  line-height:1.65!important;
+  font-weight:450!important;
+  letter-spacing:-.005em!important;
+}
+body.kuro .smart-briefing .tag{
+  color:var(--k-ink)!important;
+  background:var(--k-sunk)!important;
+  border:1px solid var(--k-line-2)!important;
+  font-size:12px!important;
+  line-height:1.35!important;
+  font-weight:700!important;
+  letter-spacing:0!important;
+  padding:6px 10px!important;
+}
+body.kuro .smart-briefing-list{
+  display:grid;
+  gap:9px;
+  margin:18px 0!important;
+}
+body.kuro .smart-briefing-item{
+  display:grid!important;
+  grid-template-columns:minmax(105px,max-content) minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:12px!important;
+  min-width:0;
+  padding:13px 14px!important;
+  border:1px solid var(--k-line)!important;
+  border-radius:8px!important;
+  background:var(--k-panel)!important;
+}
+body.kuro .smart-briefing-item b{
+  color:var(--k-ink)!important;
+  min-width:0;
+  font-size:14px!important;
+  line-height:1.5!important;
+  font-weight:650!important;
+  letter-spacing:-.012em!important;
+  overflow-wrap:anywhere;
+}
+body.kuro .smart-briefing-item small{
+  color:var(--k-ink-2)!important;
+  font-size:13px!important;
+  line-height:1.4!important;
+  font-weight:650!important;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+body.kuro .smart-briefing-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px!important;
+}
+body.kuro .smart-briefing-actions .btn{
+  min-height:42px;
+  padding:10px 15px!important;
+  font-family:var(--k-sans)!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+  font-weight:700!important;
+  letter-spacing:-.005em!important;
+  border-radius:6px!important;
+}
+@media(max-width:600px){
+  body.kuro .smart-briefing .row:first-child{align-items:flex-start!important;gap:12px!important}
+  body.kuro .smart-briefing-item{
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:6px 10px!important;
+    padding:12px!important;
+  }
+  body.kuro .smart-briefing-item .tag{grid-column:1}
+  body.kuro .smart-briefing-item b{grid-column:1;grid-row:2;font-size:14px!important}
+  body.kuro .smart-briefing-item small{grid-column:2;grid-row:1 / span 2;align-self:center}
+  body.kuro .smart-briefing-actions .btn{flex:1 1 145px;justify-content:center}
+}
