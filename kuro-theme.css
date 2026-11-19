@@ -420,3 +420,34 @@ body.kuro .topbar .mobile-brand:first-letter{font-size:20px!important}
  body.kuro .avatar{width:33px!important;height:33px!important;flex-basis:33px!important}
  body.kuro .demo-pill{display:none!important}
 }
+
+
+/* Authenticated header cleanup: one profile avatar, no stale sign-in action or mystery dot. */
+body.kuro #one-signin[hidden],
+body.kuro .one-is-authenticated #one-signin{display:none!important}
+body.kuro .topbar .avatar{display:none!important}
+body.kuro .topbar-right .demo-pill{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:auto!important;height:26px!important;min-width:0!important;max-width:150px!important;
+ padding:0 9px!important;overflow:visible!important;border:1px solid var(--k-line)!important;
+ border-radius:999px!important;background:var(--k-sunk)!important;color:var(--k-mute)!important;
+ font:600 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:.04em!important;
+}
+body.kuro .topbar-right .demo-pill i{display:none!important}
+body.kuro .topbar-right .demo-pill #cloud-status{
+ display:inline!important;position:static!important;width:auto!important;height:auto!important;
+ max-width:130px!important;overflow:visible!important;clip:auto!important;clip-path:none!important;
+ white-space:nowrap!important;color:inherit!important;font:inherit!important;
+}
+body.kuro .one-account-menu{display:flex!important;align-items:center!important;flex:0 0 auto!important}
+body.kuro .one-account-menu .one-profile-trigger{display:grid!important;place-items:center!important;
+ width:38px!important;height:38px!important;padding:0!important;border:1px solid var(--k-line)!important;
+ border-radius:50%!important;background:var(--k-panel)!important}
+body.kuro .one-account-menu .one-profile-avatar{width:36px!important;height:36px!important;
+ border-radius:50%!important;background:var(--k-sunk)!important;color:var(--k-ink)!important;
+ font:700 14px/1 system-ui,-apple-system,"Segoe UI",sans-serif!important}
+@media(max-width:800px){
+ body.kuro .topbar-right .demo-pill{height:24px!important;padding:0 7px!important;font-size:9px!important}
+ body.kuro .one-account-menu .one-profile-trigger{width:34px!important;height:34px!important}
+ body.kuro .one-account-menu .one-profile-avatar{width:32px!important;height:32px!important}
+}
