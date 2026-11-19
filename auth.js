@@ -84,8 +84,8 @@
   }
   function paintUser(user){
     window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user}}));
-    const signIn=$('#one-signin');if(signIn)signIn.hidden=true;document.body.classList.add('one-is-authenticated');
-    const top=$('.topbar-right');
+    const signIn=$('#one-signin');if(signIn){signIn.hidden=true;signIn.setAttribute('hidden','');signIn.style.setProperty('display','none','important')}document.body.classList.add('one-is-authenticated');
+    const top=$('.topbar-right');if(top){top.querySelectorAll('.avatar:not(.one-profile-avatar)').forEach(el=>el.remove());top.querySelectorAll('.demo-pill').forEach(el=>el.hidden=true)}
     if(top&&!$('#one-account-menu')){
       const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';
       menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><p id="one-update-message" class="one-update-message" hidden>A new version of One is available.</p><button id="one-update-now" type="button" hidden>Update Now</button><button id="one-logout" type="button">Log out</button><button id="one-delete-account" type="button" class="danger">Delete account</button></div>';
@@ -115,7 +115,7 @@
       }
       const {error}=await getClient().auth.signOut();if(error)throw error;
       session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
-      $('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn)signIn.hidden=false;close();
+      $('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn){signIn.hidden=false;signIn.removeAttribute('hidden');signIn.style.removeProperty('display')}close();
       const s=$('#cloud-status');if(s)s.textContent=clearLocal?'Local data cleared':'Saved on this device';
     }catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out safely. Please try again.',true)}
   }
@@ -138,7 +138,7 @@
     
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
       auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
-      if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{document.body.classList.remove('one-is-authenticated');window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
+      if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn){signIn.hidden=false;signIn.removeAttribute('hidden');signIn.style.removeProperty('display')}window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('update');status('Choose a new password.');}
     }catch(err){console.warn("Operation failed; diagnostic details redacted.");close();}
