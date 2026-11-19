@@ -1,5 +1,4 @@
 /* One — Kuro skin. Presentation-only layer; app.js owns all behaviour. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 body.kuro{--k-bg:#fafaf8;--k-side:#efefec;--k-panel:#fff;--k-sunk:#f5f5f2;--k-line:#e3e3df;--k-line-2:#cfcfca;--k-ink:#16181c;--k-ink-2:#3b3f46;--k-mute:#8b8e94;--k-green:#2f8f3e;--k-green-bg:#e8f4ea;--k-purple:#6b4fbb;--k-lav:#ebe8f8;--k-lav-line:#cdc7ec;--k-amber:#a8680f;--k-red:#b84040;--k-solid:#16181c;--k-on-solid:#fff;--k-tip:#1a212b;--k-on-tip:#fff;--k-sans:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;--k-mono:"JetBrains Mono",ui-monospace,monospace;--k-radius:2px;color-scheme:light;background:var(--k-bg);color:var(--k-ink);font:14px/1.5 var(--k-sans);-webkit-font-smoothing:antialiased}
 html[data-kuro=dark] body.kuro{--k-bg:#121212;--k-side:#181818;--k-panel:#1c1c1c;--k-sunk:#161616;--k-line:#2c2c2c;--k-line-2:#3d3d3d;--k-ink:#ededea;--k-ink-2:#c9cbcf;--k-mute:#8d9096;--k-green:#55c26c;--k-green-bg:#18281c;--k-purple:#a78bfa;--k-lav:#211f33;--k-lav-line:#3a3560;--k-amber:#e0a64a;--k-red:#ef8a8a;--k-solid:#ededea;--k-on-solid:#111;--k-tip:#ededea;--k-on-tip:#111;color-scheme:dark}
 html body.kuro{background:var(--k-bg)!important;color:var(--k-ink)!important;font-family:var(--k-sans)!important}
@@ -287,3 +286,44 @@ body.kuro #kuro-theme-toggle-mobile-top{display:none!important}
   color:var(--k-ink)!important;font-size:20px!important;line-height:1!important;
  }
 }
+
+/* Ask One chat: force readable message contrast in both themes. */
+body.kuro #page-content .chat-shell{background:var(--k-bg)!important;color:var(--k-ink)!important;border:1px solid var(--k-line-2)!important;border-radius:4px!important;box-shadow:none!important;padding:clamp(14px,2.5vw,24px)!important}
+body.kuro #page-content .chat-shell .chat-intro{background:var(--k-panel)!important;color:var(--k-ink)!important;border:0!important;border-bottom:1px solid var(--k-line)!important}
+body.kuro #page-content .chat-shell .chat-intro h2,body.kuro #page-content .chat-shell .chat-intro p,body.kuro #page-content .chat-shell .chat-intro .eyebrow,body.kuro #page-content .chat-shell .chat-context-pill,body.kuro #page-content .chat-shell .chat-context-pill *{color:var(--k-ink)!important;opacity:1!important}
+body.kuro #page-content .chat-shell .chat-brand-mark{background:var(--k-sunk)!important;color:var(--k-ink)!important;border:1px solid var(--k-line)!important}
+body.kuro #page-content .chat-shell .chat-back{background:var(--k-panel)!important;color:var(--k-ink)!important;border:1px solid var(--k-line-2)!important}
+body.kuro #page-content .chat-shell .chat-welcome,body.kuro #page-content .chat-shell .chat-welcome p{color:var(--k-ink)!important}
+body.kuro #page-content .chat-shell .suggestion{background:var(--k-panel)!important;color:var(--k-ink)!important;border:1px solid var(--k-line-2)!important;border-radius:3px!important;font-weight:550!important}
+body.kuro #page-content .chat-shell .chat-messages{background:transparent!important;border:0!important;scrollbar-color:var(--k-line-2) transparent!important}
+body.kuro #page-content .chat-shell .chat-message-row{background:transparent!important;border:0!important}
+body.kuro #page-content .chat-shell .bubble,body.kuro #page-content .chat-shell .bubble.assistant{background:#fff!important;color:#111!important;border:1px solid #c9c9c9!important;border-radius:4px!important;box-shadow:none!important;font-size:15px!important;line-height:1.75!important;font-weight:450!important;opacity:1!important}
+body.kuro #page-content .chat-shell .bubble.user{background:#080808!important;color:#fff!important;border:1px solid #080808!important;border-radius:4px!important}
+body.kuro #page-content .chat-shell .bubble .bubble-content,body.kuro #page-content .chat-shell .bubble.assistant .bubble-content,body.kuro #page-content .chat-shell .bubble.assistant .bubble-content *,body.kuro #page-content .chat-shell .bubble .chat-list-item,body.kuro #page-content .chat-shell .bubble .chat-list-item span{color:#111!important;opacity:1!important}
+body.kuro #page-content .chat-shell .bubble.user .bubble-content,body.kuro #page-content .chat-shell .bubble.user .bubble-content *,body.kuro #page-content .chat-shell .bubble.user .chat-list-item,body.kuro #page-content .chat-shell .bubble.user .chat-list-item span{color:#fff!important}
+body.kuro #page-content .chat-shell .bubble .source{color:#444!important;border-color:#d7d7d7!important;font-size:12px!important;font-weight:500!important}
+body.kuro #page-content .chat-shell .chat-file-results,body.kuro #page-content .chat-shell .vault-search-result{background:#fff!important;color:#111!important;border-color:#c9c9c9!important}
+body.kuro #page-content .chat-shell .chat-form{position:sticky!important;bottom:8px!important;z-index:5!important;display:flex!important;align-items:center!important;gap:10px!important;background:var(--k-panel)!important;border:1px solid var(--k-line-2)!important;border-radius:4px!important;padding:8px!important;box-shadow:none!important}
+body.kuro #page-content .chat-shell .chat-form #chat-input,body.kuro #page-content .chat-shell .chat-form #chat-input:focus{flex:1!important;min-width:0!important;min-height:46px!important;background:var(--k-panel)!important;color:var(--k-ink)!important;border:0!important;outline:none!important;box-shadow:none!important;font-size:16px!important;font-weight:450!important}
+body.kuro #page-content .chat-shell .chat-form #chat-input::placeholder{color:var(--k-mute)!important;opacity:1!important}
+body.kuro #page-content .chat-shell .chat-form .chat-send{min-height:44px!important;border-radius:3px!important;background:var(--k-solid)!important;color:var(--k-on-solid)!important;border:1px solid var(--k-solid)!important;font-weight:650!important}
+body.kuro #page-content .chat-shell .chat-note{color:var(--k-mute)!important;border-color:var(--k-line)!important;font-size:12px!important;line-height:1.6!important;text-align:left!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble,html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble.assistant,html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble .bubble-content,html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble.assistant .bubble-content *,html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble .chat-list-item,html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble .chat-list-item span{background:#171717!important;color:#fff!important;border-color:#555!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble.user{background:#fff!important;color:#000!important;border-color:#fff!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble.user .bubble-content,html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble.user .bubble-content *{color:#000!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .bubble .source{color:#ddd!important;border-color:#555!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .chat-form{background:#111!important;border-color:#666!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .chat-form #chat-input{background:#111!important;color:#fff!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .chat-form #chat-input::placeholder{color:#bbb!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .suggestion{background:#111!important;color:#fff!important;border-color:#666!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .chat-intro,html[data-kuro=dark] body.kuro #page-content .chat-shell .chat-intro *{color:#fff!important}
+html[data-kuro=dark] body.kuro #page-content .chat-shell .chat-note{color:#bbb!important}
+body.kuro,body.kuro button,body.kuro input,body.kuro textarea,body.kuro select{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif!important;font-feature-settings:"kern" 1,"liga" 1}
+body.kuro #page-content{font-size:15px!important;line-height:1.6!important}
+body.kuro #page-content h1{font-weight:650!important;letter-spacing:-.035em!important}
+body.kuro #page-content h2{font-weight:650!important;letter-spacing:-.025em!important}
+body.kuro #page-content h3,body.kuro #page-content h4{font-weight:650!important;letter-spacing:-.01em!important}
+body.kuro #page-content p,body.kuro #page-content li,body.kuro #page-content label,body.kuro #page-content input,body.kuro #page-content textarea,body.kuro #page-content select,body.kuro #page-content button{font-size:14.5px!important;line-height:1.6!important}
+body.kuro #page-content small,body.kuro #page-content .stat-note,body.kuro #page-content .field-help{font-size:12.5px!important;line-height:1.55!important}
+body.kuro .topbar .mobile-brand{font-weight:700!important;letter-spacing:-.04em!important}
+@media(max-width:800px){body.kuro #page-content .chat-shell{padding:12px!important}body.kuro #page-content .chat-shell .bubble{max-width:94%!important;font-size:15px!important;padding:13px 14px!important}body.kuro #page-content .chat-shell .chat-form{bottom:calc(66px + env(safe-area-inset-bottom))!important}body.kuro #page-content .chat-shell .chat-form #chat-input{font-size:16px!important}body.kuro #page-content .chat-shell .chat-note{font-size:11.5px!important}}
