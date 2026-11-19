@@ -88,7 +88,7 @@
     const top=$('.topbar-right');if(top){top.querySelectorAll('.avatar:not(.one-profile-avatar)').forEach(el=>el.remove());top.querySelectorAll('.demo-pill').forEach(el=>el.hidden=true)}
     if(top&&!$('#one-account-menu')){
       const menu=document.createElement('div');menu.id='one-account-menu';menu.className='one-account-menu';
-      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar">O</span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">O</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><p id="one-update-message" class="one-update-message" hidden>A new version of One is available.</p><button id="one-update-now" type="button" hidden>Update Now</button><button id="one-logout" type="button">Log out</button><button id="one-delete-account" type="button" class="danger">Delete account</button></div>';
+      menu.innerHTML='<button type="button" id="one-account-trigger" class="one-profile-trigger" aria-label="Open profile menu" aria-haspopup="true" aria-expanded="false"><span class="one-profile-avatar one-profile-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg></span></button><div id="one-account-pop" hidden><div class="one-profile-heading"><span class="one-profile-avatar">U</span><div><strong class="one-profile-name">Account</strong><small class="one-profile-email"></small></div></div><p id="one-update-message" class="one-update-message" hidden>A new version of One is available.</p><button id="one-update-now" type="button" hidden>Update Now</button><button id="one-logout" type="button">Log out</button><button id="one-delete-account" type="button" class="danger">Delete account</button></div>';
       top.append(menu);
       $('#one-account-trigger').onclick=()=>{const pop=$('#one-account-pop'),trigger=$('#one-account-trigger');pop.hidden=!pop.hidden;trigger.setAttribute('aria-expanded',String(!pop.hidden));};
       $('#one-logout').onclick=logout;$('#one-delete-account').onclick=deleteAccount;
@@ -101,7 +101,7 @@
     const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Account';
     const initial=name.trim().slice(0,1).toUpperCase()||'O';
     const menu=$('#one-account-menu');
-    if(menu){menu.querySelectorAll('.one-profile-avatar').forEach(el=>el.textContent=initial);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
+    if(menu){const headingAvatar=menu.querySelector('.one-profile-heading .one-profile-avatar');if(headingAvatar)headingAvatar.textContent=initial;const trigger=$('#one-account-trigger');if(trigger)trigger.setAttribute('aria-label','Open account menu for '+name);menu.querySelector('.one-profile-name').textContent=name;menu.querySelector('.one-profile-email').textContent=user.email||'Signed in';}
     const statusEl=$('#cloud-status');if(statusEl)statusEl.textContent='Signed in';
   }
   async function logout(){
@@ -130,14 +130,14 @@
       await window.OneWorkspace?.purgeUserLocalData(user.id);
       await getClient().auth.signOut({scope:'local'});session=null;
       window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');
-      const signIn=$('#one-signin');if(signIn)signIn.hidden=false;
+      const signIn=$('#one-signin');if(signIn){signIn.hidden=false;signIn.removeAttribute('hidden');signIn.style.removeProperty('display')}
       alert('Your One account and cloud data have been deleted.');
     }catch(error){console.warn("Operation failed; diagnostic details redacted.");status('Account deletion could not be completed. Please retry or contact support.',true);if(button){button.disabled=false;button.textContent='Delete account'}}
   }
   async function boot(){
     
     try{const auth=getClient();const {data,error}=await auth.auth.getSession();if(error)throw error;session=data.session;
-      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn)signIn.hidden=false;}});
+      auth.auth.onAuthStateChange((event,next)=>{session=next;if(next?.user){paintUser(next.user);document.body.classList.remove('one-auth-required');if(event==='SIGNED_IN')upsertProfile(next.user)}else if(event==='SIGNED_OUT'){close();window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn){signIn.hidden=false;signIn.removeAttribute('hidden');signIn.style.removeProperty('display')}}});
       if(session?.user){paintUser(session.user);await upsertProfile(session.user);close()}else{$('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn){signIn.hidden=false;signIn.removeAttribute('hidden');signIn.style.removeProperty('display')}window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));close()}
       $('#one-signin')?.addEventListener('click',()=>open('login'));const params=new URLSearchParams(location.search);if(params.get('auth')==='login')open('login');
       if(location.hash.includes('type=recovery')){open('update');status('Choose a new password.');}
