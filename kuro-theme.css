@@ -344,3 +344,79 @@ body.kuro .mobile-theme-toggle{display:none}
  body.kuro .mobile-theme-toggle span{color:var(--k-ink)!important;font-size:12px!important}
 }
 @media(max-width:360px){body.kuro .mobile-theme-toggle{padding:0 7px!important;gap:4px!important}body.kuro .mobile-theme-toggle span{font-size:11px!important}}
+
+
+/* Header refinement: compact monochrome toolbar with clear spacing and alignment. */
+body.kuro .topbar{
+ box-sizing:border-box!important;width:100%!important;min-height:64px!important;height:64px!important;
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;
+ padding:0 28px!important;background:var(--k-bg)!important;
+ border-bottom:1px solid var(--k-line)!important;
+}
+body.kuro .topbar-right{
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;
+ gap:9px!important;min-width:0!important;
+}
+body.kuro .notification-bell,body.kuro .install-app,body.kuro .one-signin-button,
+body.kuro .mobile-theme-toggle{
+ box-sizing:border-box!important;position:relative!important;display:inline-flex!important;
+ align-items:center!important;justify-content:center!important;flex:0 0 38px!important;
+ width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;
+ padding:0!important;border:1px solid var(--k-line-2)!important;border-radius:8px!important;
+ background:var(--k-panel)!important;color:var(--k-ink)!important;
+ box-shadow:none!important;transition:background .15s,border-color .15s!important;
+}
+body.kuro .notification-bell:hover,body.kuro .install-app:hover,
+body.kuro .mobile-theme-toggle:hover{background:var(--k-sunk)!important;border-color:var(--k-ink)!important}
+body.kuro .notification-bell svg,body.kuro .install-app svg,body.kuro .mobile-theme-toggle svg{
+ display:block!important;width:19px!important;height:19px!important;flex:none!important;
+ fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;
+ stroke-linecap:round!important;stroke-linejoin:round!important;
+}
+body.kuro .mobile-theme-toggle span{position:absolute!important;width:1px!important;height:1px!important;
+ padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
+ white-space:nowrap!important;border:0!important}
+body.kuro .notification-bell .notification-badge{
+ position:absolute!important;top:-6px!important;right:-6px!important;z-index:2!important;
+ display:grid!important;place-items:center!important;min-width:18px!important;height:18px!important;
+ padding:0 4px!important;border:2px solid var(--k-bg)!important;border-radius:999px!important;
+ background:#d92d3a!important;color:#fff!important;font:700 10px/1 system-ui,sans-serif!important;
+}
+body.kuro .notification-bell .notification-badge[hidden]{display:none!important}
+body.kuro .demo-pill{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:30px!important;height:30px!important;min-width:30px!important;padding:0!important;
+ border-radius:8px!important;letter-spacing:0!important;font-size:0!important;overflow:hidden!important;
+}
+body.kuro .demo-pill i{display:block!important;width:9px!important;height:9px!important;
+ border:1px solid var(--k-line-2)!important;border-radius:50%!important}
+body.kuro .demo-pill #cloud-status{display:none!important}
+body.kuro .avatar{
+ display:grid!important;place-items:center!important;flex:0 0 38px!important;
+ width:38px!important;height:38px!important;border-radius:50%!important;
+ background:#e9edff!important;color:#172b68!important;border:0!important;
+ font:700 15px/1 system-ui,sans-serif!important;
+}
+body.kuro .one-signin-button{flex:0 0 auto!important;width:auto!important;padding:0 13px!important;
+ border-radius:8px!important;font:600 12px/1 system-ui,sans-serif!important;letter-spacing:0!important}
+body.kuro .topbar .mobile-brand{font-size:23px!important;font-weight:750!important;
+ letter-spacing:-1.2px!important;color:var(--k-ink)!important}
+body.kuro .topbar .mobile-brand:first-letter{font-size:20px!important}
+@media(max-width:800px){
+ body.kuro .topbar{height:60px!important;min-height:60px!important;padding:0 16px!important;
+  justify-content:space-between!important;gap:10px!important}
+ body.kuro .topbar .mobile-brand{display:block!important;flex:0 0 auto!important;margin:0 auto 0 0!important}
+ body.kuro .topbar-right{gap:7px!important;flex:0 0 auto!important}
+ body.kuro .mobile-theme-toggle{display:inline-flex!important}
+ body.kuro .notification-bell,body.kuro .install-app,body.kuro .mobile-theme-toggle{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;flex-basis:36px!important}
+ body.kuro .demo-pill{width:26px!important;height:26px!important;min-width:26px!important;flex-basis:26px!important}
+ body.kuro .avatar{width:36px!important;height:36px!important;flex-basis:36px!important}
+ body.kuro .one-signin-button{height:36px!important;min-height:36px!important}
+}
+@media(max-width:390px){
+ body.kuro .topbar{padding:0 10px!important;gap:6px!important}
+ body.kuro .topbar-right{gap:5px!important}
+ body.kuro .mobile-theme-toggle,body.kuro .notification-bell,body.kuro .install-app{width:33px!important;height:33px!important;min-width:33px!important;min-height:33px!important;flex-basis:33px!important}
+ body.kuro .avatar{width:33px!important;height:33px!important;flex-basis:33px!important}
+ body.kuro .demo-pill{display:none!important}
+}
