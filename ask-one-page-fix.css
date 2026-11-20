@@ -30,3 +30,46 @@ html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-messag
  body.ask-page .content{padding-top:12px!important}
  body.ask-page #page-content .chat-shell{margin-top:0!important}
 }
+
+
+/* Final high-specificity chat text contrast override.
+   Earlier theme layers assign conflicting colors to .bubble-content; keep
+   sender text readable regardless of the selected theme. */
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user,
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user .bubble-content,
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user .bubble-content *,
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user .chat-list-item,
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user .chat-list-item *{
+  color:#111!important;
+  -webkit-text-fill-color:#111!important;
+  opacity:1!important;
+  visibility:visible!important;
+  text-shadow:none!important;
+  mix-blend-mode:normal!important;
+}
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user{
+  background:#f5f5f5!important;
+  background-image:none!important;
+  border:1px solid #d7d7d7!important;
+  filter:none!important;
+}
+html body.kuro #page-content .chat-shell .chat-message-row.from-user .bubble.user .bubble-content{
+  display:block!important;
+  font-size:15px!important;
+  font-weight:500!important;
+  line-height:1.7!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere!important;
+}
+html body.kuro #page-content .chat-shell .chat-message-row.from-one .bubble.assistant,
+html body.kuro #page-content .chat-shell .chat-message-row.from-one .bubble.assistant .bubble-content,
+html body.kuro #page-content .chat-shell .chat-message-row.from-one .bubble.assistant .bubble-content *{
+  color:#f7f7f7!important;
+  -webkit-text-fill-color:#f7f7f7!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+html body.kuro #page-content .chat-shell .chat-message-row.from-one .bubble.assistant{
+  background:#191a1d!important;
+  border:1px solid #45474d!important;
+}
