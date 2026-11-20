@@ -1,0 +1,223 @@
+/* One UI visibility patch — isolated presentation layer; no application logic changes. */
+body.kuro{
+  --ui-bg:#fff;--ui-panel:#fff;--ui-soft:#f5f5f5;--ui-line:#dedede;
+  --ui-text:#171717;--ui-sub:#555;--ui-muted:#666;
+  font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif!important;
+  font-size:15px;line-height:1.55;
+}
+html[data-kuro="dark"] body.kuro{
+  --ui-bg:#050505;--ui-panel:#111214;--ui-soft:#191a1d;--ui-line:#383a40;
+  --ui-text:#f7f7f8;--ui-sub:#dedfe3;--ui-muted:#b9bbc2;
+}
+body.kuro .app,body.kuro .main,body.kuro .content,body.kuro #page-content{
+  background:var(--ui-bg)!important;color:var(--ui-text)!important;
+}
+body.kuro #page-content :is(h1,h2,h3,h4,h5,h6,b,strong,legend,summary){
+  color:var(--ui-text)!important;opacity:1!important;
+}
+body.kuro #page-content :is(p,li,label,small,.muted,.subtitle,.stat-note,.field-help,.empty-state){
+  color:var(--ui-sub)!important;opacity:1!important;
+}
+body.kuro #page-content :is(.eyebrow,.stat-label){color:var(--ui-muted)!important}
+body.kuro #page-content :is(.card,.panel,.document-upload-card,.settings-panel,.memory-explainer,.vault-timeline){
+  background:var(--ui-panel)!important;color:var(--ui-text)!important;border:1px solid var(--ui-line)!important;
+}
+body.kuro #page-content :is(input,textarea,select,[contenteditable="true"]),
+body.kuro .modal :is(input,textarea,select){
+  color:var(--ui-text)!important;background:var(--ui-soft)!important;
+  border:1px solid var(--ui-line)!important;border-radius:10px!important;
+  font:500 16px/1.5 Inter,"Segoe UI",system-ui,sans-serif!important;
+  caret-color:var(--ui-text)!important;opacity:1!important;
+}
+body.kuro #page-content :is(input,textarea)::placeholder,
+body.kuro .modal :is(input,textarea)::placeholder{color:var(--ui-muted)!important;opacity:1!important}
+body.kuro #page-content button,body.kuro .modal button{
+  font-family:inherit!important;line-height:1.4!important;opacity:1!important;
+}
+body.kuro #page-content button:focus-visible,body.kuro #page-content a:focus-visible,
+body.kuro .modal :is(button,input,textarea,select):focus-visible{
+  outline:2px solid var(--ui-text)!important;outline-offset:3px!important;
+}
+/* Ask One: explicit contrast on every message type and control. */
+body.kuro #page-content .chat-shell{
+  width:100%;max-width:900px;margin:0 auto;background:var(--ui-bg)!important;color:var(--ui-text)!important;
+}
+body.kuro #page-content .chat-intro{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:16px!important;margin:0 0 18px!important;
+  background:var(--ui-panel)!important;border:1px solid var(--ui-line)!important;
+  border-radius:14px!important;
+}
+body.kuro #page-content .chat-intro-copy{flex:1 1 180px;min-width:0}
+body.kuro #page-content .chat-intro-copy h2{margin:2px 0 4px!important;color:var(--ui-text)!important}
+body.kuro #page-content .chat-intro-copy p{color:var(--ui-sub)!important;margin:0!important}
+body.kuro #page-content .chat-context-pill{
+  color:var(--ui-text)!important;background:var(--ui-soft)!important;
+  border:1px solid var(--ui-line)!important;border-radius:999px!important;
+  padding:7px 11px!important;font-size:12px!important;white-space:nowrap;
+}
+body.kuro #page-content .chat-welcome,
+body.kuro #page-content .chat-welcome p{color:var(--ui-sub)!important}
+body.kuro #page-content .chat-messages{
+  display:flex!important;flex-direction:column!important;gap:14px!important;
+  min-width:0;max-height:min(58vh,680px);overflow-y:auto;
+  padding:10px 2px 18px!important;scrollbar-gutter:stable;
+}
+body.kuro #page-content .chat-message-row{display:flex!important;width:100%;min-width:0}
+body.kuro #page-content .chat-message-row.from-user{justify-content:flex-end}
+body.kuro #page-content .chat-message-row.from-one{justify-content:flex-start}
+body.kuro #page-content .bubble{
+  max-width:min(88%,720px)!important;min-width:0!important;
+  padding:14px 16px!important;border:1px solid var(--ui-line)!important;
+  border-radius:14px!important;font-size:15px!important;line-height:1.7!important;
+  overflow-wrap:anywhere!important;white-space:normal!important;
+}
+body.kuro #page-content .bubble .bubble-content,
+body.kuro #page-content .bubble .bubble-content *{
+  overflow-wrap:anywhere!important;white-space:pre-wrap;
+}
+body.kuro #page-content .bubble.assistant{
+  background:var(--ui-panel)!important;color:var(--ui-text)!important;
+  border-color:var(--ui-line)!important;
+}
+body.kuro #page-content .bubble.assistant :is(p,span,div,b,strong,li,small){
+  color:var(--ui-text)!important;opacity:1!important;
+}
+body.kuro #page-content .bubble.user{
+  background:var(--ui-soft)!important;color:var(--ui-text)!important;
+  border-color:var(--ui-line)!important;
+}
+body.kuro #page-content .bubble.user :is(p,span,div,b,strong,li,small){
+  color:var(--ui-text)!important;opacity:1!important;
+}
+body.kuro #page-content .chat-confirm-actions{
+  display:flex!important;flex-wrap:wrap;gap:10px!important;
+  margin-top:14px!important;padding-top:12px!important;border-top:1px solid var(--ui-line)!important;
+}
+body.kuro #page-content .chat-confirm-actions .btn{
+  min-width:104px;min-height:44px!important;padding:10px 18px!important;
+  color:var(--ui-text)!important;background:var(--ui-soft)!important;
+  border:1px solid var(--ui-line)!important;border-radius:9px!important;
+}
+body.kuro #page-content .chat-confirm-actions .btn.primary,
+body.kuro #page-content .chat-send{
+  color:#fff!important;background:#171717!important;border:1px solid #171717!important;
+}
+html[data-kuro="dark"] body.kuro #page-content .chat-confirm-actions .btn.primary,
+html[data-kuro="dark"] body.kuro #page-content .chat-send{
+  color:#090909!important;background:#f5f5f5!important;border-color:#f5f5f5!important;
+}
+body.kuro #page-content .chat-form{
+  display:flex!important;align-items:center!important;gap:10px!important;
+  padding:9px!important;margin:14px 0 10px!important;min-width:0;
+  background:var(--ui-panel)!important;border:1px solid var(--ui-line)!important;
+  border-radius:14px!important;
+}
+body.kuro #page-content .chat-form #chat-input{
+  flex:1 1 auto!important;width:100%!important;min-width:0!important;
+  min-height:48px!important;margin:0!important;padding:12px 14px!important;
+  background:var(--ui-soft)!important;color:var(--ui-text)!important;
+  border:1px solid var(--ui-line)!important;border-radius:10px!important;
+}
+body.kuro #page-content .chat-form #chat-input::placeholder{color:var(--ui-muted)!important}
+body.kuro #page-content .chat-form .chat-send{
+  flex:0 0 auto!important;min-width:88px;min-height:48px!important;
+  border-radius:10px!important;font-weight:700!important;
+}
+body.kuro #page-content .chat-note{
+  color:var(--ui-muted)!important;font-size:12px!important;line-height:1.6!important;
+  padding:10px 2px!important;border-left:2px solid var(--ui-line)!important;
+}
+body.kuro #page-content .one-command-picker{
+  display:block!important;margin:14px 0!important;padding:14px!important;
+  background:var(--ui-panel)!important;color:var(--ui-text)!important;
+  border:1px solid var(--ui-line)!important;border-radius:12px!important;
+}
+body.kuro #page-content .one-command-picker-head,
+body.kuro #page-content .one-command-picker-head span{
+  color:var(--ui-text)!important;font-size:13px!important;font-weight:700!important;
+}
+body.kuro #page-content .one-command-picker-categories{
+  display:flex!important;flex-wrap:wrap!important;gap:8px!important;margin-top:10px!important;
+}
+body.kuro #page-content .one-command-category{
+  min-height:42px!important;padding:9px 13px!important;
+  color:var(--ui-text)!important;background:var(--ui-soft)!important;
+  border:1px solid var(--ui-line)!important;border-radius:8px!important;
+  font-size:14px!important;font-weight:650!important;
+}
+body.kuro #page-content .one-command-category:hover{border-color:var(--ui-muted)!important}
+body.kuro #page-content .typing-indicator{color:var(--ui-sub)!important}
+/* File upload cards and labels stay visible and tappable. */
+body.kuro #page-content .document-upload-card{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:16px!important;flex-wrap:wrap!important;padding:18px!important;
+}
+body.kuro #page-content .upload-label,
+body.kuro #page-content label[for="document-upload"]{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-height:46px!important;padding:11px 16px!important;cursor:pointer!important;
+  color:#fff!important;background:#171717!important;border:1px solid #171717!important;
+  border-radius:10px!important;font-weight:700!important;
+}
+html[data-kuro="dark"] body.kuro #page-content .upload-label,
+html[data-kuro="dark"] body.kuro #page-content label[for="document-upload"]{
+  color:#090909!important;background:#f5f5f5!important;border-color:#f5f5f5!important;
+}
+body.kuro #page-content input[type="file"][hidden],
+body.kuro #page-content input[type="file"]{accent-color:var(--ui-text)}
+body.kuro #page-content .document-upload-card small,
+body.kuro #page-content #document-upload-status,
+body.kuro #page-content #quick-add-upload-status{
+  display:block!important;flex-basis:100%;color:var(--ui-muted)!important;
+  font-size:13px!important;line-height:1.6!important;
+}
+body.kuro .create-quick-upload-storage{color:var(--ui-text)!important;background:var(--ui-panel)!important}
+body.kuro .create-quick-upload-storage [role="status"]{color:var(--ui-sub)!important}
+/* Mobile controls: keep the theme switch visible beside notifications. */
+body.kuro .topbar-right .mobile-theme-toggle{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:6px!important;min-width:42px!important;min-height:38px!important;padding:7px 9px!important;
+  color:var(--ui-text)!important;background:var(--ui-panel)!important;
+  border:1px solid var(--ui-line)!important;border-radius:10px!important;
+}
+body.kuro .topbar-right .mobile-theme-toggle svg{width:18px!important;height:18px!important;stroke:currentColor!important;fill:none!important}
+body.kuro .topbar-right .mobile-theme-toggle span{display:inline!important;color:var(--ui-text)!important;font-size:12px!important}
+body.kuro .topbar-right .notification-bell,
+body.kuro .topbar-right .install-app{
+  min-width:38px!important;min-height:38px!important;color:var(--ui-text)!important;
+  background:var(--ui-panel)!important;border:1px solid var(--ui-line)!important;border-radius:10px!important;
+}
+body.kuro .one-more-nav{background:var(--ui-panel)!important;color:var(--ui-text)!important;border-color:var(--ui-line)!important}
+body.kuro .one-more-nav button{color:var(--ui-text)!important;background:var(--ui-soft)!important;border-color:var(--ui-line)!important}
+body.kuro .mobile-nav{background:var(--ui-panel)!important;border-color:var(--ui-line)!important}
+body.kuro .mobile-nav button{color:var(--ui-sub)!important}
+body.kuro .mobile-nav button.active{color:var(--ui-on-solid,#fff)!important;background:var(--ui-text)!important}
+body.kuro .modal-backdrop{padding:14px!important}
+body.kuro .modal{max-height:calc(100dvh - 28px)!important;overflow:auto!important;background:var(--ui-panel)!important;color:var(--ui-text)!important;border:1px solid var(--ui-line)!important}
+body.kuro .modal :is(h1,h2,h3,b,strong){color:var(--ui-text)!important}
+body.kuro .modal :is(p,small,label){color:var(--ui-sub)!important}
+@media(max-width:800px){
+ body.kuro .topbar{height:60px!important;padding:0 12px!important}
+ body.kuro .topbar-right{gap:7px!important}
+ body.kuro .topbar-right .mobile-theme-toggle{min-width:38px!important;padding:6px!important}
+ body.kuro .topbar-right .mobile-theme-toggle span{font-size:11px!important}
+ body.kuro .topbar-right .demo-pill{display:none!important}
+ body.kuro .content{padding:16px 14px 96px!important}
+ body.kuro #page-content .chat-shell{max-width:none!important}
+ body.kuro #page-content .chat-intro{gap:10px!important;padding:12px!important}
+ body.kuro #page-content .chat-intro-copy p{font-size:13px!important}
+ body.kuro #page-content .chat-context-pill{font-size:11px!important;padding:6px 8px!important}
+ body.kuro #page-content .chat-messages{max-height:calc(100dvh - 310px)!important;min-height:120px}
+ body.kuro #page-content .bubble{max-width:96%!important;padding:12px 13px!important;font-size:15px!important}
+ body.kuro #page-content .chat-form{position:sticky;bottom:0;z-index:8}
+ body.kuro #page-content .chat-form #chat-input{font-size:16px!important}
+ body.kuro #page-content .one-command-picker{padding:12px!important}
+ body.kuro #page-content .one-command-category{min-height:42px!important}
+ body.kuro #page-content .document-upload-card{align-items:flex-start!important}
+}
+@media(max-width:390px){
+ body.kuro .topbar-right .mobile-theme-toggle span{display:none!important}
+ body.kuro #page-content .chat-context-pill{width:100%;justify-content:center}
+ body.kuro #page-content .chat-form .chat-send{min-width:68px!important}
+}
