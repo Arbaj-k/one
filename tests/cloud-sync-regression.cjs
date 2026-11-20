@@ -66,3 +66,8 @@ console.log('Cloud sync regression passed: concurrent merge, deletion tombstones
 // Phase 3 upload format guardrails.
 for (const mime of ['image/heic','image/heif']) assert.ok(app.includes("'"+mime+"'"), 'Client upload pipeline must recognize '+mime);
 assert.ok(app.includes('documentFileForOcr(file)'), 'HEIC/HEIF OCR must use a browser conversion path while retaining the original upload');
+
+// Phase 4: local pending snapshot is retained for offline recovery.
+assert.ok(app.includes("'-pending-cloud'"), 'Offline workspace changes must retain a local pending-cloud snapshot');
+assert.ok(app.includes("window.addEventListener('online'"), 'Workspace sync must retry when connectivity returns');
+assert.ok(app.includes('return queueCloudSave()'), 'Reconnect handler must queue a fresh merged workspace snapshot');
