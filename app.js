@@ -916,7 +916,37 @@ function field(label,name,value='',type='text',opts={}){let val=esc(value??''),f
 function choiceField(label,name,value,options,segmented=false,optional=false){const choices=optional?['',...options]:options;return `<div class="field full choice-field ${segmented?'choice-segmented':''}"><label>${label}</label><input type="hidden" name="${name}" value="${esc(value??'')}"><div class="choice-options" role="group" aria-label="${label}">${choices.map(option=>{const v=String(option),caption=optional&&v===''?'None':v;return `<button type="button" class="choice-option ${String(value??'')===v?'is-selected':''}" data-choice-name="${name}" data-choice-value="${esc(v)}" aria-pressed="${String(value??'')===v?'true':'false'}">${esc(caption)}</button>`}).join('')}</div></div>`}
 let editing=null,formType='';
 function openKnowledgeEntry(){openForm('note');}
-function openUploadForm(){const picker=document.createElement('input');picker.type='file';picker.accept='application/pdf,image/jpeg,image/png,image/webp';picker.multiple=true;picker.onchange=()=>{const files=Array.from(picker.files||[]);if(!files.length)return;if(files.length===1)openFileMetadataDialog(files[0]);else processUploadedDocuments(files)};picker.click();}
+function openUploadForm(){
+ const picker=document.createElement('input');
+ picker.type='file';
+ picker.accept='.pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp';
+ picker.multiple=true;
+ picker.setAttribute('aria-label','Choose PDF or image files');
+ picker.style.cssText='position:fixed;width:1px;height:1px;opacity:0;left:-10000px;top:0';
+ // Keep the picker attached to the document. Detached inputs can fail to open
+ // the native file chooser in some mobile and desktop browsers.
+ document.body.appendChild(picker);
+ let handled=false;
+ const cleanup=()=>{if(picker.isConnected)picker.remove()};
+ picker.addEventListener('change',()=>{
+  if(handled)return;
+  handled=true;
+  const files=Array.from(picker.files||[]);
+  cleanup();
+  if(!files.length)return;
+  if(files.length===1)openFileMetadataDialog(files[0]);
+  else processUploadedDocuments(files);
+ },{once:true});
+ picker.addEventListener('cancel',cleanup,{once:true});
+ try{
+  if(typeof picker.showPicker==='function')picker.showPicker();
+  else picker.click();
+ }catch(error){
+  cleanup();
+  toast('Could not open the file picker. Please use Uploaded Items to choose a file.');
+  console.warn('File picker could not be opened:',error);
+ }
+}
 function openMemoryForm(id){const item=id?(data.memories||[]).find(x=>x.id===id)||{}:{};editing=id||null;formType='memory';const body=field('Memory title','title',item.title,'text',{required:true,full:true,placeholder:'e.g. Preferred answer language'})+field('Type','category',item.category||'Preference','select',{options:['Preference','Personal context','Learning goal','Communication style','Other']})+field('Memory','content',item.content,'textarea',{required:true,full:true,placeholder:'e.g. Explain technical concepts in simple Hinglish with examples.'});modal(id?'Edit memory':'Add personal memory',body,id?'Save changes':'Save memory');}
 function openForm(type,id){editing=id||null;formType=type;let obj=id?data[type==='note'?'notes':type==='task'?'tasks':type==='project'?'projects':'expenses'].find(x=>x.id===id)||{}:{};let body='';
 if(type==='note')body=field('Title (optional)','title',obj.title||'','text',{full:true,placeholder:'Give your note a title (optional)'})+field('Content','content',obj.content||'','textarea',{full:true,required:true,placeholder:'Write your note here…'});
