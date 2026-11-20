@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-assert.match(app, /function today\(\)\{const parts=new Intl\.DateTimeFormat\('en-US',\{timeZone:'Asia\/Kolkata'[^}]*\}\)\.formatToParts\(new Date\(\)\)/, 'Today must use Asia/Kolkata formatToParts so the date is stable across browser locales.');
+assert.match(app, /function workspaceTimezone\(\)\{try\{return Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone\|\|'UTC'\}/, 'Workspace dates must follow the device IANA timezone.');
+assert.ok(app.includes('timeZone:workspaceTimezone()'), 'Today and local reminder day checks must use the workspace timezone.');
 assert.ok(app.includes("today|today'?s|aaj|aaj\\s+ka|aaj\\s+ki|aaj\\s+ke"), 'Explicit today/aaj wording must override ambiguous kal/yesterday matching.');
 const buildStart=app.indexOf('async function buildStudentBrainAIRequest(');
 const buildEnd=app.indexOf('async function requestStudentBrainAI(',buildStart);
@@ -328,7 +329,7 @@ assert.ok(app.includes('const completionCue=')&&app.includes('const completionIn
 assert.ok(app.includes('function completeTaskRecord(task)')&&app.includes("verify('tasks',task)"), 'Task completion must persist and verify the completed state.');
 assert.ok(app.includes('function reminderDuplicate(task,excludeId=null)')&&app.includes('Same reminder already exists.'), 'Reminder saves must reject duplicates.');
 assert.ok(app.includes('function nextReminderDate(task,fromDate=task?.due||today())')&&app.includes('lastCompletedOccurrence'), 'Recurring reminder completion must schedule its next occurrence.');
-assert.ok(app.includes("timeZone:'Asia/Kolkata'")&&app.includes('Date.UTC(y,m-1,d,hh||0,mm||0)-330*60000'), 'Reminder times must use Asia/Kolkata even when device timezone differs.');
+assert.ok(app.includes('function taskReminderDayTime(task)')&&app.includes('new Date(y,m-1,d,hh||0,mm||0,0,0)'), 'Local task reminder times must use the device timezone rather than a fixed UTC offset.');
 assert.ok(app.includes("'paused|Paused'")&&app.includes('task.paused'), 'Paused reminders must be excluded from local and server notification dispatch.');
 assert.ok(app.includes('function oneWelcomeGreeting()')&&app.includes("first?'Welcome to One':'Good to see you again'"), 'Account-aware first-visit and returning greetings must remain available.');
 console.log('Student Brain static regression guardrails passed: core pages, daily planner, personal memory, voice routing, spoken task-save behavior, chat file uploads, data safety and CRUD routes.');
@@ -617,7 +618,7 @@ const briefingCode=app.slice(app.indexOf('const briefingIntent='),app.indexOf('c
 assert.ok(briefingCode.includes('/\\b(?:brief me|briefing|roz|daily'), 'Briefing intent must use real word-boundary regexes.');
 assert.ok(!briefingCode.includes('\\\\\\\\b'), 'Briefing regexes must not be double escaped.');
 assert.ok(briefingCode.includes("category:'Briefing'"), 'Briefing commands must create a local briefing task.');
-assert.ok(app.includes("timezone:'Asia/Kolkata'"), 'AI must receive the authoritative India-local date context.');
+assert.ok(app.includes('timezone:workspaceTimezone()'), 'AI must receive the device timezone and local calendar date.');
 assert.ok(app.includes("today|aaj|abhi|आज"), 'Hindi today wording must be recognized.');
 assert.ok(app.includes("tomorrow|kal|next day|कल"), 'Hindi tomorrow wording must be recognized.');
 const sendChatCode=app.slice(app.indexOf('async function sendChat('),app.indexOf('function action(',app.indexOf('async function sendChat(')));
