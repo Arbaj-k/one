@@ -229,3 +229,10 @@ assert.ok(authSource.includes("const normalizeEmail = (value='') => String(value
 assert.ok(authSource.includes("email=normalizeEmail(form.get('email')||'')"), 'Normalized email must be used by sign-up, login and password reset');
 assert.ok(!deleteSource.includes('activeRequest'), 'Account deletion must not share mutable request state across concurrent invocations');
 assert.ok(deleteSource.includes('const json = (req: Request, body: unknown, status = 200)'), 'Account deletion responses must derive CORS from the current request');
+
+// AI Edge Function responses must use request-local CORS state.
+const aiFunction=fs.readFileSync('supabase/functions/student-brain-ai/index.ts','utf8');
+assert.ok(!aiFunction.includes('activeRequest'), 'AI Edge Function must not share mutable request state across invocations');
+assert.ok(aiFunction.includes('function json(req: Request, data: unknown, status = 200)'), 'AI Edge Function JSON responses must receive the current request');
+assert.ok(aiFunction.includes('headers: { ...corsFor(req),'), 'AI Edge Function CORS must be derived from the response request');
+assert.ok(!/return json\(\{/.test(aiFunction), 'All AI Edge Function JSON responses must pass the current request');
