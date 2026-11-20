@@ -48,7 +48,17 @@ Deno.serve(async (req: Request) => {
     const message = asText(body?.message, 3000).trim();
     if (!message) return json(req, { error: "Please enter a question." }, 400);
 
-    const workspace = body?.workspace && typeof body.workspace === "object" && !Array.isArray(body.workspace) ? body.workspace : {};
+    const workspace = body?.workspace && typeof body.workspace === "object" && !Array.isArray(body.workspace) ? { ...body.workspace } : {};
+    const requestedTimezone = typeof workspace.timezone === "string" ? workspace.timezone.trim() : "";
+    let workspaceTimezone = "UTC";
+    if (requestedTimezone && requestedTimezone.length <= 80) {
+      try { new Intl.DateTimeFormat("en-US", { timeZone: requestedTimezone }); workspaceTimezone = requestedTimezone; }
+      catch { workspaceTimezone = "UTC"; }
+    }
+    const dateParts = new Intl.DateTimeFormat("en-US", { timeZone: workspaceTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    const dateValues = Object.fromEntries(dateParts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+    workspace.timezone = workspaceTimezone;
+    workspace.today = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
     const workspaceText = JSON.stringify(workspace);
     if (workspaceText.length > 55000) return json(req, { error: "Your combined workspace context is too large. Try a more specific question or reduce the number of very large uploads." }, 413);
 
@@ -73,7 +83,7 @@ Deno.serve(async (req: Request) => {
 
 LANGUAGE AND TONE:
 - Reply in the same language as the user (Hindi, English, or Hinglish). Keep answers short, clear, and natural.
-- The workspace timezone is Asia/Kolkata. Interpret relative dates using the supplied workspace.today and timezone.
+- The workspace timezone is ${workspaceTimezone}. Interpret relative dates using the server-validated workspace.today and timezone. Treat date-only values as calendar dates, not UTC instants.
 
 DOCUMENT READING CONTRACT (HIGHEST PRIORITY FOR OCR / EXTRACTION REQUESTS):
 - If the user asks to read, transcribe, extract, or fully inspect a supplied PDF/image, process the complete supplied document before answering: every supplied page, section, heading, list, table, footer, and visible annotation. Do not silently stop after a sample or first page.
@@ -147,7 +157,7 @@ Answering rules:
 - Use compact headings, numbered steps, or bullets when they make the answer easier to follow. Keep simple answers as simple prose.
 - Return ONLY valid JSON with keys "answer" (string) and "sources" (array of exact source labels from this allow-list): ${JSON.stringify(allowedSources)}
 - Include only labels that directly support the answer. If no supplied source supports it, return an empty array.
-TODAY: ${new Date().toISOString().slice(0, 10)}
+TODAY: ${workspace.today}
 WORKSPACE AND RELEVANT DOCUMENT EXTRACTS:
 ${workspaceText}
 STUDENT QUESTION:
