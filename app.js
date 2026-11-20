@@ -3005,7 +3005,7 @@ function shareTaskReminder(id,channel){
 }
 const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
 function taskReminderStorageKey(){return TASK_REMINDER_KEY+'-'+(activeWorkspaceUserId||'guest');}
-function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return Date.UTC(y,m-1,d,hh||0,mm||0)-330*60000}
+function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);const instant=new Date(y,m-1,d,hh||0,mm||0,0,0);return Number.isNaN(instant.getTime())?null:instant.getTime()}
 async function enableTaskReminders(){
  if(!window.isSecureContext){toast('Notifications need a secure HTTPS connection.');return}
  if(!('Notification' in window)){toast('This browser does not support notifications');return}
@@ -3059,13 +3059,13 @@ async function checkTaskReminders(){
   const snoozed=task.snoozedUntil?Date.parse(task.snoozedUntil):NaN,lead=Math.max(0,Number(task.notifyBeforeMinutes)||0)*60000;
   let occurrence=null,when=null;
   if(Number.isFinite(snoozed)){
-   if(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(snoozed))!==currentDate||snoozed>now)continue;
+   if(new Intl.DateTimeFormat('en-CA',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(snoozed))!==currentDate||snoozed>now)continue;
    occurrence=reminderOccurrenceOn(task,currentDate)?currentDate:(reminderOccurrenceOn(task,tomorrowDate)?tomorrowDate:currentDate);when=snoozed;
   }else{
    occurrence=[currentDate,tomorrowDate].find(day=>reminderOccurrenceOn(task,day))||null;
    if(!occurrence)continue;
    const base=taskReminderDayTime({...task,due:occurrence});when=base-lead;
-   if(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(when))!==currentDate)continue;
+   if(new Intl.DateTimeFormat('en-CA',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(when))!==currentDate)continue;
   }
   const key='task-'+task.id+'-'+occurrence+'-'+String(task.reminderTime||'09:00')+'-'+lead+(Number.isFinite(snoozed)?'-snooze-'+snoozed:'');
   if(!shown[key]&&when!==null&&now>=when&&now<when+24*60*60*1000){
