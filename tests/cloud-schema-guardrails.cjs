@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const sql = fs.readFileSync('supabase/migrations/202611050002_cloud_data_foundation.sql', 'utf8');
+const uploadSql = fs.readFileSync('supabase/migrations/202611210001_allow_heic_heif_documents.sql', 'utf8');
 for (const table of ['user_workspaces','ai_chat_messages','user_documents']) {
   assert.match(sql, new RegExp('create table if not exists public\\.' + table));
   assert.match(sql, new RegExp('alter table public\\.' + table + ' enable row level security'));
@@ -13,4 +14,4 @@ assert.ok(sql.includes('storage.foldername(name)') && sql.includes('(select auth
 assert.ok(sql.includes('on delete cascade'), 'Auth-user cascade cleanup missing');
 console.log('Cloud schema guardrails passed: owner-bound tables, RLS, private document bucket and auth-user cleanup.');
 
-for (const mime of ['image/heic','image/heif']) assert.ok(sql.includes("'"+mime+"'"), 'Private document bucket must allow '+mime);
+for (const mime of ['image/heic','image/heif']) assert.ok(uploadSql.includes("'"+mime+"'"), 'Private document bucket migration must allow '+mime);
