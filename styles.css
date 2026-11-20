@@ -2172,3 +2172,98 @@ body.one-auth-required .app{visibility:visible!important;pointer-events:auto!imp
  .chat-shell .chat-intro-copy p{font-size:12px!important}
  .chat-shell .one-command-category{font-size:13px!important;padding:8px 10px!important}
 }
+
+
+/* Final dark-theme override for Ask One — higher specificity than legacy light chat rules. */
+@media (prefers-color-scheme: dark){
+ body:has(.chat-shell) .main:has(.chat-shell),
+ body:has(.chat-shell) .main:has(.chat-shell) .content:has(.chat-shell){
+  background:#050505!important;color:#f7f7f8!important;
+ }
+}
+html[data-theme="dark"] body:has(.chat-shell) .main:has(.chat-shell),
+html[data-kuro="dark"] body:has(.chat-shell) .main:has(.chat-shell),
+body.dark:has(.chat-shell) .main:has(.chat-shell),
+body.kuro:has(.chat-shell) .main:has(.chat-shell){
+ background:#050505!important;color:#f7f7f8!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-shell,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-shell *{
+ text-shadow:none;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-shell .chat-intro,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-shell .chat-welcome,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-shell .one-command-picker{
+ background:#101012!important;color:#f7f7f8!important;border-color:#36373d!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-intro .eyebrow,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-intro p,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-welcome p,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-note,
+body:has(.chat-shell) .main:has(.chat-shell) #one-voice-status{
+ color:#c4c6cc!important;opacity:1!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-intro h2,
+body:has(.chat-shell) .main:has(.chat-shell) .one-command-picker-head,
+body:has(.chat-shell) .main:has(.chat-shell) .one-command-picker *,
+body:has(.chat-shell) .main:has(.chat-shell) .chat-message-row{
+ color:#f7f7f8!important;opacity:1!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .bubble.assistant,
+body:has(.chat-shell) .main:has(.chat-shell) .bubble.assistant *{
+ background-color:#171719!important;color:#f7f7f8!important;border-color:#45464b!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .bubble.user,
+body:has(.chat-shell) .main:has(.chat-shell) .bubble.user *{
+ background-color:#f1f1f1!important;color:#111!important;border-color:#fff!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-confirm-actions{
+ border-top:1px solid #45464b!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-confirm-actions button{
+ min-height:46px!important;background:#f3f3f3!important;color:#111!important;border:1px solid #777!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-confirm-actions button:not(.primary){
+ background:#171719!important;color:#fff!important;border:1px solid #65666b!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .one-command-category{
+ background:#090909!important;color:#fff!important;border:1px solid #55565c!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-form{
+ display:grid!important;grid-template-columns:minmax(0,1fr) 48px auto!important;
+ min-height:64px!important;height:auto!important;padding:7px!important;
+ background:#101012!important;border:1px solid #55565b!important;border-radius:12px!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-form #chat-input{
+ background:#080809!important;color:#fff!important;border:1px solid #45464b!important;
+ min-width:0!important;min-height:48px!important;height:48px!important;font-size:16px!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-form #chat-input::placeholder{color:#a8a9ae!important;opacity:1!important}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-form #one-voice-mic{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:48px!important;min-width:48px!important;height:48px!important;min-height:48px!important;
+ background:#242529!important;color:#fff!important;border:1px solid #606168!important;
+ border-radius:9px!important;font-size:20px!important;padding:0!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-form button[type="submit"]{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-width:72px!important;height:48px!important;min-height:48px!important;
+ background:#f4f4f4!important;color:#111!important;border:1px solid #fff!important;
+ border-radius:9px!important;font-weight:700!important;
+}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-form button:disabled{opacity:.55!important}
+body:has(.chat-shell) .main:has(.chat-shell) .chat-note{
+ display:block!important;max-height:none!important;overflow:visible!important;
+ border-left:3px solid #55565b!important;padding:10px!important;font-size:12px!important;line-height:1.6!important;
+}
+@media(max-width:700px){
+ body:has(.chat-shell) .main:has(.chat-shell) .chat-form{
+  grid-template-columns:minmax(0,1fr) 44px 58px!important;gap:6px!important;
+ }
+ body:has(.chat-shell) .main:has(.chat-shell) .chat-form #one-voice-mic{width:44px!important;min-width:44px!important}
+ body:has(.chat-shell) .main:has(.chat-shell) .chat-form button[type="submit"]{width:58px!important;min-width:58px!important}
+ body:has(.chat-shell) .main:has(.chat-shell) .chat-messages{
+  flex:1 1 auto!important;min-height:120px!important;max-height:none!important;
+  overflow-y:auto!important;padding:12px 3px 18px!important;
+ }
+}
