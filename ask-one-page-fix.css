@@ -129,3 +129,19 @@ body.ask-page #page-content .chat-shell .chat-note{
 #modal-root .create-form-screen[data-form-type="fileMeta"] .modal-actions{margin-top:12px!important;padding-top:12px!important}
 #modal-root .create-form-screen[data-form-type="fileMeta"] .modal-save-button{min-height:58px!important;border-radius:16px!important;font-size:17px!important}
 @media(max-width:600px){#modal-root .create-form-screen[data-form-type="fileMeta"]{padding:18px 16px calc(16px + env(safe-area-inset-bottom))!important}#modal-root .create-form-screen[data-form-type="fileMeta"] .modal-head{margin-bottom:20px!important}}
+
+/* File metadata modal: target the dialog itself, not only its form. */
+#modal-root .create-form-screen[data-form-type="fileMeta"]{display:block!important;box-sizing:border-box!important;width:min(100%,680px)!important;max-height:min(92dvh,900px)!important;overflow-y:auto!important;overflow-x:hidden!important;padding:24px!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .modal-head{display:flex!important;align-items:center!important;gap:14px!important;min-height:48px!important;margin:0 0 22px!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .modal-head h2{display:block!important;flex:1 1 auto!important;min-width:0!important;margin:0!important;white-space:normal!important;overflow-wrap:anywhere!important;font-size:clamp(22px,5vw,30px)!important;line-height:1.2!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .modal-back-button{flex:0 0 42px!important;width:42px!important;height:42px!important;min-width:42px!important;display:grid!important;place-items:center!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] #edit-form{display:flex!important;flex-direction:column!important;gap:18px!important;min-width:0!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .file-upload-preview{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:10px!important;width:100%!important;min-width:0!important;overflow-wrap:anywhere!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .file-upload-preview img{display:block!important;width:auto!important;max-width:min(100%,220px)!important;max-height:180px!important;object-fit:contain!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .field{display:flex!important;flex-direction:column!important;gap:8px!important;width:100%!important;min-width:0!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .field label{font-size:15px!important;line-height:1.4!important;letter-spacing:0!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] input,#modal-root .create-form-screen[data-form-type="fileMeta"] textarea{width:100%!important;min-width:0!important;box-sizing:border-box!important;font-size:16px!important;line-height:1.5!important;padding:13px 15px!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] textarea{min-height:110px!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .modal-actions{position:sticky!important;bottom:0!important;padding:12px 0 0!important;margin:0!important;background:inherit!important}
+#modal-root .create-form-screen[data-form-type="fileMeta"] .modal-save-button{width:100%!important;min-height:58px!important}
+@media(max-width:600px){#modal-root .create-form-screen[data-form-type="fileMeta"]{width:100%!important;max-height:94dvh!important;padding:18px 16px calc(16px + env(safe-area-inset-bottom))!important}}
