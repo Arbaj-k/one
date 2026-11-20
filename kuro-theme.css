@@ -668,3 +668,114 @@ body.kuro .topbar{border-bottom:1px solid var(--k-line)!important}
  body.kuro .content{padding-left:14px!important;padding-right:14px!important}
  body.kuro #page-content h1{font-size:29px!important}
 }
+
+/* Global readability pass — shared by every One page and modal. */
+body.kuro{
+ --k-mute:#666a72;
+ --k-ink-2:#343840;
+ font-size:15px;
+ line-height:1.6;
+}
+html[data-kuro=dark] body.kuro{
+ --k-bg:#050505;
+ --k-side:#090909;
+ --k-panel:#101012;
+ --k-sunk:#080809;
+ --k-line:#292a2e;
+ --k-line-2:#3b3d43;
+ --k-ink:#f7f7f8;
+ --k-ink-2:#d0d1d5;
+ --k-mute:#a0a2a8;
+ --k-green:#55c99a;
+ --k-green-bg:#10251d;
+ --k-solid:#f4f4f4;
+ --k-on-solid:#080808;
+ color-scheme:dark;
+}
+body.kuro,body.kuro button,body.kuro input,body.kuro textarea,body.kuro select{
+ font-family:var(--k-sans)!important;
+}
+body.kuro #page-content,
+body.kuro #page-content *:not(svg):not(path),
+body.kuro .modal,
+body.kuro .modal *:not(svg):not(path){
+ text-rendering:optimizeLegibility;
+}
+body.kuro #page-content p,body.kuro #page-content li,
+body.kuro #page-content label,body.kuro #page-content small,
+body.kuro #page-content .muted,body.kuro .modal p,
+body.kuro .modal small,body.kuro .modal label,
+body.kuro .list-copy small,body.kuro .list-item small{
+ color:var(--k-mute)!important;
+ opacity:1!important;
+}
+body.kuro #page-content h1,body.kuro #page-content h2,
+body.kuro #page-content h3,body.kuro #page-content h4,
+body.kuro #page-content b,body.kuro #page-content strong,
+body.kuro .modal h1,body.kuro .modal h2,body.kuro .modal h3,
+body.kuro .modal b,body.kuro .modal strong,
+body.kuro .list-copy b{
+ color:var(--k-ink)!important;
+}
+body.kuro #page-content .card,body.kuro #page-content .panel,
+body.kuro #page-content .list-item,body.kuro .modal,
+body.kuro .modal .card{
+ color:var(--k-ink)!important;
+}
+body.kuro #page-content input,body.kuro #page-content textarea,
+body.kuro #page-content select,body.kuro .modal input,
+body.kuro .modal textarea,body.kuro .modal select{
+ color:var(--k-ink)!important;
+ background:var(--k-sunk)!important;
+ border-color:var(--k-line-2)!important;
+}
+body.kuro #page-content input::placeholder,
+body.kuro #page-content textarea::placeholder,
+body.kuro .modal input::placeholder,
+body.kuro .modal textarea::placeholder{
+ color:var(--k-mute)!important;opacity:1!important;
+}
+body.kuro #page-content button,body.kuro .modal button,
+body.kuro #page-content .btn,body.kuro .modal .btn{
+ min-height:40px;
+}
+body.kuro #page-content :is(p,small,label,span,b,strong,a,button),
+body.kuro .modal :is(p,small,label,span,b,strong,a,button){
+ overflow-wrap:anywhere;
+}
+body.kuro #page-content .eyebrow,body.kuro #page-content .stat-label,
+body.kuro .eyebrow{
+ font-size:12px!important;line-height:1.5!important;
+ letter-spacing:.12em!important;color:var(--k-mute)!important;
+}
+body.kuro #page-content .tag,body.kuro .tag,
+body.kuro #page-content .badge,body.kuro .badge{
+ color:var(--k-ink-2)!important;
+}
+body.kuro .topbar,body.kuro .kuro-sidebar,
+body.kuro .kuro-bottom-nav{
+ color:var(--k-ink)!important;
+}
+body.kuro .kuro-nav button,body.kuro .kuro-side-foot button{
+ color:var(--k-ink-2)!important;
+}
+body.kuro .kuro-nav button.active{
+ color:var(--k-on-solid)!important;
+}
+body.kuro :is(button,a,input,textarea,select):focus-visible{
+ outline:2px solid var(--k-ink-2)!important;outline-offset:3px!important;
+}
+@media(max-width:800px){
+ body.kuro{font-size:15px!important}
+ body.kuro #page-content p,body.kuro #page-content li,
+ body.kuro #page-content label,body.kuro #page-content small,
+ body.kuro #page-content .muted,body.kuro .modal p,
+ body.kuro .modal small,body.kuro .modal label{
+  font-size:14px!important;line-height:1.65!important;
+ }
+ body.kuro #page-content input,body.kuro #page-content textarea,
+ body.kuro #page-content select,body.kuro .modal input,
+ body.kuro .modal textarea,body.kuro .modal select{
+  font-size:16px!important;
+ }
+}
