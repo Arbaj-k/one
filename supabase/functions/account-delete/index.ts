@@ -1,6 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -13,29 +12,28 @@ function corsFor(req: Request) {
   return headers;
 }
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...corsFor(activeRequest), "Content-Type": "application/json", "Cache-Control": "no-store" } });
+const json = (req: Request, body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsFor(req), "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
 Deno.serve(async (req: Request) => {
-  activeRequest = req;
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsFor(req) });
-  if (req.method !== "POST") return json({ error: "Use POST." }, 405);
+  if (req.method !== "POST") return json(req, { error: "Use POST." }, 405);
 
   const url = Deno.env.get("SUPABASE_URL");
   const anon = Deno.env.get("SUPABASE_ANON_KEY");
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !anon || !service) return json({ error: "Account deletion is not configured." }, 503);
+  if (!url || !anon || !service) return json(req, { error: "Account deletion is not configured." }, 503);
 
   const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token) return json({ error: "Sign in again before deleting your account." }, 401);
+  if (!token) return json(req, { error: "Sign in again before deleting your account." }, 401);
 
   try {
     const authClient = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await authClient.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: "Your session is invalid. Sign in again." }, 401);
+    if (authError || !authData.user) return json(req, { error: "Your session is invalid. Sign in again." }, 401);
 
     const body = await req.json().catch(() => ({}));
-    if (body?.confirmation !== "DELETE") return json({ error: "Explicit deletion confirmation is required." }, 400);
+    if (body?.confirmation !== "DELETE") return json(req, { error: "Explicit deletion confirmation is required." }, 400);
 
     const userId = authData.user.id;
     const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -79,9 +77,9 @@ Deno.serve(async (req: Request) => {
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
     if (deleteError) throw deleteError;
 
-    return json({ ok: true });
+    return json(req, { ok: true });
   } catch (_error) {
     console.error("Account deletion failed; server details redacted.");
-    return json({ error: "Account deletion could not be completed. Retry or contact support." }, 500);
+    return json(req, { error: "Account deletion could not be completed. Retry or contact support." }, 500);
   }
 });
