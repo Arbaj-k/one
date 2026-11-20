@@ -19,7 +19,7 @@ function json(req: Request, data: unknown, status = 200) {
   });
 }
 const asText = (value: unknown, limit = 4000) => typeof value === "string" ? value.slice(0, limit) : "";
-const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
