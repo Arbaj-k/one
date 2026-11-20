@@ -569,8 +569,9 @@ function formatChatText(value=''){
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
-function dateFmt(d){if(!d)return 'No date';const x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
-function today(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return values.year+'-'+values.month+'-'+values.day}
+function workspaceTimezone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(_){return 'UTC'}}
+function dateFmt(d){if(!d)return 'No date';const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(d));if(!match)return d;const x=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(x.getUTCFullYear()!==Number(match[1])||x.getUTCMonth()!==Number(match[2])-1||x.getUTCDate()!==Number(match[3]))return d;return new Intl.DateTimeFormat('en-IN',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'}).format(x)}
+function today(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return values.year+'-'+values.month+'-'+values.day}
 function showOneCommandUndo(){const t=document.querySelector('#toast');if(!t)return;t.innerHTML='Saved · <button type="button" id="one-command-undo" style="border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer">Undo</button>';t.classList.add('show');t.querySelector('#one-command-undo')?.addEventListener('click',()=>{window.OneCommandsUndo?.();t.classList.remove('show');toast('Action undone')},{once:true});clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),4000)}window.OneCommandsShowUndo=showOneCommandUndo;
 function toast(msg){const t=document.querySelector('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),2300)}
 function updateNotificationBell(){
@@ -725,8 +726,10 @@ function openQuickAdd(){
  return {start,end,spent:sum('expense'),income:sum('income'),completed,overdue,dueSoon};
 }
 function addDaysToDate(date,days){
- const d=new Date(date+'T00:00:00');d.setDate(d.getDate()+days);
- return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+ const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(date||''));if(!match)return String(date||'');
+ const d=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(!Number.isFinite(d.getTime()))return String(date||'');
+ d.setUTCDate(d.getUTCDate()+Number(days||0));
+ return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
 }
 function smartProjectProgress(){
  return (data.projects||[]).filter(p=>(p.status||'In progress')!=='Completed').map(project=>{
@@ -1592,7 +1595,7 @@ async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
  const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.people||source!=='People & Follow-ups')&&(privacy.money||source!=='Money & Udhaar')&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
- const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
+ const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:workspaceTimezone(),dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // Bound every AI request so a stalled network cannot leave Ask One loading forever.
