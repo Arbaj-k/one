@@ -1,0 +1,23 @@
+/* One shared quality guardrails: readable controls, cards and messages on every page. */
+body.kuro{--quality-radius:12px;--quality-control-height:42px}
+body.kuro #page-content{min-width:0;overflow-wrap:anywhere;text-rendering:optimizeLegibility}
+body.kuro #page-content :is(h1,h2,h3,h4,h5,h6){line-height:1.25!important;text-wrap:balance}
+body.kuro #page-content :is(p,li,dd,dt,td,th,label,small){overflow-wrap:anywhere}
+body.kuro #page-content :is(.card,.panel,.settings-panel,.memory-explainer,.document-upload-card,.vault-timeline){border-radius:var(--quality-radius)!important}
+body.kuro #page-content :is(button,.btn,[role="button"],input,textarea,select){font-family:inherit}
+body.kuro #page-content :is(button,.btn,[role="button"]){min-height:var(--quality-control-height);border-radius:10px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+body.kuro #page-content :is(button,.btn,[role="button"]):disabled,body.kuro #page-content :is(button,.btn,[role="button"])[aria-disabled="true"]{cursor:not-allowed;opacity:.58!important}
+body.kuro #page-content :is(input,textarea,select,[contenteditable="true"]){min-width:0;max-width:100%;font-size:16px!important;line-height:1.5!important;border-radius:10px!important}
+body.kuro #page-content :is(input,textarea,select):focus-visible,body.kuro #page-content :is(button,.btn,a,[role="button"]):focus-visible{outline:2px solid var(--ui-text)!important;outline-offset:3px!important}
+body.kuro #page-content :is(a,.source){text-underline-offset:3px;overflow-wrap:anywhere}
+body.kuro #page-content :is(table,.table-wrap){max-width:100%}
+body.kuro #page-content .chat-shell{min-width:0;display:flex;flex-direction:column}
+body.kuro #page-content .chat-messages{min-width:0;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;scrollbar-gutter:stable}
+body.kuro #page-content .chat-message-row,body.kuro #page-content .bubble,body.kuro #page-content .bubble-content{min-width:0;max-width:100%;overflow-wrap:anywhere!important;word-break:normal}
+body.kuro #page-content .chat-form{min-width:0}
+body.kuro #page-content .chat-form #chat-input{min-width:0!important;width:100%}
+@media(max-width:800px){
+ body.kuro #page-content :is(button,.btn,[role="button"]){min-height:44px}
+ body.kuro #page-content .chat-messages{max-height:calc(100dvh - 300px)!important;min-height:150px;scroll-padding-block:12px}
+ body.kuro #page-content .chat-form{position:sticky;bottom:0;z-index:12;padding-bottom:max(9px,env(safe-area-inset-bottom))!important}
+}
