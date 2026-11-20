@@ -19,3 +19,5 @@ jobs:
           node-version: 20
       - name: Run static regression guardrails
         run: node tests/smoke.test.cjs
+      - name: Run account deletion guardrails
+        run: node tests/account-delete-guardrails.cjs
