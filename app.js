@@ -1567,16 +1567,21 @@ async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
- // AI requests are read-only: retry once on a transient transport/5xx failure.
+ // Bound every AI request so a stalled network cannot leave Ask One loading forever.
  for(let attempt=0;attempt<2;attempt++){
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),30000);
   try{
    response=await fetch(endpoint,{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},
-    body:JSON.stringify(body)
+    body:JSON.stringify(body),
+    signal:controller.signal
    });
    networkError=null;
   }catch(error){networkError=error;response=null}
+  finally{clearTimeout(timeoutId)}
+  if(networkError?.name==='AbortError')break;
   if(response&&![502,503,504].includes(response.status))break;
   if(attempt===0){
    await new Promise(resolve=>setTimeout(resolve,700));

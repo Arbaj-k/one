@@ -123,6 +123,29 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   assert.ok(await page.locator('#page-content').count());
   await page.context().setOffline(false);
 
+  // Long Ask One histories must remain visible and scrollable.
+  await page.evaluate(()=>{
+    const key='student-brain-data-v1-guest',data=JSON.parse(localStorage.getItem(key)||'{}');
+    data.messages=Array.from({length:48},(_,i)=>({id:'chat-regression-'+i,role:i%2?'assistant':'user',content:(i%2?'One reply ':'My message ')+(i+1)+' — readable history fixture. '.repeat(3),createdAt:Date.now()+i}));
+    localStorage.setItem(key,JSON.stringify(data));
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForSelector('#page-content');
+  await page.locator('button[data-page="ask"]').first().click();
+  const history=page.locator('#chat-messages');
+  await history.waitFor({state:'visible'});
+  const metrics=await history.evaluate(el=>({height:el.scrollHeight,client:el.clientHeight,overflow:getComputedStyle(el).overflowY,count:el.querySelectorAll('.bubble').length,first:el.querySelector('.bubble')?.innerText||''}));
+  assert.ok(metrics.height>metrics.client,'Ask One messages must overflow a scrollable history area');
+  assert.ok(['auto','scroll'].includes(metrics.overflow),'Ask One must allow vertical scrolling');
+  assert.equal(metrics.count,48,'Older and newer messages must both render');
+  assert.ok(metrics.first.includes('My message 1'),'Oldest message must remain available');
+  await history.evaluate(el=>{el.scrollTop=0});
+  assert.equal(await history.evaluate(el=>el.scrollTop),0,'User must be able to scroll to chat history start');
+  const composer=page.locator('#chat-input');
+  await composer.fill('Visible composer regression');
+  assert.equal(await composer.inputValue(),'Visible composer regression','Chat composer must accept typed text');
+  await page.locator('button[data-page="overview"]').first().click();
+
   // Mobile layout: the old navigation was intentionally removed; verify
   // replacement home shortcuts remain reachable and each destination fits.
   const mobile=await context.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});

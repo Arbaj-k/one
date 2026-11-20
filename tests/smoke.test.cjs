@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const source = fs.readFileSync('app.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 const css = fs.readFileSync('styles.css', 'utf8');
+const qualityCss = fs.readFileSync('quality-guardrails.css', 'utf8');
 const documentFunction = fs.readFileSync('supabase/functions/document-json/index.ts', 'utf8');
 const documentExtractor = fs.readFileSync('document-extractor.js', 'utf8');
 
@@ -17,6 +18,16 @@ for (const header of ['Bearer test-token', 'bearer another-token']) {
 }
 assert.equal(bearerPattern.exec('Basic test-token'), null, 'Document JSON must reject non-Bearer authorization');
 
+
+// Shared quality guardrails: bounded AI, visible focus, wrapping and scrollable chat.
+assert.ok(source.includes('const controller=new AbortController()'), 'Ask One requests need an abortable timeout');
+assert.ok(source.includes('setTimeout(()=>controller.abort(),30000)'), 'Ask One requests must not hang indefinitely');
+assert.ok(source.includes('signal:controller.signal'), 'AI request must use the abort signal');
+assert.ok(html.includes('quality-guardrails.css'), 'Shared UI guardrails must load on every page');
+assert.ok(fs.readFileSync('service-worker.js','utf8').includes('"./quality-guardrails.css"'), 'Shared UI guardrails must be precached');
+assert.ok(qualityCss.includes('overflow-y:auto!important'), 'Ask One history must scroll vertically');
+assert.ok(qualityCss.includes(':focus-visible'), 'Controls must have visible keyboard focus');
+assert.ok(qualityCss.includes('overflow-wrap:anywhere'), 'Long text must wrap without clipping');
 
 // Parse the application before checking that its key routes remain wired.
 // Ask One should only send personal record categories that match the user's intent.
