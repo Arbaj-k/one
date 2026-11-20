@@ -68,7 +68,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const name = textValue(body?.name, 180) || "Untitled document";
     const mimeType = textValue(body?.mimeType, 80);
-    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(mimeType)) return json({ error: "Only PDF, JPG/JPEG, PNG and WebP files are supported." }, 415, undefined, req);
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(mimeType)) return json({ error: "Only PDF, JPG/JPEG, PNG, WebP, HEIC and HEIF files are supported." }, 415, undefined, req);
     const rawSourceText = typeof body?.extractedText === "string" ? body.extractedText : "";
     if (rawSourceText.length > 180000) return json({ error: "OCR text is saved in One, but this document is too large for one JSON conversion request (limit: 180,000 characters). Ask One can still search the full extracted text." }, 413, undefined, req);
     const sourceText = rawSourceText.trim();
