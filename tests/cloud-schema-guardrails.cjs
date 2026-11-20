@@ -12,3 +12,5 @@ assert.ok(sql.includes("values ('one-user-documents', 'one-user-documents', fals
 assert.ok(sql.includes('storage.foldername(name)') && sql.includes('(select auth.uid())::text'), 'Storage object owner path restriction missing');
 assert.ok(sql.includes('on delete cascade'), 'Auth-user cascade cleanup missing');
 console.log('Cloud schema guardrails passed: owner-bound tables, RLS, private document bucket and auth-user cleanup.');
+
+for (const mime of ['image/heic','image/heif']) assert.ok(sql.includes("'"+mime+"'"), 'Private document bucket must allow '+mime);
