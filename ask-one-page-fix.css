@@ -73,3 +73,42 @@ html body.kuro #page-content .chat-shell .chat-message-row.from-one .bubble.assi
   background:#191a1d!important;
   border:1px solid #45474d!important;
 }
+
+
+/* Ask One conversation history: show the complete thread in a dedicated scroll area. */
+body.ask-page #page-content .chat-shell{
+  display:flex!important;flex-direction:column!important;min-height:0!important;
+}
+body.ask-page #page-content .chat-shell #chat-messages{
+  display:flex!important;flex:1 1 auto!important;flex-direction:column!important;
+  gap:12px!important;width:100%!important;min-width:0!important;
+  min-height:180px!important;max-height:min(58dvh,620px)!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  padding:14px 8px 20px!important;
+  overscroll-behavior-y:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:#777 #171719!important;
+  scroll-behavior:auto!important;
+  border-radius:12px!important;
+}
+body.ask-page #page-content .chat-shell #chat-messages .chat-message-row{
+  flex:0 0 auto!important;width:100%!important;min-width:0!important;
+}
+body.ask-page #page-content .chat-shell #chat-messages .bubble{
+  flex:0 0 auto!important;max-width:min(92%,720px)!important;
+}
+body.ask-page #page-content .chat-shell .chat-form,
+body.ask-page #page-content .chat-shell .one-command-history,
+body.ask-page #page-content .chat-shell .chat-note{
+  flex:0 0 auto!important;
+}
+@media(max-width:760px){
+  body.ask-page #page-content .chat-shell #chat-messages{
+    min-height:180px!important;
+    max-height:52dvh!important;
+    padding:12px 5px 18px!important;
+    overscroll-behavior-y:contain!important;
+  }
+}
