@@ -2267,3 +2267,53 @@ body:has(.chat-shell) .main:has(.chat-shell) .chat-note{
   overflow-y:auto!important;padding:12px 3px 18px!important;
  }
 }
+
+
+/* Ask One composer: keep the Send action visibly labelled in every theme and viewport. */
+html body .chat-shell form#chat-form.chat-form{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) 48px 76px!important;
+ align-items:center!important;
+ gap:8px!important;
+ width:100%!important;
+ min-width:0!important;
+ box-sizing:border-box!important;
+}
+html body .chat-shell form#chat-form.chat-form #chat-input{
+ display:block!important;min-width:0!important;width:100%!important;
+ color:#17181b!important;-webkit-text-fill-color:#17181b!important;
+ background:#fff!important;opacity:1!important;
+}
+html body .chat-shell form#chat-form.chat-form #chat-input::placeholder{
+ color:#667085!important;-webkit-text-fill-color:#667085!important;opacity:1!important;
+}
+html body .chat-shell form#chat-form.chat-form button.chat-send[type="submit"]{
+ display:inline-flex!important;visibility:visible!important;opacity:1!important;
+ align-items:center!important;justify-content:center!important;gap:5px!important;
+ width:76px!important;min-width:76px!important;max-width:76px!important;
+ height:48px!important;min-height:48px!important;padding:0 8px!important;
+ overflow:visible!important;white-space:nowrap!important;
+ background:#f4f4f5!important;background-image:none!important;
+ border:1px solid #d1d5db!important;border-radius:10px!important;
+ color:#111827!important;-webkit-text-fill-color:#111827!important;
+ font-size:14px!important;font-weight:750!important;line-height:1!important;
+ text-indent:0!important;box-shadow:none!important;
+}
+html body .chat-shell form#chat-form.chat-form button.chat-send[type="submit"] span{
+ display:inline!important;visibility:visible!important;opacity:1!important;
+ position:static!important;clip:auto!important;clip-path:none!important;
+ width:auto!important;height:auto!important;max-width:none!important;
+ overflow:visible!important;white-space:nowrap!important;
+ color:#111827!important;-webkit-text-fill-color:#111827!important;
+ font-size:14px!important;line-height:1!important;text-indent:0!important;
+}
+html body .chat-shell form#chat-form.chat-form button.chat-send[type="submit"] span[aria-hidden="true"]{
+ font-size:17px!important;font-weight:800!important;
+}
+html body .chat-shell form#chat-form.chat-form button.chat-send[type="submit"]:disabled{
+ opacity:.75!important;background:#e5e7eb!important;color:#374151!important;
+}
+@media(max-width:600px){
+ html body .chat-shell form#chat-form.chat-form{grid-template-columns:minmax(0,1fr) 44px 72px!important;gap:6px!important}
+ html body .chat-shell form#chat-form.chat-form button.chat-send[type="submit"]{width:72px!important;min-width:72px!important;max-width:72px!important}
+}
