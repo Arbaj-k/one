@@ -145,3 +145,53 @@ body.ask-page #page-content .chat-shell .chat-note{
 #modal-root .create-form-screen[data-form-type="fileMeta"] .modal-actions{position:sticky!important;bottom:0!important;padding:12px 0 0!important;margin:0!important;background:inherit!important}
 #modal-root .create-form-screen[data-form-type="fileMeta"] .modal-save-button{width:100%!important;min-height:58px!important}
 @media(max-width:600px){#modal-root .create-form-screen[data-form-type="fileMeta"]{width:100%!important;max-height:94dvh!important;padding:18px 16px calc(16px + env(safe-area-inset-bottom))!important}}
+
+/* Home quick-add overlay: keep the dashboard sharp and the action orbs readable. */
+.create-radial-backdrop{
+ background:rgba(12,18,32,.18)!important;
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}
+@media(max-width:760px){
+ .create-radial-backdrop{background:rgba(12,18,32,.22)!important}
+ .create-radial-option{
+  width:66px!important;height:70px!important;border-radius:18px!important;
+  box-shadow:0 8px 18px rgba(17,32,75,.18),inset 0 1px 0 #fff!important;
+ }
+ .create-radial-option:focus-visible{outline:3px solid #5575f4!important;outline-offset:3px!important}
+ .create-radial-label{font-size:10px!important;line-height:1.15!important}
+}
+/* Make the Home Ask One chat destination explicit, not a blank white circle. */
+#page-content .home-hero form.home-brain-search .home-chat-open,
+html body.home-page #page-content .home-hero form.home-brain-search .home-chat-open{
+ display:inline-flex!important;visibility:visible!important;opacity:1!important;
+ flex:0 0 82px!important;width:82px!important;min-width:82px!important;max-width:82px!important;
+ height:44px!important;min-height:44px!important;padding:0 10px!important;
+ align-items:center!important;justify-content:center!important;gap:6px!important;
+ border:1px solid #2948b8!important;border-radius:13px!important;
+ background:#2948b8!important;background-image:none!important;
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ box-shadow:0 3px 9px rgba(25,54,145,.22)!important;
+ cursor:pointer!important;overflow:visible!important;
+}
+#page-content .home-hero form.home-brain-search .home-chat-open svg,
+html body.home-page #page-content .home-hero form.home-brain-search .home-chat-open svg{
+ display:block!important;flex:0 0 19px!important;width:19px!important;height:19px!important;
+ fill:none!important;stroke:#fff!important;color:#fff!important;
+}
+#page-content .home-hero form.home-brain-search .home-chat-open span,
+html body.home-page #page-content .home-hero form.home-brain-search .home-chat-open span{
+ display:inline!important;position:static!important;visibility:visible!important;opacity:1!important;
+ width:auto!important;height:auto!important;overflow:visible!important;clip:auto!important;
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ font-size:13px!important;font-weight:750!important;line-height:1!important;white-space:nowrap!important;
+}
+#page-content .home-hero form.home-brain-search .home-chat-open:hover{
+ background:#1f3790!important;transform:translateY(-1px)!important;
+}
+@media(max-width:600px){
+ #page-content .home-hero form.home-brain-search{display:grid!important;grid-template-columns:minmax(0,1fr) 38px 76px!important;gap:6px!important;padding:7px 8px!important}
+ #page-content .home-hero form.home-brain-search .home-mic-button{width:38px!important;min-width:38px!important;flex-basis:38px!important;height:38px!important}
+ #page-content .home-hero form.home-brain-search .home-chat-open{flex-basis:76px!important;width:76px!important;min-width:76px!important;max-width:76px!important;height:40px!important;padding:0 7px!important}
+ #page-content .home-hero form.home-brain-search .home-chat-open span{font-size:12px!important}
+}
