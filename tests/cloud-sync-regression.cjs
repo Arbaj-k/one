@@ -62,3 +62,7 @@ const switchSource=app.slice(switchStart,switchEnd);
 assert.match(switchSource,/stopWorkspaceRealtime\(\);[\s\S]*Promise\.allSettled\(\[\.\.\.cloudRefreshInFlight\.values\(\)\]\)/,'Account switching must stop realtime and drain in-flight cloud refreshes before changing storage scope');
 
 console.log('Cloud sync regression passed: concurrent merge, deletion tombstones, private document upload/download/delete, retry hooks, MIME handling and profile schema.');
+
+// Phase 3 upload format guardrails.
+for (const mime of ['image/heic','image/heif']) assert.ok(app.includes("'"+mime+"'"), 'Client upload pipeline must recognize '+mime);
+assert.ok(app.includes('documentFileForOcr(file)'), 'HEIC/HEIF OCR must use a browser conversion path while retaining the original upload');

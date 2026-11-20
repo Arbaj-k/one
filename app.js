@@ -136,14 +136,30 @@ function normalizedDocumentMime(file){
  if(type==='application/pdf'||name.endsWith('.pdf'))return 'application/pdf';
  if(type==='image/png'||name.endsWith('.png'))return 'image/png';
  if(type==='image/webp'||name.endsWith('.webp'))return 'image/webp';
+ if(type==='image/heic'||name.endsWith('.heic'))return 'image/heic';
+ if(type==='image/heif'||name.endsWith('.heif'))return 'image/heif';
  if(type==='image/jpeg'||type==='image/jpg'||/\.(?:jpe?g)$/.test(name))return 'image/jpeg';
  return type;
+}
+async function documentFileForOcr(file){
+ const mimeType=normalizedDocumentMime(file);
+ if(!['image/heic','image/heif'].includes(mimeType))return file;
+ if(typeof createImageBitmap!=='function')throw new Error('This browser cannot decode HEIC/HEIF for OCR. The original file can still be saved.');
+ let bitmap;
+ try{bitmap=await createImageBitmap(file)}catch(_){throw new Error('HEIC/HEIF decoding is not supported by this browser. The original file can still be saved.')}
+ try{
+  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+  const context=canvas.getContext('2d');if(!context)throw new Error('Image conversion is unavailable.');
+  context.drawImage(bitmap,0,0);
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not convert HEIC image for OCR.')),'image/jpeg',0.92));
+  return new File([blob],String(file.name||'image').replace(/\.heic$|\.heif$/i,'.jpg'),{type:'image/jpeg',lastModified:file.lastModified||Date.now()});
+ }finally{bitmap.close?.()}
 }
 async function syncOriginalDocumentToCloud(record,file){
  if(!record||!file)throw new Error('Original document is unavailable.');
  if(!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine){record.cloudUploadStatus='pending';return false}
  const ownerId=cloudUser.id,mimeType=normalizedDocumentMime(file);
- if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType))throw new Error('Unsupported document type for cloud storage.');
+ if(!['application/pdf','image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(mimeType))throw new Error('Unsupported document type for cloud storage.');
  const safeName=String(record.originalName||file.name||'document').normalize('NFKC').replace(/[^\p{L}\p{N}._-]+/gu,'_').replace(/^\.+/,'').slice(0,120)||'document';
  const storagePath=ownerId+'/'+record.id+'/'+safeName;
  const {error:uploadError}=await cloudClient.storage.from('one-user-documents').upload(storagePath,file,{upsert:true,contentType:mimeType,cacheControl:'3600'});
@@ -685,7 +701,7 @@ function openQuickAdd(){
  if(!root.querySelector('#quick-add-file-upload')){
   const storage=document.createElement('div');
   storage.className='create-quick-upload-storage';
-  storage.innerHTML='<input id="quick-add-file-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff,application/pdf,image/*" multiple hidden><div id="quick-add-upload-status" role="status" aria-live="polite">Choose a PDF or image (up to 12 MB each).</div>';
+  storage.innerHTML='<input id="quick-add-file-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.gif,.bmp,.tif,.tiff,application/pdf,image/*" multiple hidden><div id="quick-add-upload-status" role="status" aria-live="polite">Choose a PDF or image (up to 12 MB each).</div>';
   root.appendChild(storage);
  }
  fab.classList.add('is-open');
@@ -872,11 +888,11 @@ function personalTimeline(){
 function documentVault(){
  const query=String(window.vaultSearchQuery||''),results=query?phase5SearchResults(query):[],timeline=personalTimeline();
  return titleBlock('PERSONAL KNOWLEDGE','Document Vault','Search your One workspace, manage important files, and keep track of document dates.',btn('+ Upload files','quick-add-upload',true))+'<section class="card vault-search-card"><div class="eyebrow">UNIVERSAL SEARCH</div><h2>Find anything in One</h2><input id="vault-search" class="search" type="search" placeholder="Search notes, tasks, memories, projects and document contents…" value="'+esc(query)+'"><small class="muted">Search includes extracted PDF and image text, summaries and structured data.</small>'+(query?'<div class="vault-search-results">'+(results.length?results.map(x=>'<button class="vault-search-result" type="button" data-action="open-vault-result" data-id="'+esc(x.id)+'" data-type="'+esc(x.type)+'"><span><b>'+esc(x.title)+'</b><small>'+esc(x.type)+' · '+esc(x.detail)+'</small></span><span>Open ↗</span></button>').join(''):'<p class="muted">No matching records found.</p>')+'</div>':'')+'</section>'+
- '<section class="card document-upload-card"><div><h2>Your document library</h2><p class="muted">PDF and image uploads · text extraction and OCR · expiry tracking</p></div><div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn primary upload-label" for="document-upload">＋ Upload PDF / image</label><button class="btn" data-action="enable-reminders">Enable reminders</button></div><input id="document-upload" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden><small id="document-upload-status" class="muted">PDF and images · max 12 MB each · scanned pages use OCR when available</small></section>'+
+ '<section class="card document-upload-card"><div><h2>Your document library</h2><p class="muted">PDF and image uploads · text extraction and OCR · expiry tracking</p></div><div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn primary upload-label" for="document-upload">＋ Upload PDF / image</label><button class="btn" data-action="enable-reminders">Enable reminders</button></div><input id="document-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple hidden><small id="document-upload-status" class="muted">PDF and images · max 12 MB each · scanned pages use OCR when available</small></section>'+
  '<div class="row vault-section-heading"><h2>Documents</h2><span class="muted">'+(data.documents||[]).length+' saved</span></div><input id="vault-document-search" class="search" type="search" placeholder="Search within uploaded documents…" value="'+esc(window.vaultDocumentQuery||'')+'"><div id="vault-documents">'+documentsCards()+'</div>'+
  '<section class="card vault-timeline"><div class="row"><div><div class="eyebrow">YOUR HISTORY</div><h2>Personal timeline</h2></div><span class="muted">'+timeline.length+' events</span></div>'+(timeline.length?'<ol>'+timeline.map(x=>'<li><span class="timeline-dot"></span><div><small class="muted">'+new Date(x.date).toLocaleString('en-IN')+' · '+esc(x.type)+'</small><b>'+esc(x.title)+'</b><span>'+esc(x.detail)+'</span></div></li>').join('')+'</ol>':empty('Your notes, documents, memories and projects will appear here as you add them.','◷'))+'</section>';
 }
-function knowledge(){return `${titleBlock('YOUR KNOWLEDGE','My Knowledge','Save notes, upload exam date sheets and ask questions from your files.',btn('+ New note','new-note',true))}<div class="card document-upload-card"><div><h2>Upload a notice or date sheet</h2><p class="muted">Upload a PDF or image. After extraction, ask about it from the main Ask My Brain page.</p></div><div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn primary upload-label" for="document-upload">＋ Upload PDF / image</label><button class="btn" data-action="go-ask">Ask My Brain ↗</button></div><input id="document-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/jpeg,image/png,image/webp" hidden><small id="document-upload-status" class="muted">PDF and image files · max 12 MB each</small></div>${documentsCards()}<div class="toolbar"><input class="search" id="note-search" placeholder="Search notes, subjects, tags…" value="${esc(window.noteQuery||'')}"><select id="subject-filter" class="search" style="max-width:190px"><option value="">All subjects</option>${[...new Set(data.notes.map(n=>n.subject).filter(Boolean))].map(s=>`<option ${window.subjectFilter===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div><div id="notes-list" class="grid item-grid">${notesCards()}</div><p class="muted" style="font-size:11px;margin-top:18px">MVP note: notes are saved in your current browser, not synced to an online account.</p>`}
+function knowledge(){return `${titleBlock('YOUR KNOWLEDGE','My Knowledge','Save notes, upload exam date sheets and ask questions from your files.',btn('+ New note','new-note',true))}<div class="card document-upload-card"><div><h2>Upload a notice or date sheet</h2><p class="muted">Upload a PDF or image. After extraction, ask about it from the main Ask My Brain page.</p></div><div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn primary upload-label" for="document-upload">＋ Upload PDF / image</label><button class="btn" data-action="go-ask">Ask My Brain ↗</button></div><input id="document-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" hidden><small id="document-upload-status" class="muted">PDF and image files · max 12 MB each</small></div>${documentsCards()}<div class="toolbar"><input class="search" id="note-search" placeholder="Search notes, subjects, tags…" value="${esc(window.noteQuery||'')}"><select id="subject-filter" class="search" style="max-width:190px"><option value="">All subjects</option>${[...new Set(data.notes.map(n=>n.subject).filter(Boolean))].map(s=>`<option ${window.subjectFilter===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div><div id="notes-list" class="grid item-grid">${notesCards()}</div><p class="muted" style="font-size:11px;margin-top:18px">MVP note: notes are saved in your current browser, not synced to an online account.</p>`}
 function uploadedItems(){return `${titleBlock('YOUR LIBRARY','Uploaded Items','PDFs and images you have uploaded to your knowledge base.',btn('Ask My Brain ↗','go-ask',true))}<input id="vault-document-search" class="search" type="search" placeholder="Search files by name, tags or note…" value="${esc(window.vaultDocumentQuery||'')}"><div class="card document-upload-card"><div><h2>Upload a notice or date sheet</h2><p class="muted">Upload a PDF or image. After extraction, ask about it from the main Ask My Brain page.</p></div><div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn primary upload-label" for="document-upload">＋ Upload PDF / image</label><button class="btn" data-action="go-ask">Ask My Brain ↗</button></div><input id="document-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/jpeg,image/png,image/webp" hidden><small id="document-upload-status" class="muted">PDF and image files · max 12 MB each</small></div>${documentsCards()}`}
 function notesOnly(){return `${titleBlock('YOUR NOTES','Note','Your saved notes in one place. Uploaded PDFs and images are kept under Uploaded Items.',btn('+ New note','new-note',true))}<div class="toolbar"><input class="search" id="note-search" placeholder="Search notes, subjects, tags…" value="${esc(window.noteQuery||'')}"><select id="subject-filter" class="search" style="max-width:190px"><option value="">All subjects</option>${[...new Set(data.notes.map(n=>n.subject).filter(Boolean))].map(s=>`<option ${window.subjectFilter===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div><div id="notes-list" class="grid item-grid">${notesCards()}</div><p class="muted" style="font-size:11px;margin-top:18px">Notes are saved in your current browser.</p>`}
 function safeNoteUrl(value){try{const url=new URL(String(value||'').trim());return ['http:','https:'].includes(url.protocol)?url.href:''}catch(_){return ''}}
@@ -1118,7 +1134,7 @@ async function processUploadedDocuments(files,sourceNoteId=null,existingRecordId
   if(!file||file.size===0){setStatus((file?.name||'Selected file')+' is empty.');toast('Empty file cannot be processed');continue}
   if(file.size>12*1024*1024){setStatus(file.name+' exceeds 12 MB.');toast('File is over 12 MB');continue}
   const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';
-  if(!isPdf&&!['image/jpeg','image/png','image/webp'].includes(mimeType)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
+  if(!isPdf&&!['image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(mimeType)){setStatus('Unsupported file type. Upload a PDF or image.');toast('Unsupported file type');continue}
   setProgress(0,'Starting '+file.name);
   try{
    let extracted='';
@@ -1149,7 +1165,7 @@ async function processUploadedDocuments(files,sourceNoteId=null,existingRecordId
     }
    }else{
     setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
-    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}}
+    if(window.Tesseract){try{const ocrFile=await documentFileForOcr(file);extracted=await runImageOCR(ocrFile)}catch(ocrError){console.warn('Image OCR unavailable; original upload will be retained.')}}
    }
    setProgress(88,'Saving '+file.name);const id=existingRecordId||uid();let fileStored=!!existingRecordId;
    if(!existingRecordId){try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}}
@@ -1961,7 +1977,7 @@ async function saveFile(file,metadata){
  if(!file||!metadata)throw new Error('Choose a file and enter its name.');
  if(file.size>12*1024*1024)throw new Error('File size limit is 12 MB. Choose a smaller file.');
  const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';
- if(!isPdf&&!['image/jpeg','image/png','image/webp'].includes(mimeType))throw new Error('Only PDF, JPG, PNG and WEBP files are supported.');
+ if(!isPdf&&!['image/jpeg','image/png','image/webp'].includes(mimeType))throw new Error('Only PDF, JPG, PNG, WEBP, HEIC and HEIF files are supported.');
  const name=String(metadata.name||'').trim();if(!name)throw new Error('Enter a file name.');
  const id=uid(),created=Date.now();
  await Promise.race([saveOriginalDocument(id,file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Saving to this device timed out. Check available storage and try again.')),15000))]);
@@ -2003,7 +2019,7 @@ async function openUploadedFile(id,download=false){
 }
 function openFileMetadataDialog(file){
  if(!file)return;
- if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}if(!(['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||/\.(?:pdf|jpe?g|png|webp)$/i.test(file.name))){toast('Only PDF, JPG, PNG and WEBP files are supported.');return}
+ if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}if(!(['application/pdf','image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(normalizedDocumentMime(file))||/\.(?:pdf|jpe?g|png|webp|heic|heif)$/i.test(file.name))){toast('Only PDF, JPG, PNG, WEBP, HEIC and HEIF files are supported.');return}
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const preview=isPdf?'<div class="file-upload-preview"><span style="font-size:30px">📄</span><span>'+esc(file.name)+'</span></div>':'<div class="file-upload-preview"><img alt="Selected file preview" src="'+URL.createObjectURL(file)+'" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:10px"><span>'+esc(file.name)+'</span></div>';
  window.pendingOneFile=file;formType='fileMeta';editing=null;

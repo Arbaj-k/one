@@ -236,3 +236,10 @@ assert.ok(!aiFunction.includes('activeRequest'), 'AI Edge Function must not shar
 assert.ok(aiFunction.includes('function json(req: Request, data: unknown, status = 200)'), 'AI Edge Function JSON responses must receive the current request');
 assert.ok(aiFunction.includes('headers: { ...corsFor(req),'), 'AI Edge Function CORS must be derived from the response request');
 assert.ok(!/return json\(\{/.test(aiFunction), 'All AI Edge Function JSON responses must pass the current request');
+
+// Phase 3: HEIC/HEIF upload acceptance and safe OCR conversion.
+assert.ok(source.includes("if(type==='image/heic'||name.endsWith('.heic'))return 'image/heic'"), 'HEIC MIME normalization is missing');
+assert.ok(source.includes("if(type==='image/heif'||name.endsWith('.heif'))return 'image/heif'"), 'HEIF MIME normalization is missing');
+assert.ok(source.includes('async function documentFileForOcr(file)'), 'HEIC/HEIF OCR conversion helper is missing');
+assert.ok(source.includes("canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not convert HEIC image for OCR.'))),'image/jpeg',0.92)"), 'HEIC/HEIF OCR conversion must create a JPEG blob');
+assert.ok(source.includes('Only PDF, JPG, PNG, WEBP, HEIC and HEIF files are supported.'), 'Upload validation must explain supported image formats');
