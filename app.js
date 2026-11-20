@@ -141,6 +141,20 @@ function normalizedDocumentMime(file){
  if(type==='image/jpeg'||type==='image/jpg'||/\.(?:jpe?g)$/.test(name))return 'image/jpeg';
  return type;
 }
+async function documentFileForOcr(file){
+ const mimeType=normalizedDocumentMime(file);
+ if(!['image/heic','image/heif'].includes(mimeType))return file;
+ if(typeof createImageBitmap!=='function')throw new Error('This browser cannot decode HEIC/HEIF for OCR. The original file can still be saved.');
+ let bitmap;
+ try{bitmap=await createImageBitmap(file)}catch(_){throw new Error('HEIC/HEIF decoding is not supported by this browser. The original file can still be saved.')}
+ try{
+  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+  const context=canvas.getContext('2d');if(!context)throw new Error('Image conversion is unavailable.');
+  context.drawImage(bitmap,0,0);
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not convert HEIC image for OCR.')),'image/jpeg',0.92));
+  return new File([blob],String(file.name||'image').replace(/\.heic$|\.heif$/i,'.jpg'),{type:'image/jpeg',lastModified:file.lastModified||Date.now()});
+ }finally{bitmap.close?.()}
+}
 async function syncOriginalDocumentToCloud(record,file){
  if(!record||!file)throw new Error('Original document is unavailable.');
  if(!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine){record.cloudUploadStatus='pending';return false}
@@ -1151,7 +1165,7 @@ async function processUploadedDocuments(files,sourceNoteId=null,existingRecordId
     }
    }else{
     setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
-    if(window.Tesseract){try{extracted=await runImageOCR(file)}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}}
+    if(window.Tesseract){try{const ocrFile=await documentFileForOcr(file);extracted=await runImageOCR(ocrFile)}catch(ocrError){console.warn('Image OCR unavailable; original upload will be retained.')}}
    }
    setProgress(88,'Saving '+file.name);const id=existingRecordId||uid();let fileStored=!!existingRecordId;
    if(!existingRecordId){try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}}
@@ -2005,7 +2019,7 @@ async function openUploadedFile(id,download=false){
 }
 function openFileMetadataDialog(file){
  if(!file)return;
- if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}if(!(['application/pdf','image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(normalizedDocumentMime(file))||/\.(?:pdf|jpe?g|png|webp|heic|heif)$/i.test(file.name))){toast('Only PDF, JPG, PNG and WEBP files are supported.');return}
+ if(file.size>12*1024*1024){toast('File size limit is 12 MB. Choose a smaller file.');return}if(!(['application/pdf','image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(normalizedDocumentMime(file))||/\.(?:pdf|jpe?g|png|webp|heic|heif)$/i.test(file.name))){toast('Only PDF, JPG, PNG, WEBP, HEIC and HEIF files are supported.');return}
  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
  const preview=isPdf?'<div class="file-upload-preview"><span style="font-size:30px">📄</span><span>'+esc(file.name)+'</span></div>':'<div class="file-upload-preview"><img alt="Selected file preview" src="'+URL.createObjectURL(file)+'" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:10px"><span>'+esc(file.name)+'</span></div>';
  window.pendingOneFile=file;formType='fileMeta';editing=null;
