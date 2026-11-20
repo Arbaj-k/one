@@ -222,3 +222,10 @@ console.log('Student Brain smoke checks passed: syntax, app shell, core features
 assert.ok(source.includes('const refersToCurrentFile='), 'Follow-up questions must resolve against uploaded file context');
 assert.ok(source.includes('const asksDocumentField='), 'Generic document field questions must route to uploaded files');
 assert.ok(source.includes('if(isSpendingAmountQuestion(query)&&!targetDocId&&!explicitMoneyWriteIntent)'), 'Money summary shortcut must not intercept explicit expense/income writes or selected document questions');
+// Authentication input normalization and request-scoped destructive endpoint responses.
+const authSource=fs.readFileSync('auth.js','utf8');
+const deleteSource=fs.readFileSync('supabase/functions/account-delete/index.ts','utf8');
+assert.ok(authSource.includes("const normalizeEmail = (value='') => String(value).trim().toLowerCase()"), 'Email input must be trimmed and case-normalized');
+assert.ok(authSource.includes("email=normalizeEmail(form.get('email')||'')"), 'Normalized email must be used by sign-up, login and password reset');
+assert.ok(!deleteSource.includes('activeRequest'), 'Account deletion must not share mutable request state across concurrent invocations');
+assert.ok(deleteSource.includes('const json = (req: Request, body: unknown, status = 200)'), 'Account deletion responses must derive CORS from the current request');
