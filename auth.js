@@ -6,6 +6,7 @@
   const REDIRECT = location.origin + location.pathname;
   let client = null, session = null, view = 'login';
   const $ = (s) => document.querySelector(s);
+  const normalizeEmail = (value='') => String(value).trim().toLowerCase();
   const escapeHtml = (s='') => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function getClient() {
     if (client) return client;
@@ -54,7 +55,7 @@
   function close(){const root=$('#one-auth-root');if(root)root.hidden=true;document.body.classList.remove('one-auth-open','one-auth-required')}
   function open(next='login'){view=next;render();document.body.classList.add('one-auth-open')}
   async function submit(e){
-    e.preventDefault();const form=new FormData(e.currentTarget),email=String(form.get('email')||'').trim(),password=String(form.get('password')||''),name=String(form.get('name')||'').trim();
+    e.preventDefault();const form=new FormData(e.currentTarget),email=normalizeEmail(form.get('email')||''),password=String(form.get('password')||''),name=String(form.get('name')||'').trim();
     const submitButton=$('.one-auth-submit');if(submitButton)submitButton.disabled=true;status('Please wait…');
     try{
       const auth=getClient();
