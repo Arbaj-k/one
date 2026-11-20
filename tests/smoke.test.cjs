@@ -243,3 +243,13 @@ assert.ok(source.includes("if(type==='image/heif'||name.endsWith('.heif'))return
 assert.ok(source.includes('async function documentFileForOcr(file)'), 'HEIC/HEIF OCR conversion helper is missing');
 assert.ok(source.includes("canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not convert HEIC image for OCR.'))),'image/jpeg',0.92)"), 'HEIC/HEIF OCR conversion must create a JPEG blob');
 assert.ok(source.includes('Only PDF, JPG, PNG, WEBP, HEIC and HEIF files are supported.'), 'Upload validation must explain supported image formats');
+
+// Phase 4: duplicate-action locks and offline reconnect recovery.
+assert.ok(source.includes('const oneActionLocks=new Map()'), 'Mutation actions need an in-flight duplicate guard');
+assert.ok(source.includes('if(oneMutationActions.has(name)){const until=oneActionLocks.get(lockKey)||0;if(until>Date.now())return'), 'Repeated mutation clicks must be ignored while the action lock is active');
+assert.ok(source.includes('let documentUploadInFlight=false;'), 'Document uploads need a single-flight guard');
+assert.ok(source.includes('if(documentUploadInFlight){toast('), 'A second upload batch must not start while one is processing');
+assert.ok(source.includes("if(e.target.dataset.oneSubmitting==='true')"), 'Edit forms must ignore repeated submit events');
+assert.ok(source.includes("window.addEventListener('offline'"), 'Offline state must be surfaced');
+assert.ok(source.includes('Connection restored. Recovering queued workspace changes.'), 'Reconnect must start an explicit queued workspace recovery');
+assert.ok(source.includes('return queueCloudSave()'), 'Reconnect recovery must flush the current workspace snapshot');
