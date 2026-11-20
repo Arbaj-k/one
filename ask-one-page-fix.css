@@ -1,0 +1,32 @@
+
+/* Ask One page isolation and message contrast correction. */
+body.ask-page .topbar,
+body.ask-page .workspace-shortcuts,
+body.ask-page .floating-create-button{display:none!important}
+body.ask-page .content{padding-top:18px!important}
+body.ask-page #page-content>.back-home-icon{display:none!important}
+body.ask-page #page-content .chat-shell{margin-top:0!important}
+html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user{
+  background:#f5f5f5!important;color:#111!important;border:1px solid #d8d8d8!important;
+}
+html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user,
+html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user *,
+html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user .bubble-content *{
+  color:#111!important;opacity:1!important;-webkit-text-fill-color:#111!important;
+}
+html:not([data-kuro="dark"]) body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user{
+  background:#171717!important;color:#fff!important;border:1px solid #171717!important;
+}
+html:not([data-kuro="dark"]) body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user,
+html:not([data-kuro="dark"]) body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user *,
+html:not([data-kuro="dark"]) body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-user .bubble.user .bubble-content *{
+  color:#fff!important;opacity:1!important;-webkit-text-fill-color:#fff!important;
+}
+html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-one .bubble.assistant,
+html[data-kuro="dark"] body.kuro.ask-page #page-content .chat-shell .chat-message-row.from-one .bubble.assistant *{
+  background:#171717!important;color:#f7f7f7!important;border-color:#555!important;opacity:1!important;-webkit-text-fill-color:#f7f7f7!important;
+}
+@media(max-width:800px){
+ body.ask-page .content{padding-top:12px!important}
+ body.ask-page #page-content .chat-shell{margin-top:0!important}
+}
