@@ -3077,7 +3077,7 @@ async function checkTaskReminders(){
    }catch(err){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
- const routineDate=today(),weekdayShort=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',weekday:'short'}),weekdayIndex={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6},routineWeekday=weekdayIndex[weekdayShort.format(new Date(routineDate+'T12:00:00Z'))];
+ const routineDate=today(),weekdayShort=new Intl.DateTimeFormat('en-US',{timeZone:workspaceTimezone(),weekday:'short'}),weekdayIndex={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6},routineWeekday=weekdayIndex[weekdayShort.format(new Date(routineDate+'T12:00:00Z'))];
  for(const routine of (data.routines||[])){
   const rule=routine.repeatRule||routine.frequency||'none';
   const createdWeekday=weekdayIndex[weekdayShort.format(new Date(routine.created||Date.now()))],dueToday=rule==='daily'||(rule==='weekly'&&Number(routine.repeatDay??createdWeekday)===routineWeekday);
