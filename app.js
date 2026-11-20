@@ -569,8 +569,9 @@ function formatChatText(value=''){
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
-function dateFmt(d){if(!d)return 'No date';const x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
-function today(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return values.year+'-'+values.month+'-'+values.day}
+function workspaceTimezone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(_){return 'UTC'}}
+function dateFmt(d){if(!d)return 'No date';const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d));if(!match)return d;const x=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(x.getUTCFullYear()!==Number(match[1])||x.getUTCMonth()!==Number(match[2])-1||x.getUTCDate()!==Number(match[3]))return d;return new Intl.DateTimeFormat('en-IN',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'}).format(x)}
+function today(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return values.year+'-'+values.month+'-'+values.day}
 function showOneCommandUndo(){const t=document.querySelector('#toast');if(!t)return;t.innerHTML='Saved · <button type="button" id="one-command-undo" style="border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer">Undo</button>';t.classList.add('show');t.querySelector('#one-command-undo')?.addEventListener('click',()=>{window.OneCommandsUndo?.();t.classList.remove('show');toast('Action undone')},{once:true});clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),4000)}window.OneCommandsShowUndo=showOneCommandUndo;
 function toast(msg){const t=document.querySelector('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),2300)}
 function updateNotificationBell(){
@@ -725,8 +726,10 @@ function openQuickAdd(){
  return {start,end,spent:sum('expense'),income:sum('income'),completed,overdue,dueSoon};
 }
 function addDaysToDate(date,days){
- const d=new Date(date+'T00:00:00');d.setDate(d.getDate()+days);
- return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+ const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date||''));if(!match)return String(date||'');
+ const d=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(!Number.isFinite(d.getTime()))return String(date||'');
+ d.setUTCDate(d.getUTCDate()+Number(days||0));
+ return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
 }
 function smartProjectProgress(){
  return (data.projects||[]).filter(p=>(p.status||'In progress')!=='Completed').map(project=>{
@@ -1592,7 +1595,7 @@ async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
  const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.people||source!=='People & Follow-ups')&&(privacy.money||source!=='Money & Udhaar')&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
- const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:'Asia/Kolkata',dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
+ const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:workspaceTimezone(),dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // Bound every AI request so a stalled network cannot leave Ask One loading forever.
@@ -2605,7 +2608,7 @@ const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|proje
   // Deterministic multi-turn reminder clarification. Keep the original title/date when
   // the user answers a time-only follow-up such as "8 am"; never send it to OCR/RAG.
   const parseReminderClock=value=>{
-   const match=String(value||'').trim().match(/^(?:at\\s*)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)?$/i);
+   const match=String(value||'').trim().match(/^(?:at\\s*)?(\d{1,2})(?::(\d{2}))?\\s*(am|pm|baje)?$/i);
    if(!match)return '';
    let hour=Number(match[1]),minute=Number(match[2]||0),period=String(match[3]||'').toLowerCase();
    if(minute>59||hour<0||hour>23)return '';
@@ -3002,7 +3005,7 @@ function shareTaskReminder(id,channel){
 }
 const TASK_REMINDER_KEY='student-brain-task-reminders-shown-v1';
 function taskReminderStorageKey(){return TASK_REMINDER_KEY+'-'+(activeWorkspaceUserId||'guest');}
-function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);return Date.UTC(y,m-1,d,hh||0,mm||0)-330*60000}
+function taskReminderDayTime(task){if(!task.due)return null;const [y,m,d]=task.due.split('-').map(Number),[hh,mm]=String(task.reminderTime||'09:00').split(':').map(Number);const instant=new Date(y,m-1,d,hh||0,mm||0,0,0);return Number.isNaN(instant.getTime())?null:instant.getTime()}
 async function enableTaskReminders(){
  if(!window.isSecureContext){toast('Notifications need a secure HTTPS connection.');return}
  if(!('Notification' in window)){toast('This browser does not support notifications');return}
@@ -3056,13 +3059,13 @@ async function checkTaskReminders(){
   const snoozed=task.snoozedUntil?Date.parse(task.snoozedUntil):NaN,lead=Math.max(0,Number(task.notifyBeforeMinutes)||0)*60000;
   let occurrence=null,when=null;
   if(Number.isFinite(snoozed)){
-   if(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(snoozed))!==currentDate||snoozed>now)continue;
+   if(new Intl.DateTimeFormat('en-CA',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(snoozed))!==currentDate||snoozed>now)continue;
    occurrence=reminderOccurrenceOn(task,currentDate)?currentDate:(reminderOccurrenceOn(task,tomorrowDate)?tomorrowDate:currentDate);when=snoozed;
   }else{
    occurrence=[currentDate,tomorrowDate].find(day=>reminderOccurrenceOn(task,day))||null;
    if(!occurrence)continue;
    const base=taskReminderDayTime({...task,due:occurrence});when=base-lead;
-   if(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(when))!==currentDate)continue;
+   if(new Intl.DateTimeFormat('en-CA',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(when))!==currentDate)continue;
   }
   const key='task-'+task.id+'-'+occurrence+'-'+String(task.reminderTime||'09:00')+'-'+lead+(Number.isFinite(snoozed)?'-snooze-'+snoozed:'');
   if(!shown[key]&&when!==null&&now>=when&&now<when+24*60*60*1000){
@@ -3074,7 +3077,7 @@ async function checkTaskReminders(){
    }catch(err){console.warn("Operation failed; diagnostic details redacted.")}
   }
  }
- const routineDate=today(),weekdayShort=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',weekday:'short'}),weekdayIndex={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6},routineWeekday=weekdayIndex[weekdayShort.format(new Date(routineDate+'T12:00:00Z'))];
+ const routineDate=today(),weekdayShort=new Intl.DateTimeFormat('en-US',{timeZone:workspaceTimezone(),weekday:'short'}),weekdayIndex={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6},routineWeekday=weekdayIndex[weekdayShort.format(new Date(routineDate+'T12:00:00Z'))];
  for(const routine of (data.routines||[])){
   const rule=routine.repeatRule||routine.frequency||'none';
   const createdWeekday=weekdayIndex[weekdayShort.format(new Date(routine.created||Date.now()))],dueToday=rule==='daily'||(rule==='weekly'&&Number(routine.repeatDay??createdWeekday)===routineWeekday);

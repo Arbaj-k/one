@@ -253,3 +253,29 @@ assert.ok(source.includes("if(e.target.dataset.oneSubmitting==='true')"), 'Edit 
 assert.ok(source.includes("window.addEventListener('offline'"), 'Offline state must be surfaced');
 assert.ok(source.includes('Connection restored. Recovering queued workspace changes.'), 'Reconnect must start an explicit queued workspace recovery');
 assert.ok(source.includes('return queueCloudSave()'), 'Reconnect recovery must flush the current workspace snapshot');
+
+
+// Phase 5: timezone-aware "today" and timezone-independent date-only arithmetic.
+const dateHelperStart=source.indexOf('function workspaceTimezone()');
+const dateHelperEnd=source.indexOf('function showOneCommandUndo()',dateHelperStart);
+assert.ok(dateHelperStart>=0&&dateHelperEnd>dateHelperStart,'Workspace date helpers must be present');
+const dateContext={Intl,Date};
+vm.runInNewContext(source.slice(dateHelperStart,dateHelperEnd),dateContext);
+assert.match(dateContext.workspaceTimezone(),/^[A-Za-z_+-]+(?:\/[A-Za-z0-9_+.-]+)*$/,'Device timezone must be a valid IANA timezone');
+assert.equal(dateContext.dateFmt('2026-03-08'),'8 Mar 2026','Date-only display must not shift across timezones');
+assert.equal(dateContext.dateFmt('2026-02-30'),'2026-02-30','Invalid calendar dates must not be silently normalized');
+const addDaysStart=source.indexOf('function addDaysToDate(');
+const addDaysEnd=source.indexOf('function smartProjectProgress()',addDaysStart);
+assert.ok(addDaysStart>=0&&addDaysEnd>addDaysStart,'Calendar day helper must be present');
+const dayContext={Date};
+vm.runInNewContext(source.slice(addDaysStart,addDaysEnd),dayContext);
+assert.equal(dayContext.addDaysToDate('2026-03-08',1),'2026-03-09','Calendar day addition must be stable across DST boundaries');
+assert.equal(dayContext.addDaysToDate('2024-02-28',1),'2024-02-29','Leap-day calculation must be correct');
+assert.equal(dayContext.addDaysToDate('2026-12-31',1),'2027-01-01','Year-boundary calculation must be correct');
+assert.ok(source.includes("timezone:workspaceTimezone()"),'Ask One must send the device timezone');
+assert.ok(!source.includes("timezone:'Asia/Kolkata'"),'Ask One must not hardcode Asia/Kolkata');
+const aiTimezoneSource=fs.readFileSync('supabase/functions/student-brain-ai/index.ts','utf8');
+assert.ok(aiTimezoneSource.includes('new Intl.DateTimeFormat("en-US", { timeZone: requestedTimezone })'),'AI Edge Function must validate IANA timezone identifiers');
+assert.ok(aiTimezoneSource.includes('workspace.today = `${dateValues.year}-${dateValues.month}-${dateValues.day}`'),'AI Edge Function must calculate today in the validated workspace timezone');
+assert.ok(aiTimezoneSource.includes('TODAY: ${workspace.today}'),'AI prompt must use workspace-local today, not UTC date');
+assert.ok(!aiTimezoneSource.includes('The workspace timezone is Asia/Kolkata'),'AI prompt must not force a single timezone');
