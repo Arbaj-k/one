@@ -570,7 +570,7 @@ function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(n){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(n)||0)}
 function workspaceTimezone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(_){return 'UTC'}}
-function dateFmt(d){if(!d)return 'No date';const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(d));if(!match)return d;const x=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(x.getUTCFullYear()!==Number(match[1])||x.getUTCMonth()!==Number(match[2])-1||x.getUTCDate()!==Number(match[3]))return d;return new Intl.DateTimeFormat('en-IN',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'}).format(x)}
+function dateFmt(d){if(!d)return 'No date';const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d));if(!match)return d;const x=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(x.getUTCFullYear()!==Number(match[1])||x.getUTCMonth()!==Number(match[2])-1||x.getUTCDate()!==Number(match[3]))return d;return new Intl.DateTimeFormat('en-IN',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'}).format(x)}
 function today(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:workspaceTimezone(),year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return values.year+'-'+values.month+'-'+values.day}
 function showOneCommandUndo(){const t=document.querySelector('#toast');if(!t)return;t.innerHTML='Saved · <button type="button" id="one-command-undo" style="border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer">Undo</button>';t.classList.add('show');t.querySelector('#one-command-undo')?.addEventListener('click',()=>{window.OneCommandsUndo?.();t.classList.remove('show');toast('Action undone')},{once:true});clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),4000)}window.OneCommandsShowUndo=showOneCommandUndo;
 function toast(msg){const t=document.querySelector('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),2300)}
@@ -726,7 +726,7 @@ function openQuickAdd(){
  return {start,end,spent:sum('expense'),income:sum('income'),completed,overdue,dueSoon};
 }
 function addDaysToDate(date,days){
- const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(date||''));if(!match)return String(date||'');
+ const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date||''));if(!match)return String(date||'');
  const d=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));if(!Number.isFinite(d.getTime()))return String(date||'');
  d.setUTCDate(d.getUTCDate()+Number(days||0));
  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
@@ -2608,7 +2608,7 @@ const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|proje
   // Deterministic multi-turn reminder clarification. Keep the original title/date when
   // the user answers a time-only follow-up such as "8 am"; never send it to OCR/RAG.
   const parseReminderClock=value=>{
-   const match=String(value||'').trim().match(/^(?:at\\s*)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)?$/i);
+   const match=String(value||'').trim().match(/^(?:at\\s*)?(\d{1,2})(?::(\d{2}))?\\s*(am|pm|baje)?$/i);
    if(!match)return '';
    let hour=Number(match[1]),minute=Number(match[2]||0),period=String(match[3]||'').toLowerCase();
    if(minute>59||hour<0||hour>23)return '';
