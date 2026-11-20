@@ -301,3 +301,31 @@ html body.home-page #page-content .home-hero form#home-brain-search.home-brain-s
  #page-content #home-brain-search .home-mic-button{width:38px!important;min-width:38px!important;max-width:38px!important;height:40px!important;min-height:40px!important}
  #page-content #home-brain-search .home-chat-open{width:64px!important;min-width:64px!important;max-width:64px!important;height:40px!important;min-height:40px!important}
 }
+
+/* Ask One conversation: keep older messages reachable without scrolling the whole page. */
+html body.ask-page #page-content .chat-shell{
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ width:min(100%,960px)!important;min-width:0!important;
+ min-height:calc(100dvh - 112px)!important;
+}
+html body.ask-page #page-content .chat-shell .chat-messages{
+ display:flex!important;flex:1 1 auto!important;flex-direction:column!important;
+ min-width:0!important;min-height:220px!important;
+ max-height:min(58dvh,680px)!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ -webkit-overflow-scrolling:touch!important;
+ overscroll-behavior-y:contain!important;touch-action:pan-y!important;
+ scrollbar-width:thin!important;scrollbar-gutter:stable!important;
+ padding:14px 8px 20px!important;
+}
+html body.ask-page #page-content .chat-shell .chat-message-row{flex:0 0 auto!important;min-width:0!important}
+html body.ask-page #page-content .chat-shell .bubble{max-width:min(88%,720px)!important;min-width:0!important;overflow-wrap:anywhere!important;word-break:normal!important}
+html body.ask-page #page-content .chat-shell .chat-form{flex:0 0 auto!important;position:sticky!important;bottom:0!important;z-index:8!important}
+html body.ask-page #page-content .chat-shell .chat-note{flex:0 0 auto!important}
+@media(max-width:760px){
+ html body.ask-page #page-content .chat-shell{min-height:calc(100dvh - 78px - env(safe-area-inset-bottom))!important;padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
+ html body.ask-page #page-content .chat-shell .chat-messages{min-height:180px!important;max-height:52dvh!important;padding:12px 3px 18px!important}
+ html body.ask-page #page-content .chat-shell .bubble{max-width:94%!important}
+ html body.ask-page #page-content .chat-shell .chat-form{bottom:env(safe-area-inset-bottom)!important}
+}
+@media(prefers-reduced-motion:reduce){html body.ask-page #page-content .chat-shell .chat-messages{scroll-behavior:auto!important}}

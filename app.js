@@ -151,12 +151,38 @@ async function syncOriginalDocumentToCloud(record,file){
  const {error:metadataError}=await cloudClient.from('user_documents').upsert({user_id:ownerId,storage_path:storagePath,file_name:String(record.originalName||file.name||safeName).slice(0,255),mime_type:mimeType,byte_size:file.size,extracted_text:String(record.extractedText||'').slice(0,180000),metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||file.name||safeName).slice(0,255),type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending'}},{onConflict:'storage_path'});
  if(metadataError){try{await cloudClient.storage.from('one-user-documents').remove([storagePath])}catch(_){}throw metadataError}
  if(ownerId!==cloudUser?.id)return false;
- record.storagePath=storagePath;record.cloudUploadStatus='synced';record.cloudUploadedAt=Date.now();record.cloudUploadError='';record.updated=Date.now();persist();return true;
+ record.storagePath=storagePath;record.cloudUploadStatus='synced';record.cloudUploadedAt=Date.now();record.cloudMetadataSyncedAt=Date.now();record.cloudMetadataSyncStatus='synced';record.cloudUploadError='';record.updated=Date.now();persist();return true;
+}
+async function syncCloudDocumentMetadata(record){
+ if(!record?.storagePath||!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine){if(record)record.cloudMetadataSyncStatus='pending';return false}
+ const ownerId=cloudUser.id;
+ try{
+  const {data:updated,error}=await cloudClient.from('user_documents').update({
+   extracted_text:String(record.extractedText||'').slice(0,180000),
+   metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||'Document').slice(0,255),type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending',structured_data_available:!!record.extractedJson,summary:String(record.summary||'').slice(0,4000)},
+   updated_at:new Date().toISOString()
+  }).eq('user_id',ownerId).eq('storage_path',record.storagePath).select('id').maybeSingle();
+  if(error)throw error;
+  if(ownerId!==cloudUser?.id)return false;
+  if(!updated){record.cloudMetadataSyncStatus='pending';return false}
+  record.cloudMetadataSyncedAt=Date.now();record.cloudMetadataSyncStatus='synced';record.cloudMetadataSyncError='';
+  return true;
+ }catch(error){
+  if(ownerId===cloudUser?.id){record.cloudMetadataSyncStatus='pending';record.cloudMetadataSyncError=String(error.message||'Cloud metadata sync failed').slice(0,240)}
+  console.warn('Document metadata sync failed; details redacted.');return false;
+ }
 }
 async function syncPendingDocumentFiles(){
  if(!cloudReady||!cloudUser?.id||!cloudClient||!navigator.onLine)return;
  for(const record of (data.documents||[])){
-  if(!record?.id||record.storagePath||record.cloudUploadStatus==='uploading')continue;
+  if(!record?.id||record.cloudUploadStatus==='uploading')continue;
+  if(record.storagePath){
+   const localVersion=Number(record.updated||record.ocrCompletedAt||record.jsonConvertedAt||record.createdAt||record.created||0);
+   if(record.cloudMetadataSyncStatus!=='synced'||Number(record.cloudMetadataSyncedAt||0)<localVersion){
+    await syncCloudDocumentMetadata(record);
+   }
+   continue;
+  }
   let stored;try{stored=await getOriginalDocument(record.id)}catch(_){}
   if(!stored?.blob)continue;
   record.cloudUploadStatus='uploading';
@@ -1131,7 +1157,7 @@ async function processUploadedDocuments(files,sourceNoteId=null,existingRecordId
    const extractedText=readableText||'[No readable text extracted. '+(fileStored?'Original file is available for AI analysis.':'Try another browser or a clearer file.')+']';
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
-   const existingRecord=(data.documents||[]).find(item=>item.id===id);const documentRecord={id,name:existingRecord?.name||file.name,originalName:file.name,type:isPdf?'pdf':'image',mimeType,size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:existingRecord?.created||Date.now(),createdAt:existingRecord?.createdAt||Date.now(),tags:existingRecord?.tags||[],note:existingRecord?.note||'',sourceNoteId:sourceNoteId||existingRecord?.sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored:fileStored||existingRecord?.fileStored||false,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete',cloudUploadStatus:existingRecord?.cloudUploadStatus||'pending'};if(existingRecord)Object.assign(existingRecord,documentRecord);else data.documents.push(documentRecord);
+   const existingRecord=(data.documents||[]).find(item=>item.id===id);const documentRecord={id,name:existingRecord?.name||file.name,originalName:file.name,type:isPdf?'pdf':'image',mimeType,size:file.size,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:existingRecord?.created||Date.now(),createdAt:existingRecord?.createdAt||Date.now(),updated:Date.now(),tags:existingRecord?.tags||[],note:existingRecord?.note||'',sourceNoteId:sourceNoteId||existingRecord?.sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored:fileStored||existingRecord?.fileStored||false,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete',cloudUploadStatus:existingRecord?.cloudUploadStatus||'pending'};if(existingRecord)Object.assign(existingRecord,documentRecord);else data.documents.push(documentRecord);
    persist();if(cloudReady&&cloudUser){documentRecord.cloudUploadStatus='uploading';try{await Promise.race([syncOriginalDocumentToCloud(documentRecord,file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Cloud upload timed out')),20000))])}catch(uploadError){documentRecord.cloudUploadStatus='pending';documentRecord.cloudUploadError=String(uploadError.message||'Cloud upload failed').slice(0,300);persist();toast('File saved locally. Cloud upload will retry when connected.')}}if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');if(!ocrFailed){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else{toast('File saved, but no readable text was extracted. Retry OCR from Uploaded Items.')}
   }catch(err){
    console.warn('Document extraction failed; attempting to preserve the original upload.');
@@ -1174,7 +1200,7 @@ async function convertDocumentToJSON(id){
   let payload={};try{payload=await response.json()}catch{}
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
-  doc.extractedJson=payload.json;doc.jsonStatus='saved_to_knowledge';doc.jsonSavedToKnowledge=true;doc.jsonConvertedAt=Date.now();doc.jsonSavedAt=Date.now();doc.structuredSearchText=JSON.stringify(payload.json);persist();render();toast('Structured JSON saved to My Knowledge');
+  doc.extractedJson=payload.json;doc.jsonStatus='saved_to_knowledge';doc.jsonSavedToKnowledge=true;doc.jsonConvertedAt=Date.now();doc.jsonSavedAt=Date.now();doc.updated=Date.now();doc.structuredSearchText=JSON.stringify(payload.json);persist();if(doc.storagePath)syncCloudDocumentMetadata(doc);render();toast('Structured JSON saved to My Knowledge');
  }catch(error){doc.jsonStatus='error';doc.jsonError=String(error.message||'Conversion failed');persist();render();console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'Could not convert document');}
 }
 function downloadDocumentJSON(id){
@@ -1878,7 +1904,10 @@ function resolveAskDocumentId(question,targetDocId){
  }).sort((a,b)=>b.score-a.score||b.created-a.created);
  if(timetableQuestion&&ranked[0]?.score>0)return ranked[0].doc.id;
  const named=ranked.find(item=>item.score>0);
- return (named||ranked.sort((a,b)=>b.created-a.created)[0]).doc.id;
+ // Never silently attach an unrelated newest upload to a vague document question.
+ // If there is only one saved document it is safe to use as the sole candidate;
+ // otherwise leave selection open so retrieval can rank actual matching evidence.
+ return named?.doc?.id||(ranked.length===1?ranked[0].doc.id:null);
 }
 function detectIntent(query){
  const tokens=askOneNormalize(query),scores={};
@@ -3083,6 +3112,10 @@ let workspaceSwitchQueue=Promise.resolve();
 function switchAccountWorkspace(user){
  const nextUserId=user?.id||null;
  workspaceSwitchQueue=workspaceSwitchQueue.catch(()=>{}).then(async()=>{
+  // Auth events can arrive back-to-back (for example, rapid account switching).
+  // Ignore stale queued events before touching either account's local workspace.
+  const currentAuthUserId=window.OneAuth?.getUser?.()?.id||null;
+  if(nextUserId!==currentAuthUserId)return;
   if(nextUserId===activeWorkspaceUserId&&(!nextUserId||cloudReady))return;
   // Stop incoming realtime updates first, then drain active-account sync reads/writes
   // before switching storage keys. Otherwise a late refresh can write Account A data
@@ -3094,6 +3127,7 @@ function switchAccountWorkspace(user){
    await Promise.allSettled([...cloudRefreshInFlight.values()]);
    await workspaceWriteQueue;
   }catch(_){}
+  if(nextUserId!==(window.OneAuth?.getUser?.()?.id||null))return;
   cloudReady=false;cloudUser=null;
   if(cloudRetryTimer)clearTimeout(cloudRetryTimer);
   activeWorkspaceUserId=nextUserId;

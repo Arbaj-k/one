@@ -94,7 +94,7 @@
   const explicitUdhaarCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye)\b/i.test(q);
   const explicitIncomeCue=/\b(?:income|salary|earned|earning|received|credited|kamai|mila|mili)\b/i.test(q);
   const explicitExpenseCue=/\b(?:expense|expenses|kharcha|kharch|spent|spending|purchase|bought)\b/i.test(q);
-  const personPaymentCue=/\bpaid\s+[\p{L}][\p{L}'-]*\s+\d/i.test(q)&&!explicitExpenseCue;
+  const personPaymentCue=/\bpaid\s+[\p{L}][\p{L}'-]*\s+\d/iu.test(q)&&!explicitExpenseCue;
   const domainIntent=reminderCue?'reminder':explicitTaskCue?'task':explicitExpenseCue?'expense':explicitIncomeCue?'income':(explicitUdhaarCue||personPaymentCue)?'udhaar':explicitNoteCue?'note':null;
   const explicitSection=domainIntent==='reminder'?'reminders':domainIntent==='task'?'tasks':domainIntent==='note'?'notes':['udhaar','income','expense'].includes(domainIntent)?'money':null;
   const det=bulkDeleteCompletedTasks?{intent:'tasks',ambiguous:false,matched:['tasks']}:explicitSection?{intent:explicitSection,ambiguous:false,matched:[explicitSection]}:detectIntent(q);

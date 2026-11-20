@@ -36,6 +36,10 @@ has(".eq('revision',expectedRevision)","Workspace snapshot writes must use optim
 has("const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';","Document OCR must use normalized MIME values");
 has("const needsPdf=valid.some(file=>normalizedDocumentMime(file)==='application/pdf');","PDF library loading must recognize extension-only PDFs");
 has("doc.mimeType=mimeType;","OCR retry must preserve the normalized MIME type");
+has('async function syncCloudDocumentMetadata(record){','Cloud document OCR/JSON metadata must have a retryable sync path');
+has("if(record.storagePath){",'Already-uploaded documents must refresh cloud OCR/JSON metadata after extraction');
+has('record.cloudMetadataSyncedAt=Date.now()','Cloud metadata sync completion must be recorded');
+assert.ok(app.includes('return named?.doc?.id||(ranked.length===1?ranked[0].doc.id:null);'),'Ask One must not silently select an unrelated newest document when several files are saved');
 assert.ok(auth.includes("from('profiles').upsert(profile"),'Authentication must upsert the deployed profiles table');
 // Document retrieval scope: generic queries must not fall back to unrelated OCR content.
 const docEvidenceStart=app.indexOf('function aiBuildDocumentEvidence(');

@@ -779,3 +779,67 @@ body.kuro :is(button,a,input,textarea,select):focus-visible{
   font-size:16px!important;
  }
 }
+
+/* One design system: consistent surfaces, type scale, controls and contrast on every page. */
+body.kuro{--k-radius:14px;--k-radius-sm:10px}
+html body.kuro #page-content{
+ color:var(--k-ink)!important;font-family:var(--k-sans)!important;
+ font-size:15px!important;line-height:1.6!important;
+}
+html body.kuro #page-content h1{font-size:clamp(26px,3.2vw,36px)!important;line-height:1.16!important;letter-spacing:-.04em!important;font-weight:750!important;color:var(--k-ink)!important}
+html body.kuro #page-content h2{font-size:clamp(20px,2.3vw,26px)!important;line-height:1.25!important;letter-spacing:-.03em!important;font-weight:700!important;color:var(--k-ink)!important}
+html body.kuro #page-content h3{font-size:17px!important;line-height:1.35!important;letter-spacing:-.015em!important;font-weight:700!important;color:var(--k-ink)!important}
+html body.kuro #page-content p,html body.kuro #page-content li{color:var(--k-ink-2)!important;line-height:1.65!important}
+html body.kuro #page-content .muted,html body.kuro #page-content small,html body.kuro #page-content .stat-note,html body.kuro #page-content .field-help{color:var(--k-mute)!important}
+html body.kuro #page-content .card,html body.kuro #page-content .panel,html body.kuro #page-content article.card,html body.kuro #page-content section.card,html body.kuro #page-content .stat-card{
+ border-radius:var(--k-radius)!important;border-color:var(--k-line)!important;
+ background:var(--k-panel)!important;color:var(--k-ink)!important;
+}
+html body.kuro #page-content .home-hero{border-radius:20px!important;background:var(--k-lav)!important;border-color:var(--k-lav-line)!important}
+html body.kuro #page-content .home-brain-search,html body.kuro #page-content .chat-form,html body.kuro #page-content .toolbar,html body.kuro #page-content .filter-bar{
+ border-radius:var(--k-radius)!important;border-color:var(--k-line-2)!important;
+}
+html body.kuro #page-content input:not([type=checkbox]):not([type=radio]):not([type=file]),
+html body.kuro #page-content textarea,html body.kuro #page-content select{
+ min-height:44px!important;border-radius:var(--k-radius-sm)!important;
+ border-color:var(--k-line-2)!important;background:var(--k-panel)!important;
+ color:var(--k-ink)!important;font-family:var(--k-sans)!important;
+ font-size:15px!important;line-height:1.5!important;
+}
+html body.kuro #page-content input::placeholder,html body.kuro #page-content textarea::placeholder{color:var(--k-mute)!important;opacity:1!important}
+html body.kuro #page-content button:not(.back-home-icon):not(.chat-back):not(.home-chat-open):not(.home-mic-button){
+ font-family:var(--k-sans)!important;line-height:1.35!important;
+}
+html body.kuro #page-content .btn,html body.kuro #page-content button.primary,html body.kuro #page-content .btn-primary{
+ min-height:40px!important;border-radius:var(--k-radius-sm)!important;font-weight:650!important;
+}
+html body.kuro #page-content button:focus-visible,html body.kuro #page-content a:focus-visible,
+html body.kuro #page-content input:focus-visible,html body.kuro #page-content textarea:focus-visible,
+html body.kuro #page-content select:focus-visible{
+ outline:3px solid color-mix(in srgb,var(--k-purple) 42%,transparent)!important;outline-offset:2px!important;
+}
+html body.kuro #page-content .grid,html body.kuro #page-content .stats,html body.kuro #page-content .item-grid{row-gap:14px!important}
+html body.kuro #page-content .stat-card{min-height:150px!important;padding:18px!important}
+html body.kuro #page-content .stat-number{font-variant-numeric:tabular-nums!important}
+html[data-kuro=dark] body.kuro #page-content .card,
+html[data-kuro=dark] body.kuro #page-content .panel,
+html[data-kuro=dark] body.kuro #page-content article.card,
+html[data-kuro=dark] body.kuro #page-content section.card,
+html[data-kuro=dark] body.kuro #page-content .stat-card{
+ background:#1c1c1c!important;color:#f1f1ef!important;border-color:#343434!important;
+}
+html[data-kuro=dark] body.kuro #page-content p,
+html[data-kuro=dark] body.kuro #page-content li{color:#d0d0ce!important}
+html[data-kuro=dark] body.kuro #page-content small,
+html[data-kuro=dark] body.kuro #page-content .muted,
+html[data-kuro=dark] body.kuro #page-content .field-help{color:#a6a6a6!important}
+html[data-kuro=dark] body.kuro #page-content input:not([type=checkbox]):not([type=radio]):not([type=file]),
+html[data-kuro=dark] body.kuro #page-content textarea,
+html[data-kuro=dark] body.kuro #page-content select{background:#141414!important;color:#f5f5f5!important;border-color:#484848!important}
+@media(max-width:760px){
+ html body.kuro #page-content{font-size:14.5px!important}
+ html body.kuro #page-content .card{padding:15px!important}
+ html body.kuro #page-content .stat-card{min-height:132px!important;padding:14px!important}
+ html body.kuro #page-content h1{font-size:27px!important}
+ html body.kuro #page-content h2{font-size:21px!important}
+}

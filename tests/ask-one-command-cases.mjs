@@ -197,6 +197,9 @@ assert.equal(namedDate.date,'2026-11-20','named month dates must parse for remin
 const paidAmit=parser.parseCommand('I paid Amit 300 rupees');
 assert.equal(paidAmit.udhaarType,'borrowed_repayment','payment to a named person without expense cue should be treated as repayment');
 assert.equal(paidAmit.person,'amit','person-payment cue must capture the lender');
+const paidUnicode=parser.parseCommand('I paid अमित 300 rupees');
+assert.equal(paidUnicode.udhaarType,'borrowed_repayment','Unicode person names must be recognized in repayment phrases');
+assert.equal(paidUnicode.person,'अमित','Unicode lender names must be preserved');
 
 const returnedByRahul=parser.parseCommand('Rahul returned 500 rupees');
 assert.equal(returnedByRahul.udhaarType,'lent_repayment','money returned by a borrower must reduce lending balance');
