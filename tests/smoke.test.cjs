@@ -241,7 +241,7 @@ assert.ok(!/return json\(\{/.test(aiFunction), 'All AI Edge Function JSON respon
 assert.ok(source.includes("if(type==='image/heic'||name.endsWith('.heic'))return 'image/heic'"), 'HEIC MIME normalization is missing');
 assert.ok(source.includes("if(type==='image/heif'||name.endsWith('.heif'))return 'image/heif'"), 'HEIF MIME normalization is missing');
 assert.ok(source.includes('async function documentFileForOcr(file)'), 'HEIC/HEIF OCR conversion helper is missing');
-assert.ok(source.includes("canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not convert HEIC image for OCR.'))),'image/jpeg',0.92)"), 'HEIC/HEIF OCR conversion must create a JPEG blob');
+assert.ok(source.includes("canvas.toBlob(value=>value?resolve(value):reject(new Error('Could not convert HEIC image for OCR.')),'image/jpeg',0.92)"), 'HEIC/HEIF OCR conversion must create a JPEG blob');
 assert.ok(source.includes('Only PDF, JPG, PNG, WEBP, HEIC and HEIF files are supported.'), 'Upload validation must explain supported image formats');
 
 // Phase 4: duplicate-action locks and offline reconnect recovery.
