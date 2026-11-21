@@ -889,3 +889,27 @@ body.kuro #page-content .smart-insight-card>p{margin:10px 0!important}
  body.kuro #page-content .home-attention .home-section-heading{align-items:flex-start!important}
  body.kuro #page-content .home-attention .tag{max-width:66px!important}
 }
+
+
+/* Quick Actions: clean, bold two-column layout based on the supplied reference. */
+body.kuro #page-content .home-quick-actions{padding:30px 28px!important;border:1.5px solid #d6d6d3!important;border-radius:30px!important;background:#fff!important;color:#171719!important;box-shadow:none!important;gap:24px!important}
+body.kuro #page-content .home-quick-actions-heading .eyebrow{font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;font-size:clamp(17px,2.8vw,25px)!important;letter-spacing:.12em!important;font-weight:650!important;color:#666!important;line-height:1.25!important}
+body.kuro #page-content .home-quick-actions-heading h2{margin:18px 0 0!important;font-size:clamp(25px,3.4vw,36px)!important;line-height:1.15!important;letter-spacing:-.035em!important;font-weight:750!important;color:#171719!important}
+body.kuro #page-content .home-create-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px 16px!important;width:100%!important}
+body.kuro #page-content .home-create-action{display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;min-width:0!important;min-height:94px!important;width:100%!important;padding:14px 16px!important;border:2px solid #c9c9c7!important;border-radius:27px!important;background:#fff!important;color:#171719!important;box-shadow:none!important;font-size:clamp(18px,2.5vw,27px)!important;font-weight:720!important;line-height:1.2!important;letter-spacing:-.025em!important;white-space:normal!important;transition:background .15s ease,border-color .15s ease,transform .15s ease!important}
+body.kuro #page-content .home-create-action>span{font-size:1.05em!important;font-weight:700!important;line-height:1!important}
+body.kuro #page-content .home-create-action>b{font-weight:720!important}
+body.kuro #page-content .home-create-action.is-primary{background:#171719!important;border-color:#171719!important;color:#fff!important}
+body.kuro #page-content .home-create-action:hover{border-color:#171719!important}
+body.kuro #page-content .home-create-action:active{transform:scale(.99)!important}
+@media(max-width:600px){
+ body.kuro #page-content .home-quick-actions{padding:21px 17px!important;border-radius:23px!important;gap:18px!important}
+ body.kuro #page-content .home-quick-actions-heading .eyebrow{font-size:15px!important}
+ body.kuro #page-content .home-quick-actions-heading h2{margin-top:12px!important;font-size:26px!important}
+ body.kuro #page-content .home-create-grid{gap:10px!important}
+ body.kuro #page-content .home-create-action{min-height:72px!important;padding:10px 7px!important;border-radius:19px!important;font-size:clamp(15px,4vw,19px)!important;gap:7px!important}
+}
+@media(max-width:350px){
+ body.kuro #page-content .home-create-grid{grid-template-columns:1fr!important}
+ body.kuro #page-content .home-create-action{min-height:62px!important}
+}
