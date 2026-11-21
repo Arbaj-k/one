@@ -9,12 +9,14 @@ const files = {
  notes: fs.readFileSync('features/notes-and-memory/index.html','utf8'),
  money: fs.readFileSync('features/expense-tracker/index.html','utf8'),
  robots: fs.readFileSync('robots.txt','utf8'),
- sitemap: fs.readFileSync('sitemap.xml','utf8')
+ sitemap: fs.readFileSync('sitemap.xml','utf8'),
+ llms: fs.readFileSync('llms.txt','utf8')
 };
 assert.ok(files.home.includes('rel="canonical" href="'+base+'"'));
 assert.match(files.home,/meta name="robots" content="index, follow/);
 assert.match(files.home,/application\/ld\+json/);
 assert.match(files.home,/"@type": "SoftwareApplication"/);
+assert.match(files.home,/"@type": "FAQPage"/);
 assert.match(files.home,/personal AI assistant/i);
 assert.ok(files.about.includes('rel="canonical" href="'+base+'about.html"'));
 assert.ok(files.terms.includes('rel="canonical" href="'+base+'terms.html"'));
@@ -26,8 +28,16 @@ for (const [key,slug] of [['task','ai-task-manager'],['notes','notes-and-memory'
  assert.ok(files.sitemap.includes(base+'features/'+slug+'/'),'missing '+slug+' in sitemap');
 }
 assert.ok(files.robots.includes('Sitemap: '+base+'sitemap.xml'));
+for (const bot of ['Googlebot','Google-Extended','OAI-SearchBot','ChatGPT-User','Claude-SearchBot','Claude-User','PerplexityBot']) {
+ assert.match(files.robots,new RegExp('User-agent: '+bot+'\\nAllow: \\/'),bot+' should be allowed');
+}
+for (const bot of ['GPTBot','ClaudeBot']) {
+ assert.match(files.robots,new RegExp('User-agent: '+bot+'\\nDisallow: \\/'),bot+' training crawler should be disallowed');
+}
+assert.match(files.llms,/^# One/m);
+assert.ok(files.llms.includes(base),'llms.txt should point to canonical homepage');
 for (const path of ['', 'about.html', 'features/ai-task-manager/', 'features/notes-and-memory/', 'features/expense-tracker/', 'terms.html']) {
  assert.ok(files.sitemap.includes('<loc>'+base+path+'</loc>'),'missing sitemap URL '+path);
 }
 assert.ok(!Object.values(files).some(x=>x.includes('arbaj-k.github.io/student-brain')));
-console.log('SEO canonical, metadata, landing pages, internal links and sitemap guardrails passed.');
+console.log('SEO, AI crawler policy, structured data, landing pages, internal links and sitemap guardrails passed.');
