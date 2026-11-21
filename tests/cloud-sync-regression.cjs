@@ -26,8 +26,12 @@ const after=context.mergeWorkspaceSnapshots(next,{tasks:[{id:'removed',title:'St
 assert.equal(after.tasks.some(x=>x.id==='removed'),false,'A deleted record must not resurrect from a stale remote snapshot');
 assert.ok(after.notes.some(x=>x.id==='kept'),'Unchanged records must survive merge');
 const has=(needle,label)=>assert.ok(app.includes(needle),label);
-has("storage.from('one-user-documents').upload","Documents must upload to the private per-user bucket");
-has("from('user_documents').upsert","Document metadata must be persisted to the owner-bound table");
+const uploadFn=fs.readFileSync('supabase/functions/one-document-upload/index.ts','utf8');
+has("storage.from('one-document-staging').upload","Documents must upload to an owner-scoped private staging bucket");
+has("CLOUD_URL+'/functions/v1/one-document-upload'","Staged documents must pass through server-side validation before promotion");
+assert.ok(uploadFn.includes('signature(bytes,mime)'),'Server must verify file signatures before promotion');
+assert.ok(uploadFn.includes('from("user_documents").upsert'),'Document metadata must be persisted by the trusted server');
+assert.ok(uploadFn.includes('one_consume_rate_limit'),'Document promotion must be rate limited');
 has("storage.from('one-user-documents').download","Documents must be downloadable on a second signed-in device");
 has("storage.from('one-user-documents').remove","Document deletion must remove the private cloud object");
 has("await syncPendingDocumentFiles();","Pending document uploads must retry after workspace activation");
