@@ -30,3 +30,7 @@ Bank SMS formats vary. Alerts without currency markers, UPI keyword, or clear de
 4. Return to One SMS Sync and tap Enable again if needed. A small draggable One bubble appears above other apps.
 5. Tap the bubble to open the compact Quick Note editor. Saving calls the authenticated `add_workspace_note` RPC and writes directly to the signed-in One workspace.
 6. Stop the foreground notification/service to dismiss the bubble; Android may show a persistent notification while it is active.
+
+
+## Automated release
+The repository workflow builds the debug APK and publishes the `one-sms-sync-v0.1.0` GitHub release when Android companion sources change.
