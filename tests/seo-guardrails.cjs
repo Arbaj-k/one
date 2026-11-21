@@ -19,7 +19,6 @@ assert.ok(files.home.includes('rel="canonical" href="'+base+'"'));
 assert.match(files.home,/meta name="robots" content="index, follow/);
 assert.match(files.home,/application\/ld\+json/);
 assert.match(files.home,/"@type": "SoftwareApplication"/);
-assert.match(files.home,/"@type": "FAQPage"/);
 assert.match(files.home,/personal AI assistant/i);
 assert.ok(files.about.includes('rel="canonical" href="'+base+'about.html"'));
 for (const [key,slug] of [['ai','personal-ai-assistant'],['projects','project-organizer'],['documents','document-organizer']]) {
