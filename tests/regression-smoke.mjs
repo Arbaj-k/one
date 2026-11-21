@@ -398,7 +398,7 @@ assert.match(app, /Saved '\+category\+' '\+amountLabel/,'Voice money success con
 
 
 // One quick capture and consolidated Money Spending regressions.
-assert.ok(app.includes('id="home-quick-note-form"'), 'Today dashboard must expose quick note capture.');
+assert.ok(!app.includes('id="home-quick-note-form"'), 'Quick note capture widget must stay off the Today dashboard.');
 assert.ok(app.includes("if(e.target.id==='home-quick-note-form')"), 'Quick notes must save through the workspace data model.');
 assert.ok(app.includes('function loanTracker(){'), 'Udhaar tracker must remain available inside Money Spending.');
 assert.ok(app.includes('function moneyTabs(active){'), 'Money Spending must expose consolidated tabs.');
