@@ -16,7 +16,7 @@ Deno.serve(async(req:Request)=>{
  if(req.method!=="POST")return reply(req,{error:"POST required"},405);
  try{
   const len=Number(req.headers.get("content-length")||0);if(len>250000)return reply(req,{error:"Request too large"},413);
-  const token=(req.headers.get("Authorization")||"").match(/^Bearer\\s+(.+)$/i)?.[1];if(!token)return reply(req,{error:"Sign in to upload documents"},401);
+  const token=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return reply(req,{error:"Sign in to upload documents"},401);
   const url=Deno.env.get("SUPABASE_URL"),anon=Deno.env.get("SUPABASE_ANON_KEY"),service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!url||!anon||!service)return reply(req,{error:"Upload service unavailable"},503);
   const auth=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}}),{data:u,error:ue}=await auth.auth.getUser(token);if(ue||!u.user)return reply(req,{error:"Session expired. Sign in again."},401);
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}}),uid=u.user.id;
@@ -27,7 +27,7 @@ Deno.serve(async(req:Request)=>{
   const {data:staged,error:downloadError}=await admin.storage.from("one-document-staging").download(stage);if(downloadError||!staged)return reply(req,{error:"Staged file not found"},404);
   if(staged.size!==size||staged.size>12582912)return reply(req,{error:"Uploaded file size did not match the declared size"},400);
   const bytes=new Uint8Array(await staged.arrayBuffer());if(!signature(bytes,mime))return reply(req,{error:"File content does not match its declared type. Upload a genuine PDF or supported image."},415);
-  const safeName=name.normalize("NFKC").replace(/[^\\p{L}\\p{N}._-]+/gu,"_").replace(/^\\.+/,"").slice(0,120)||"document";
+  const safeName=name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu,"_").replace(/^\.+/,"").slice(0,120)||"document";
   const finalPath=uid+"/"+id+"/"+safeName;
   const {error:upError}=await admin.storage.from("one-user-documents").upload(finalPath,new Blob([bytes],{type:mime}),{upsert:true,contentType:mime,cacheControl:"3600"});if(upError)throw upError;
   const metadata={workspace_doc_id:id,display_name:text(body.display_name,255)||name,type:text(body.document_type,40)||"file",ocr_status:text(body.ocr_status,40)||"pending",json_status:text(body.json_status,40)||"pending"};
