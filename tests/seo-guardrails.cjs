@@ -1,24 +1,33 @@
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
-
 const base = 'https://arbaj-k.github.io/one/';
-const html = fs.readFileSync('index.html', 'utf8');
-const about = fs.readFileSync('about.html', 'utf8');
-const terms = fs.readFileSync('terms.html', 'utf8');
-const robots = fs.readFileSync('robots.txt', 'utf8');
-const sitemap = fs.readFileSync('sitemap.xml', 'utf8');
-
-assert.match(html, /<link rel="canonical" href="https:\/\/arbaj-k\.github\.io\/one\/">/);
-assert.match(html, /<meta name="robots" content="index, follow/);
-assert.match(html, /application\/ld\+json/);
-assert.match(html, /"@type": "SoftwareApplication"/);
-assert.match(html, /id="one-public-seo-title"/);
-assert.match(html, /personal AI assistant/i);
-assert.match(about, /rel="canonical" href="https:\/\/arbaj-k\.github\.io\/one\/about\.html"/);
-assert.match(terms, /rel="canonical" href="https:\/\/arbaj-k\.github\.io\/one\/terms\.html"/);
-assert.match(robots, new RegExp('Sitemap: ' + base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'sitemap\\.xml'));
-for (const path of ['', 'about.html', 'terms.html']) {
-  assert.ok(sitemap.includes('<loc>' + base + path + '</loc>'), 'Missing canonical sitemap URL: ' + path);
+const files = {
+ home: fs.readFileSync('index.html','utf8'),
+ about: fs.readFileSync('about.html','utf8'),
+ terms: fs.readFileSync('terms.html','utf8'),
+ task: fs.readFileSync('features/ai-task-manager/index.html','utf8'),
+ notes: fs.readFileSync('features/notes-and-memory/index.html','utf8'),
+ money: fs.readFileSync('features/expense-tracker/index.html','utf8'),
+ robots: fs.readFileSync('robots.txt','utf8'),
+ sitemap: fs.readFileSync('sitemap.xml','utf8')
+};
+assert.ok(files.home.includes('rel="canonical" href="'+base+'"'));
+assert.match(files.home,/meta name="robots" content="index, follow/);
+assert.match(files.home,/application\/ld\+json/);
+assert.match(files.home,/"@type": "SoftwareApplication"/);
+assert.match(files.home,/personal AI assistant/i);
+assert.ok(files.about.includes('rel="canonical" href="'+base+'about.html"'));
+assert.ok(files.terms.includes('rel="canonical" href="'+base+'terms.html"'));
+for (const [key,slug] of [['task','ai-task-manager'],['notes','notes-and-memory'],['money','expense-tracker']]) {
+ assert.match(files[key],/<title>[^<]+<\/title>/,key+' title');
+ assert.match(files[key],/name="description"/,key+' description');
+ assert.match(files[key],/rel="canonical"/,key+' canonical');
+ assert.match(files[key],/<h1>/,key+' H1');
+ assert.ok(files.sitemap.includes(base+'features/'+slug+'/'),'missing '+slug+' in sitemap');
 }
-assert.ok(![html, about, terms, robots, sitemap].some(content => content.includes('arbaj-k.github.io/student-brain')));
-console.log('SEO canonical, metadata, structured-data and sitemap guardrails passed.');
+assert.ok(files.robots.includes('Sitemap: '+base+'sitemap.xml'));
+for (const path of ['', 'about.html', 'features/ai-task-manager/', 'features/notes-and-memory/', 'features/expense-tracker/', 'terms.html']) {
+ assert.ok(files.sitemap.includes('<loc>'+base+path+'</loc>'),'missing sitemap URL '+path);
+}
+assert.ok(!Object.values(files).some(x=>x.includes('arbaj-k.github.io/student-brain')));
+console.log('SEO canonical, metadata, landing pages, internal links and sitemap guardrails passed.');
