@@ -2323,3 +2323,88 @@ html body .chat-shell form#chat-form.chat-form button.chat-send[type="submit"]:d
 .split-bill-create{padding:24px!important;margin:18px 0 26px}.split-bill-create-heading,.split-bill-history-head,.split-bill-card-head,.split-bill-footer,.split-bill-form-foot{display:flex;align-items:center;justify-content:space-between;gap:14px}.split-bill-create-heading h2,.split-bill-history-head h2{margin:5px 0}.split-bill-create-heading p,.split-bill-history-head p{margin:0;font-size:13px}.split-bill-create-mark{width:54px;height:54px;display:grid;place-items:center;border-radius:18px;background:var(--surface-muted,#f1f1f1);font-size:28px;font-weight:700}.split-bill-form{display:grid;gap:15px;margin-top:22px}.split-bill-form>label,.split-bill-form-grid>label{display:grid;gap:7px;font-size:13px;font-weight:650;color:var(--text-primary,#222)}.split-bill-form input:not([type=radio]){box-sizing:border-box;width:100%;min-height:45px;padding:11px 13px;border:1px solid var(--border,#d9d9d9);border-radius:11px;background:var(--surface,#fff);color:var(--text-primary,#222);font:inherit;font-weight:450}.split-bill-form small{font-size:11px;font-weight:400;color:var(--text-secondary,#888);line-height:1.5}.split-bill-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.split-bill-method{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:13px;border:1px solid var(--border,#ddd);border-radius:12px;font-size:13px}.split-bill-method>span{font-weight:700;margin-right:auto}.split-bill-method label{display:flex;align-items:center;gap:6px}.split-bill-method input{accent-color:var(--accent,#555)}.split-bill-form-foot{padding-top:5px}.split-bill-history{display:grid;gap:14px}.split-bill-list{display:grid;gap:13px}.split-bill-card{padding:19px!important}.split-bill-card-head h3{margin:4px 0}.split-bill-total{font-size:20px;white-space:nowrap}.split-bill-shares{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:17px 0}.split-bill-share{display:flex;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:10px;background:var(--surface-muted,#f5f5f5);font-size:12px}.split-bill-footer{padding-top:12px;border-top:1px solid var(--border,#e5e5e5);font-size:12px}.split-bill-debts{display:grid;gap:8px;margin-top:13px}.split-bill-debt{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border,#e5e5e5);font-size:12px}.split-bill-debt span{flex:1}.split-bill-debt b{white-space:nowrap}.split-bill-empty{text-align:center;padding:32px!important}.split-bill-empty h3{margin:8px 0}.split-bill-empty-icon{font-size:34px;color:var(--text-secondary,#888)}@media(max-width:600px){.split-bill-create{padding:17px!important}.split-bill-form-grid{grid-template-columns:1fr}.split-bill-create-heading{align-items:flex-start}.split-bill-form-foot{align-items:stretch;flex-direction:column}.split-bill-form-foot .btn{width:100%}.split-bill-footer{align-items:flex-start;flex-direction:column}.split-bill-debt{flex-wrap:wrap}.split-bill-debt span{min-width:55%}}
 
 .split-bill-share{position:relative;display:grid;grid-template-columns:1fr auto;gap:3px 8px}.split-bill-share small{grid-column:1/-1;color:var(--text-secondary,#888);font-size:10px}.split-bill-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border,#e5e5e5)}.split-bill-actions .muted{font-size:11px}.split-bill-card-head .tag{margin-right:7px}
+
+/* Split Bill + Group Trip: prevent clipped, faded or overflowing content */
+#page-content .split-bill-create,
+#page-content .split-bill-history,
+#page-content .split-bill-card,
+#page-content .gt-card,
+#page-content .gt-section,
+#page-content .gt-form,
+#page-content .gt-row,
+#page-content .split-bill-debt,
+#page-content .split-bill-share { min-width:0; max-width:100%; box-sizing:border-box; }
+#page-content .split-bill-create *,
+#page-content .split-bill-history *,
+#page-content .split-bill-card *,
+#page-content .gt-card * { box-sizing:border-box; }
+#page-content .split-bill-create,
+#page-content .split-bill-card,
+#page-content .gt-card { color:var(--text-primary,var(--text,#202633)); overflow:visible; }
+#page-content .split-bill-create h2,
+#page-content .split-bill-history h2,
+#page-content .split-bill-card h3,
+#page-content .gt-card h2,
+#page-content .gt-card h3,
+#page-content .gt-card .gt-label,
+#page-content .split-bill-create label,
+#page-content .gt-form label { color:var(--text-primary,var(--text,#202633)); line-height:1.45; overflow-wrap:anywhere; }
+#page-content .split-bill-create p,
+#page-content .split-bill-card p,
+#page-content .split-bill-card small,
+#page-content .gt-card p,
+#page-content .gt-card small,
+#page-content .gt-card span,
+#page-content .split-bill-footer,
+#page-content .split-bill-debt { line-height:1.55; overflow-wrap:anywhere; }
+#page-content .split-bill-create .muted,
+#page-content .split-bill-card .muted,
+#page-content .gt-card .muted,
+#page-content .gt-card .gt-stats small,
+#page-content .gt-card .gt-row small { color:var(--text-secondary,var(--muted,#687386)); opacity:1; }
+#page-content .split-bill-form input:not([type=radio]),
+#page-content .split-bill-form textarea,
+#page-content .gt-form input,
+#page-content .gt-form select,
+#page-content .gt-share input { min-width:0; max-width:100%; color:var(--text-primary,var(--text,#202633)); background:var(--surface,#fff); }
+#page-content .split-bill-form input::placeholder,
+#page-content .gt-form input::placeholder { color:var(--text-secondary,#737d8d); opacity:1; }
+#page-content .split-bill-card-head,
+#page-content .split-bill-footer,
+#page-content .split-bill-debt,
+#page-content .gt-head,
+#page-content .gt-row { min-width:0; }
+#page-content .split-bill-card-head > div,
+#page-content .split-bill-debt > span,
+#page-content .gt-head > div,
+#page-content .gt-row > div { min-width:0; overflow-wrap:anywhere; }
+#page-content .split-bill-total,
+#page-content .split-bill-debt b,
+#page-content .gt-row strong { white-space:normal; overflow-wrap:anywhere; }
+#page-content .split-bill-shares { grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr)); }
+#page-content .split-bill-share { min-width:0; align-items:flex-start; flex-wrap:wrap; }
+#page-content .split-bill-share > span,
+#page-content .split-bill-share > b { min-width:0; overflow-wrap:anywhere; }
+#page-content .gt-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }
+#page-content .gt-stats > div { min-width:0; overflow-wrap:anywhere; }
+#page-content .gt-share { min-width:0; flex-wrap:wrap; }
+#page-content .gt-share input { flex:1 1 220px; }
+#page-content .gt-person { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+#page-content .split-bill-create [hidden],
+#page-content .gt-card [hidden] { display:none !important; }
+@media(max-width:600px){
+ #page-content .split-bill-card { padding:15px !important; }
+ #page-content .split-bill-card-head { align-items:flex-start; flex-wrap:wrap; }
+ #page-content .split-bill-total { font-size:18px; }
+ #page-content .split-bill-share { padding:10px; }
+ #page-content .split-bill-debt { align-items:flex-start; }
+ #page-content .split-bill-debt .btn { max-width:100%; white-space:normal; }
+ #page-content .gt-head { flex-wrap:wrap; }
+ #page-content .gt-stats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+ #page-content .gt-stats > div { padding:10px 8px; }
+ #page-content .gt-stats small { font-size:10px; }
+ #page-content .gt-stats b { font-size:14px; overflow-wrap:anywhere; }
+ #page-content .gt-row { flex-wrap:wrap; }
+ #page-content .gt-row > div { flex:1 1 150px; }
+ #page-content .gt-row .btn { max-width:100%; white-space:normal; }
+}
