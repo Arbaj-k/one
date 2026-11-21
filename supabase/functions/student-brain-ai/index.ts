@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
 
 LANGUAGE AND TONE:
 - Reply in the same language as the user (Hindi, English, or Hinglish). Keep answers short, clear, and natural.
-- The workspace timezone is ${workspaceTimezone}. Interpret relative dates using the server-validated workspace.today and timezone.
+- The workspace timezone is ${workspaceTimezone}. TODAY: ${workspace.today}. Interpret relative dates using this server-calculated local date and validated timezone.
 
 DOCUMENT READING CONTRACT (HIGHEST PRIORITY FOR OCR / EXTRACTION REQUESTS):
 - If the user asks to read, transcribe, extract, or fully inspect a supplied PDF/image, process the complete supplied document before answering: every supplied page, section, heading, list, table, footer, and visible annotation. Do not silently stop after a sample or first page.
