@@ -15,7 +15,7 @@ const verifyDevice=async(admin:any,b:any,code:string,me:any,action:string)=>{
  const ts=Number(b.device_ts),nonce=txt(b.device_nonce,80),sig=txt(b.device_signature,200);
  if(!Number.isSafeInteger(ts)||Math.abs(Date.now()-ts)>60000||!/^[a-f0-9]{40,80}$/i.test(nonce)||!sig)throw new Error("Device proof expired. Retry the request.");
  const key=await crypto.subtle.importKey("jwk",me.device_public_key,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
- const bytes=Uint8Array.from(atob(sig.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0));
+ const base64=sig.replace(/-/g,"+").replace(/_/g,"/");const bytes=Uint8Array.from(atob(base64+"=".repeat((4-base64.length%4)%4)),c=>c.charCodeAt(0));
  const payload=new TextEncoder().encode(JSON.stringify([action,code,me.id,ts,nonce]));
  const ok=await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},key,bytes,payload);
  if(!ok)throw new Error("This device is not authorized for the trip.");
