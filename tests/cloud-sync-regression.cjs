@@ -45,6 +45,9 @@ has("if(record.storagePath){",'Already-uploaded documents must refresh cloud OCR
 has('record.cloudMetadataSyncedAt=Date.now()','Cloud metadata sync completion must be recorded');
 assert.ok(app.includes('return named?.doc?.id||(ranked.length===1?ranked[0].doc.id:null);'),'Ask One must not silently select an unrelated newest document when several files are saved');
 assert.ok(auth.includes("from('profiles').upsert(profile"),'Authentication must upsert the deployed profiles table');
+const logoutStart=auth.indexOf('async function logout(){'),logoutEnd=auth.indexOf('\n  async function deleteAccount()',logoutStart),logoutSource=auth.slice(logoutStart,logoutEnd);
+assert.ok(logoutSource.indexOf('auth.signOut()')<logoutSource.indexOf('purgeUserLocalData?.(user.id)'), 'Logout must not erase local workspace data until sign-out succeeds');
+assert.ok(logoutSource.includes('Your local data was kept'), 'Logout failure must preserve user data and explain recovery');
 // Document retrieval scope: generic queries must not fall back to unrelated OCR content.
 const docEvidenceStart=app.indexOf('function aiBuildDocumentEvidence(');
 const docEvidenceEnd=app.indexOf('\nasync function buildStudentBrainAIRequest',docEvidenceStart);
