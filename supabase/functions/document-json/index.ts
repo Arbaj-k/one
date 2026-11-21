@@ -18,6 +18,7 @@ const json = (data: unknown, status = 200, _unused?: unknown, req?: Request) => 
 });
 const textValue = (value: unknown, max = 52000) => typeof value === "string" ? value.slice(0, max) : "";
 const MODEL = "gemini-3.5-flash-lite";
+const validOriginal=(data:string,mime:string)=>{try{const b=Uint8Array.from(atob(data),c=>c.charCodeAt(0));if(mime==="application/pdf")return new TextDecoder().decode(b.slice(0,8)).startsWith("%PDF-");if(mime==="image/jpeg")return b[0]===255&&b[1]===216&&b[2]===255;if(mime==="image/png")return [137,80,78,71,13,10,26,10].every((v,i)=>b[i]===v);if(mime==="image/webp")return new TextDecoder().decode(b.slice(0,4))==="RIFF"&&new TextDecoder().decode(b.slice(8,12))==="WEBP";return false}catch{return false}};
 
 async function generate(geminiKey: string, prompt: string, originalFile?: { mimeType: string; dataBase64: string }) {
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
@@ -56,6 +57,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405, undefined, req);
   try {
+    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json({error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
     // Parse a real Bearer token (the regex must use a whitespace escape, not a literal "\\s").
     const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return json({ error: "An active assistant session is required." }, 401, undefined, req);
@@ -64,11 +66,15 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: auth, error } = await supabase.auth.getUser(token);
     if (error || !auth.user) return json({ error: "Assistant session is invalid. Refresh and retry." }, 401, undefined, req);
-
+    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json({error:"Document security service is unavailable."},503,undefined,req);
+    const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
+    const {data:allowed,error:limitError}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"document-json:"+auth.user.id,p_limit:8,p_window_seconds:3600});
+    if(limitError)return json({error:"Document processing security check unavailable."},503,undefined,req);
+    if(allowed!==true)return json({error:"Document conversion limit reached. Try again later."},429,undefined,req);
     const body = await req.json();
     const name = textValue(body?.name, 180) || "Untitled document";
     const mimeType = textValue(body?.mimeType, 80);
-    if (!["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(mimeType)) return json({ error: "Only PDF, JPG/JPEG, PNG, WebP, HEIC and HEIF files are supported." }, 415, undefined, req);
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(mimeType)) return json({ error: "Only PDF, JPG/JPEG, PNG and WebP files are supported." }, 415, undefined, req);
     const rawSourceText = typeof body?.extractedText === "string" ? body.extractedText : "";
     if (rawSourceText.length > 180000) return json({ error: "OCR text is saved in One, but this document is too large for one JSON conversion request (limit: 180,000 characters). Ask One can still search the full extracted text." }, 413, undefined, req);
     const sourceText = rawSourceText.trim();
@@ -81,7 +87,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "The attached original file type does not match the uploaded document." }, 415, undefined, req);
       }
       if (visualData.length > 4_194_304) return json({ error: "The original file exceeds the 3 MB visual-analysis limit. OCR text remains available in One." }, 413, undefined, req);
-      if (visualData.length < 100 || !/^[A-Za-z0-9+/]+={0,2}$/.test(visualData)) {
+      if (visualData.length < 100 || !/^[A-Za-z0-9+/]+={0,2}$/.test(visualData) || !validOriginal(visualData,visualMime)) {
         return json({ error: "The attached original file data is invalid. Re-upload the file and retry." }, 400, undefined, req);
       }
       originalFile = { mimeType: visualMime, dataBase64: visualData };
