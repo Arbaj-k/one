@@ -13,7 +13,11 @@ const files = {
  documents: fs.readFileSync('features/document-organizer/index.html','utf8'),
  robots: fs.readFileSync('robots.txt','utf8'),
  sitemap: fs.readFileSync('sitemap.xml','utf8'),
- llms: fs.readFileSync('llms.txt','utf8')
+ llms: fs.readFileSync('llms.txt','utf8'),
+ guides: fs.readFileSync('guides/index.html','utf8'),
+ dailyGuide: fs.readFileSync('guides/daily-planning-system/index.html','utf8'),
+ notesGuide: fs.readFileSync('guides/personal-knowledge-management/index.html','utf8'),
+ expenseGuide: fs.readFileSync('guides/expense-tracking-basics/index.html','utf8')
 };
 assert.ok(files.home.includes('rel="canonical" href="'+base+'"'));
 assert.match(files.home,/meta name="robots" content="index, follow/);
@@ -46,7 +50,17 @@ for (const bot of ['GPTBot','ClaudeBot']) {
 }
 assert.match(files.llms,/^# One/m);
 assert.ok(files.llms.includes(base),'llms.txt should point to canonical homepage');
-for (const path of ['', 'about.html', 'features/ai-task-manager/', 'features/notes-and-memory/', 'features/expense-tracker/', 'features/personal-ai-assistant/', 'features/project-organizer/', 'features/document-organizer/', 'terms.html']) {
+for (const [key,slug] of [['dailyGuide','daily-planning-system'],['notesGuide','personal-knowledge-management'],['expenseGuide','expense-tracking-basics']]) {
+ assert.match(files[key],/<title>[^<]+<\\/title>/,key+' title');
+ assert.match(files[key],/name="description"/,key+' description');
+ assert.ok(files[key].includes('rel="canonical" href="'+base+'guides/'+slug+'/'),key+' canonical');
+ assert.match(files[key],/<h1>/,key+' H1');
+ assert.ok(files.sitemap.includes(base+'guides/'+slug+'/'),'missing '+slug+' in sitemap');
+ assert.ok(files.llms.includes(base+'guides/'+slug+'/'),'missing '+slug+' in llms.txt');
+}
+assert.ok(files.guides.includes('daily-planning-system/'));
+assert.ok(files.sitemap.includes(base+'guides/'));
+for (const path of ['', 'about.html', 'features/ai-task-manager/', 'features/notes-and-memory/', 'features/expense-tracker/', 'features/personal-ai-assistant/', 'features/project-organizer/', 'features/document-organizer/', 'guides/', 'guides/daily-planning-system/', 'guides/personal-knowledge-management/', 'guides/expense-tracking-basics/', 'terms.html']) {
  assert.ok(files.sitemap.includes('<loc>'+base+path+'</loc>'),'missing sitemap URL '+path);
 }
 assert.ok(!Object.values(files).some(x=>x.includes('arbaj-k.github.io/student-brain')));
