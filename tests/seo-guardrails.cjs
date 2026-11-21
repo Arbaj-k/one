@@ -23,7 +23,7 @@ assert.match(files.home,/"@type": "FAQPage"/);
 assert.match(files.home,/personal AI assistant/i);
 assert.ok(files.about.includes('rel="canonical" href="'+base+'about.html"'));
 for (const [key,slug] of [['ai','personal-ai-assistant'],['projects','project-organizer'],['documents','document-organizer']]) {
- assert.match(files[key],/<title>[^<]+<\\/title>/,key+' title');
+ assert.match(files[key],/<title>[^<]+<\/title>/,key+' title');
  assert.match(files[key],/name="description"/,key+' description');
  assert.ok(files[key].includes('rel="canonical" href="'+base+'features/'+slug+'/'),key+' canonical');
  assert.match(files[key],/<h1>/,key+' H1');
