@@ -843,3 +843,49 @@ html[data-kuro=dark] body.kuro #page-content select{background:#141414!important
  html body.kuro #page-content h1{font-size:27px!important}
  html body.kuro #page-content h2{font-size:21px!important}
 }
+
+/* Today page: compact copy, consistent alignment and no clipped labels. */
+body.kuro #page-content .home-dashboard{display:flex;flex-direction:column;gap:12px!important;min-width:0}
+body.kuro #page-content .home-greeting{margin:0!important}
+body.kuro #page-content .home-greeting .subtitle{margin:5px 0 0!important;line-height:1.4!important}
+body.kuro #page-content .home-hero{margin:0!important;padding:16px!important}
+body.kuro #page-content .home-hero-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+body.kuro #page-content .home-hero h2{margin:10px 0!important}
+body.kuro #page-content .home-prompts{display:flex;align-items:center;gap:7px;overflow-x:auto;padding:2px 0 4px;max-width:100%}
+body.kuro #page-content .home-prompts>span{flex:0 0 auto}
+body.kuro #page-content .home-prompts button{flex:0 0 auto;white-space:nowrap;min-height:34px!important}
+body.kuro #page-content .home-quick-actions{margin:0!important;padding:14px!important}
+body.kuro #page-content .home-quick-actions h2{margin:3px 0 0!important;font-size:18px!important}
+body.kuro #page-content .home-quick-actions p{display:none!important}
+body.kuro #page-content .home-quick-actions>.row{align-items:center!important;gap:10px!important}
+body.kuro #page-content .home-quick-actions .row[aria-label="Create shortcuts"]{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:8px!important}
+body.kuro #page-content .home-quick-actions .btn{width:100%;min-width:0;white-space:normal}
+body.kuro #page-content .home-attention{margin:0!important;padding:14px!important;min-width:0}
+body.kuro #page-content .home-attention .home-section-heading{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;min-width:0}
+body.kuro #page-content .home-attention .home-section-heading>div{min-width:0;flex:1 1 auto}
+body.kuro #page-content .home-attention .home-section-heading h2{margin:2px 0!important}
+body.kuro #page-content .home-attention .home-section-heading p{margin:3px 0 0!important;font-size:12px!important;line-height:1.4!important}
+body.kuro #page-content .home-attention .tag{flex:0 0 auto;max-width:76px;white-space:normal;text-align:center;overflow-wrap:anywhere}
+body.kuro #page-content .home-attention-group{margin-top:12px!important;min-width:0}
+body.kuro #page-content .home-attention-label{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin-bottom:6px!important;min-width:0}
+body.kuro #page-content .home-attention-label>*{min-width:0}
+body.kuro #page-content .home-attention .list-item{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;padding:10px!important;min-width:0}
+body.kuro #page-content .home-attention .list-copy{flex:1 1 auto;min-width:0}
+body.kuro #page-content .home-attention .list-copy b{display:block;line-height:1.35!important}
+body.kuro #page-content .home-attention .list-copy small{display:block;line-height:1.4!important}
+body.kuro #page-content .home-attention .list-item>b{flex:0 0 auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+body.kuro #page-content .home-stats{margin:0!important}
+body.kuro #page-content .smart-briefing,body.kuro #page-content .home-coming-up,body.kuro #page-content .smart-insight-card{margin:0!important;min-width:0}
+body.kuro #page-content .smart-briefing .row{align-items:center!important;gap:8px!important}
+body.kuro #page-content .smart-briefing h2,body.kuro #page-content .home-coming-up h2,body.kuro #page-content .smart-insight-card h2{margin:2px 0!important}
+body.kuro #page-content .smart-briefing p{margin:3px 0!important}
+body.kuro #page-content .smart-briefing-list{margin:8px 0!important}
+body.kuro #page-content .smart-briefing-actions{display:flex!important;flex-wrap:wrap;gap:8px!important}
+body.kuro #page-content .home-coming-up .list{margin-top:8px!important}
+body.kuro #page-content .smart-insight-card>p{margin:10px 0!important}
+@media(max-width:390px){
+ body.kuro #page-content .home-hero-powered{display:none!important}
+ body.kuro #page-content .home-quick-actions .btn{font-size:13px!important;padding-inline:8px!important}
+ body.kuro #page-content .home-attention .home-section-heading{align-items:flex-start!important}
+ body.kuro #page-content .home-attention .tag{max-width:66px!important}
+}
