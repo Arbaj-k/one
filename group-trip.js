@@ -10,11 +10,11 @@ const setToken=(code,token)=>{try{localStorage.setItem(tokenKey(code),token)}cat
 const randomToken=()=>{const b=new Uint8Array(32);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,'0')).join('')};
 const invite=()=>new URL(location.href).searchParams.get('trip')||'';
 let state=null,loading=false,error='';
-async function rpc(name,args){const c=client();if(!c)throw new Error('One cloud connection is not ready');const {data,error}=await c.rpc(name,args);if(error)throw error;return data}
+async function rpc(name,args){const c=client();if(!c)throw new Error('One cloud connection is not ready');const map={one_trip_create:['create',{title:args.p_title,name:args.p_name,upi_id:args.p_upi_id,upi_phone:args.p_upi_phone}],one_trip_join:['join',{name:args.p_name,upi_id:args.p_upi_id,upi_phone:args.p_upi_phone,upi_qr_data:args.p_qr_data}],one_trip_get:['get',{}],one_trip_add_expense:['expense',{description:args.p_description,amount_paise:args.p_amount_paise,split_member_ids:args.p_split_member_ids,payer_member_id:args.p_payer_member_id}],one_trip_record_transfer:['transfer',{to_member_id:args.p_to_member_id,amount_paise:args.p_amount_paise}],one_trip_confirm_transfer:['confirm',{transfer_id:args.p_transfer_id}],one_trip_close:['close',{}]};const [action,extra]=map[name]||[];if(!action)throw new Error('Unsupported trip action');const {data,error}=await c.functions.invoke('one-group-trips',{body:{action,invite_code:args.p_invite_code,member_token:args.p_member_token,...extra}});if(error)throw new Error(error.message||'Trip request failed');if(data?.error)throw new Error(data.error);return data?.trip_id?data:data;}
 function settlement(s){
  const net=new Map((s.members||[]).map(m=>[m.id,0]));
  for(const e of s.expenses||[]){const ids=[...new Set(e.split_member_ids||[])];if(!ids.length)continue;const base=Math.floor(Number(e.amount_paise)/ids.length),rem=Number(e.amount_paise)%ids.length;net.set(e.payer_member_id,(net.get(e.payer_member_id)||0)+Number(e.amount_paise));ids.forEach((id,i)=>net.set(id,(net.get(id)||0)-base-(i<rem?1:0)));}
- for(const x of s.transfers||[])if(x.status==='confirmed'){net.set(x.from_member_id,(net.get(x.from_member_id)||0)+Number(x.amount_paise));net.set(x.to_member_id,(net.get(x.to_member_id)||0)-Number(x.amount_paise));}
+ for(const x of s.transfers||[]){net.set(x.from_member_id,(net.get(x.from_member_id)||0)+Number(x.amount_paise));net.set(x.to_member_id,(net.get(x.to_member_id)||0)-Number(x.amount_paise));}
  const creditors=[],debtors=[];for(const [id,n] of net){if(n>0)creditors.push({id,amount:n});if(n<0)debtors.push({id,amount:-n});}
  creditors.sort((a,b)=>b.amount-a.amount);debtors.sort((a,b)=>b.amount-a.amount);
  const moves=[];let i=0,j=0;while(i<debtors.length&&j<creditors.length){const amount=Math.min(debtors[i].amount,creditors[j].amount);if(amount>0)moves.push({from:debtors[i].id,to:creditors[j].id,amount});debtors[i].amount-=amount;creditors[j].amount-=amount;if(!debtors[i].amount)i++;if(!creditors[j].amount)j++;}
@@ -55,7 +55,7 @@ async function handleSubmit(e){
   }else{
    const ids=fd.getAll('split').map(String);if(!ids.length)throw new Error('Select at least one person to split this expense');
    const paise=Math.round(Number(fd.get('amount'))*100);if(!Number.isSafeInteger(paise)||paise<=0)throw new Error('Enter a valid amount');
-   await rpc('one_trip_add_expense',{p_invite_code:code,p_member_token:getToken(code),p_description:fd.get('description'),p_amount_paise:paise,p_split_member_ids:ids});
+   await rpc('one_trip_add_expense',{p_invite_code:code,p_member_token:getToken(code),p_description:fd.get('description'),p_amount_paise:paise,p_split_member_ids:ids,p_payer_member_id:fd.get('payer')});
    await load();const root=document.getElementById('page-content');if(root)root.innerHTML=window.OneGroupTrips.render();notify('Expense added to the shared ledger.');
   }
  }catch(err){notify(err.message||'Something went wrong');}finally{loading=false;}
