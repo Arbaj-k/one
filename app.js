@@ -162,10 +162,15 @@ async function syncOriginalDocumentToCloud(record,file){
  if(!['application/pdf','image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(mimeType))throw new Error('Unsupported document type for cloud storage.');
  const safeName=String(record.originalName||file.name||'document').normalize('NFKC').replace(/[^\p{L}\p{N}._-]+/gu,'_').replace(/^\.+/,'').slice(0,120)||'document';
  const storagePath=ownerId+'/'+record.id+'/'+safeName;
- const {error:uploadError}=await cloudClient.storage.from('one-user-documents').upload(storagePath,file,{upsert:true,contentType:mimeType,cacheControl:'3600'});
+ const stagingPath=ownerId+'/pending/'+record.id+'/'+crypto.randomUUID()+'/'+safeName;
+ const {error:uploadError}=await cloudClient.storage.from('one-document-staging').upload(stagingPath,file,{upsert:false,contentType:mimeType,cacheControl:'0'});
  if(uploadError)throw uploadError;
- const {error:metadataError}=await cloudClient.from('user_documents').upsert({user_id:ownerId,storage_path:storagePath,file_name:String(record.originalName||file.name||safeName).slice(0,255),mime_type:mimeType,byte_size:file.size,extracted_text:String(record.extractedText||'').slice(0,180000),metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||file.name||safeName).slice(0,255),type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending'}},{onConflict:'storage_path'});
- if(metadataError){try{await cloudClient.storage.from('one-user-documents').remove([storagePath])}catch(_){}throw metadataError}
+ const {data:sessionData,error:sessionError}=await cloudClient.auth.getSession();const accessToken=sessionData?.session?.access_token;
+ if(sessionError||!accessToken){await cloudClient.storage.from('one-document-staging').remove([stagingPath]);throw new Error('Sign in again to finish secure document upload.')}
+ const response=await fetch(CLOUD_URL+'/functions/v1/one-document-upload',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+accessToken},body:JSON.stringify({storage_path:stagingPath,document_id:String(record.id),file_name:String(record.originalName||file.name||safeName).slice(0,255),mime_type:mimeType,byte_size:file.size,extracted_text:String(record.extractedText||'').slice(0,180000),display_name:String(record.name||record.originalName||file.name||safeName).slice(0,255),document_type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending'})});
+ let result={};try{result=await response.json()}catch(_){}
+ if(!response.ok||!result.ok){await cloudClient.storage.from('one-document-staging').remove([stagingPath]);throw new Error(result.error||'Secure document upload failed.')}
+ if(result.storage_path!==storagePath)throw new Error('Secure upload returned an unexpected storage path.');
  if(ownerId!==cloudUser?.id)return false;
  record.storagePath=storagePath;record.cloudUploadStatus='synced';record.cloudUploadedAt=Date.now();record.cloudMetadataSyncedAt=Date.now();record.cloudMetadataSyncStatus='synced';record.cloudUploadError='';record.updated=Date.now();persist();return true;
 }
