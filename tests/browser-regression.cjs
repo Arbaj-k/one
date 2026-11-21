@@ -118,7 +118,7 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
 
   await page.evaluate(()=>navigator.serviceWorker?.ready);
   const precached=await page.evaluate(async()=>{
-    const cache=await caches.open('one-assets-v42');
+    const workerSource=await (await fetch('./service-worker.js',{cache:'no-store'})).text();const assetCache=workerSource.match(/ASSET_CACHE\s*=\s*['\"]([^'\"]+)['\"]/);if(!assetCache)throw new Error('Service worker asset cache name is missing');const cache=await caches.open(assetCache[1]);
     const paths=['./app.js','./styles.css','./auth.js','./group-trip.js','./quality-guardrails.css'];
     const results={};for(const path of paths)results[path]=!!await cache.match(new URL(path,location.href).href);
     return results;
