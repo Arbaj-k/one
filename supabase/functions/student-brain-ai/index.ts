@@ -17,43 +17,43 @@ const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "ima
 const validInline=(data:string,mime:string)=>{try{const b=Uint8Array.from(atob(data),c=>c.charCodeAt(0));if(mime==="application/pdf")return new TextDecoder().decode(b.slice(0,8)).startsWith("%PDF-");if(mime==="image/jpeg")return b[0]===255&&b[1]===216&&b[2]===255;if(mime==="image/png")return [137,80,78,71,13,10,26,10].every((v,i)=>b[i]===v);if(mime==="image/webp")return new TextDecoder().decode(b.slice(0,4))==="RIFF"&&new TextDecoder().decode(b.slice(8,12))==="WEBP";return false}catch{return false}};
 
 Deno.serve(async (req: Request) => {
-  const json=(data:unknown,status=200,_unused?:unknown,_ignored?:Request)=>new Response(JSON.stringify(data),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
+  function json(req: Request, data: unknown, status = 200) { return new Response(JSON.stringify(data), { status, headers: { ...corsFor(req), "Content-Type": "application/json", "Cache-Control": "no-store" } }); }
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
-  if (req.method !== "POST") return json({ error: "Use POST." }, 405, undefined, req);
+  if (req.method !== "POST") return json(req, { error: "Use POST." }, 405, undefined, req);
 
   try {
-    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json({error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
+    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json(req, {error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
     const authorization = req.headers.get("Authorization") || "";
     const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!token) return json({ error: "An active Student Brain session is required." }, 401, undefined, req);
+    if (!token) return json(req, { error: "An active Student Brain session is required." }, 401, undefined, req);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
     if (!supabaseUrl || !supabaseAnonKey || !geminiKey) {
       console.warn("Operation failed; diagnostic details redacted.");
-      return json({ error: "AI server configuration is incomplete. Check the Supabase function secret GEMINI_API_KEY." }, 500, undefined, req);
+      return json(req, { error: "AI server configuration is incomplete. Check the Supabase function secret GEMINI_API_KEY." }, 500, undefined, req);
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data: authData, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: "Student Brain session is invalid. Refresh the page and retry." }, 401, undefined, req);
-    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json({error:"AI security service is unavailable."},503,undefined,req);
+    if (authError || !authData.user) return json(req, { error: "Student Brain session is invalid. Refresh the page and retry." }, 401, undefined, req);
+    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json(req, {error:"AI security service is unavailable."},503,undefined,req);
     const admin=createClient(supabaseUrl,service,{auth:{persistSession:false,autoRefreshToken:false}});
     const ipHash=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(req.headers.get("cf-connecting-ip")||"unknown"));
     const ipKey=[...new Uint8Array(ipHash)].slice(0,12).map(x=>x.toString(16).padStart(2,"0")).join("");
     const checks=await Promise.all([admin.rpc("one_consume_rate_limit",{p_bucket_key:"ai-user:"+authData.user.id,p_limit:30,p_window_seconds:60}),admin.rpc("one_consume_rate_limit",{p_bucket_key:"ai-ip:"+ipKey,p_limit:90,p_window_seconds:60})]);
-    if(checks.some(x=>x.error))return json({error:"AI security check unavailable."},503,undefined,req);
-    if(checks.some(x=>x.data!==true))return json({error:"Too many AI requests. Please wait a minute and retry."},429,undefined,req);
+    if(checks.some(x=>x.error))return json(req, {error:"AI security check unavailable."},503,undefined,req);
+    if(checks.some(x=>x.data!==true))return json(req, {error:"Too many AI requests. Please wait a minute and retry."},429,undefined,req);
     const body = await req.json();
     const message = asText(body?.message, 3000).trim();
-    if (!message) return json({ error: "Please enter a question." }, 400, undefined, req);
+    if (!message) return json(req, { error: "Please enter a question." }, 400, undefined, req);
 
     const workspace = body?.workspace && typeof body.workspace === "object" && !Array.isArray(body.workspace) ? body.workspace : {};
     const workspaceText = JSON.stringify(workspace);
-    if (workspaceText.length > 55000) return json({ error: "Your combined workspace context is too large. Try a more specific question or reduce the number of very large uploads." }, 413, undefined, req);
+    if (workspaceText.length > 55000) return json(req, { error: "Your combined workspace context is too large. Try a more specific question or reduce the number of very large uploads." }, 413, undefined, req);
 
     const allowedSources = Array.isArray(body?.allowedSources)
       ? [...new Set(body.allowedSources.filter((s: unknown): s is string => typeof s === "string").map((s: string) => s.slice(0, 220)))].slice(0, 60)
@@ -219,7 +219,7 @@ Rules:
       const reason = upstreamError instanceof Error ? upstreamError.name : "unknown";
       console.warn("Gemini request transport failed.", JSON.stringify({ model: usedModel, reason }));
       if (reason === "TimeoutError" || reason === "AbortError") {
-        return json({ error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504, undefined, req);
+        return json(req, { error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504, undefined, req);
       }
       // A network failure may be transient or model-specific; try the alternate
       // stable model once before returning an error.
@@ -229,7 +229,7 @@ Rules:
       } catch (fallbackError) {
         const fallbackReason = fallbackError instanceof Error ? fallbackError.name : "unknown";
         console.warn("Gemini fallback transport failed.", JSON.stringify({ model: fallbackModel, reason: fallbackReason }));
-        return json({ error: "Could not connect to Gemini after trying the backup model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502, undefined, req);
+        return json(req, { error: "Could not connect to Gemini after trying the backup model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502, undefined, req);
       }
     }
 
@@ -244,34 +244,34 @@ Rules:
       // user content, or provider messages.
       console.warn("Gemini provider returned an error.", JSON.stringify({ model: usedModel, httpStatus: status, providerCode }));
       if (status === 400) {
-        return json({ error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502, undefined, req);
+        return json(req, { error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502, undefined, req);
       }
       if (status === 401 || status === 403) {
-        return json({ error: "Gemini authentication or access was rejected. In Supabase Edge Function secrets, verify GEMINI_API_KEY is valid and has Gemini API access; then redeploy/retry.", code: "GEMINI_KEY_OR_ACCESS" }, 502);
+        return json(req, { error: "Gemini authentication or access was rejected. In Supabase Edge Function secrets, verify GEMINI_API_KEY is valid and has Gemini API access; then redeploy/retry.", code: "GEMINI_KEY_OR_ACCESS" }, 502);
       }
       if (status === 404) {
-        return json({ error: "The configured Gemini model or endpoint was not found. Check model availability for this API key and update the Edge Function model name if needed.", code: "GEMINI_MODEL_NOT_FOUND" }, 502, undefined, req);
+        return json(req, { error: "The configured Gemini model or endpoint was not found. Check model availability for this API key and update the Edge Function model name if needed.", code: "GEMINI_MODEL_NOT_FOUND" }, 502, undefined, req);
       }
       if (status === 429) {
-        return json({ error: "Gemini rate limit or quota was reached. Check the Gemini project quota/billing and retry after it resets.", code: "GEMINI_QUOTA" }, 429, undefined, req);
+        return json(req, { error: "Gemini rate limit or quota was reached. Check the Gemini project quota/billing and retry after it resets.", code: "GEMINI_QUOTA" }, 429, undefined, req);
       }
       if (status >= 500) {
-        return json({ error: "Gemini is temporarily experiencing a server error. Retry shortly; your saved data remains local.", code: "GEMINI_UPSTREAM" }, 502);
+        return json(req, { error: "Gemini is temporarily experiencing a server error. Retry shortly; your saved data remains local.", code: "GEMINI_UPSTREAM" }, 502);
       }
-      return json({ error: "Gemini returned an unexpected HTTP " + status + " response. Check the Supabase function logs for the provider diagnostic.", code: "GEMINI_HTTP_ERROR" }, 502, undefined, req);
+      return json(req, { error: "Gemini returned an unexpected HTTP " + status + " response. Check the Supabase function logs for the provider diagnostic.", code: "GEMINI_HTTP_ERROR" }, 502, undefined, req);
     }
 
     const output = aiResult?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim();
-    if (!output) return json({ error: "Gemini returned no answer. Please try a shorter question." }, 502, undefined, req);
+    if (!output) return json(req, { error: "Gemini returned no answer. Please try a shorter question." }, 502, undefined, req);
     let parsed: { answer?: unknown; sources?: unknown };
     try { parsed = JSON.parse(output); } catch { parsed = { answer: output, sources: [] }; }
     const answer = typeof parsed.answer === "string" ? parsed.answer.trim() : output;
     const sourceList = Array.isArray(parsed.sources)
       ? [...new Set(parsed.sources.filter((source: unknown): source is string => typeof source === "string" && allowedSources.includes(source)))]
       : [];
-    return json({ answer, sources: sourceList.slice(0, 10), model: usedModel }, undefined, req);
+    return json(req, { answer, sources: sourceList.slice(0, 10), model: usedModel }, undefined, req);
   } catch (error) {
     console.warn("Operation failed; diagnostic details redacted.");
-    return json({ error: "Something went wrong while answering. Please retry." }, 500, undefined, req);
+    return json(req, { error: "Something went wrong while answering. Please retry." }, 500, undefined, req);
   }
 });
