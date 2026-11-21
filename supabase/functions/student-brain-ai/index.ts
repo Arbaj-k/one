@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(req, { error: "Use POST." }, 405);
 
   try {
-    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json(req, {error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
+    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json(req, {error:"Request exceeds the 6 MB processing limit."},413);
     const authorization = req.headers.get("Authorization") || "";
     const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return json(req, { error: "An active Student Brain session is required." }, 401);
@@ -41,13 +41,13 @@ Deno.serve(async (req: Request) => {
     });
     const { data: authData, error: authError } = await supabase.auth.getUser(token);
     if (authError || !authData.user) return json(req, { error: "Student Brain session is invalid. Refresh the page and retry." }, 401);
-    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json(req, {error:"AI security service is unavailable."},503,undefined,req);
+    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json(req, {error:"AI security service is unavailable."},503);
     const admin=createClient(supabaseUrl,service,{auth:{persistSession:false,autoRefreshToken:false}});
     const ipHash=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(req.headers.get("cf-connecting-ip")||"unknown"));
     const ipKey=[...new Uint8Array(ipHash)].slice(0,12).map(x=>x.toString(16).padStart(2,"0")).join("");
     const checks=await Promise.all([admin.rpc("one_consume_rate_limit",{p_bucket_key:"ai-user:"+authData.user.id,p_limit:30,p_window_seconds:60}),admin.rpc("one_consume_rate_limit",{p_bucket_key:"ai-ip:"+ipKey,p_limit:90,p_window_seconds:60})]);
-    if(checks.some(x=>x.error))return json(req, {error:"AI security check unavailable."},503,undefined,req);
-    if(checks.some(x=>x.data!==true))return json(req, {error:"Too many AI requests. Please wait a minute and retry."},429,undefined,req);
+    if(checks.some(x=>x.error))return json(req, {error:"AI security check unavailable."},503);
+    if(checks.some(x=>x.data!==true))return json(req, {error:"Too many AI requests. Please wait a minute and retry."},429);
     let rawBody="";try{rawBody=await readBoundedBody(req,6_000_000)}catch{return json(req,{error:"Request exceeds the 6 MB processing limit."},413)}
     let body:any;try{body=JSON.parse(rawBody)}catch{return json(req,{error:"Invalid request body. Please retry."},400)}
     const message = asText(body?.message, 3000).trim();
