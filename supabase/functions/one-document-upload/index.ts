@@ -8,19 +8,19 @@ function signature(bytes:Uint8Array,mime:string){
  if(mime==="image/jpeg")return bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff;
  if(mime==="image/png")return [137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v);
  if(mime==="image/webp")return new TextDecoder().decode(bytes.slice(0,4))==="RIFF"&&new TextDecoder().decode(bytes.slice(8,12))==="WEBP";
- if(mime==="image/heic"||mime==="image/heif"){const brand=new TextDecoder().decode(bytes.slice(8,16));return new TextDecoder().decode(bytes.slice(4,8))==="ftyp"&&/hei[cfx]|mif1|msf1/i.test(brand)}
+ if(mime==="image/heic"||mime==="image/heif"){const brand=new TextDecoder().decode(bytes.slice(8,12));return new TextDecoder().decode(bytes.slice(4,8))==="ftyp"&&/hei[cfx]|hev[cx]|mif1|msf1/i.test(brand)}
  return false;
 }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS"){const o=req.headers.get("Origin")||"";if(o&&!ORIGINS.has(o))return new Response("Forbidden",{status:403});return new Response("ok",{headers:cors(req)})}
  if(req.method!=="POST")return reply(req,{error:"POST required"},405);
  try{
-  const len=Number(req.headers.get("content-length")||0);if(len>20000)return reply(req,{error:"Request too large"},413);
+  const len=Number(req.headers.get("content-length")||0);if(len>250000)return reply(req,{error:"Request too large"},413);
   const token=(req.headers.get("Authorization")||"").match(/^Bearer\\s+(.+)$/i)?.[1];if(!token)return reply(req,{error:"Sign in to upload documents"},401);
   const url=Deno.env.get("SUPABASE_URL"),anon=Deno.env.get("SUPABASE_ANON_KEY"),service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!url||!anon||!service)return reply(req,{error:"Upload service unavailable"},503);
   const auth=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}}),{data:u,error:ue}=await auth.auth.getUser(token);if(ue||!u.user)return reply(req,{error:"Session expired. Sign in again."},401);
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}}),uid=u.user.id;
-  const body=await req.json(),stage=text(body.storage_path,500),id=text(body.document_id,100),name=text(body.file_name,255),mime=text(body.mime_type,80).toLowerCase(),size=Number(body.byte_size);
+  const raw=await req.text();if(raw.length>250000)return reply(req,{error:"Request too large"},413);const body=JSON.parse(raw),stage=text(body.storage_path,500),id=text(body.document_id,100),name=text(body.file_name,255),mime=text(body.mime_type,80).toLowerCase(),size=Number(body.byte_size);
   if(!/^[a-zA-Z0-9_-]{8,100}$/.test(id)||!stage.startsWith(uid+"/pending/"+id+"/")||stage.split("/").length!==5)return reply(req,{error:"Invalid staging path"},400);
   if(!name||!["application/pdf","image/jpeg","image/png","image/webp","image/heic","image/heif"].includes(mime)||!Number.isSafeInteger(size)||size<1||size>12582912)return reply(req,{error:"Invalid file details or file exceeds 12 MB"},400);
   const {data:allowed,error:limitError}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"document-upload:"+uid,p_limit:12,p_window_seconds:3600});if(limitError)return reply(req,{error:"Upload security check unavailable"},503);if(allowed!==true)return reply(req,{error:"Upload limit reached. Try again later."},429);
