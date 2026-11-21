@@ -14,6 +14,10 @@ One is a general-purpose personal organization web app. It is designed to help p
 - Record everyday expenses and informal lending or borrowing.
 - Ask One to interact with workspace information when connected AI services are available.
 
+## Audience and availability
+
+One is presented in English for a global audience. The public website does not currently publish separate country- or language-specific versions. Do not infer country-specific availability, local pricing, or region-specific legal compliance from this page.
+
 ## Product details
 
 - Product name: One
