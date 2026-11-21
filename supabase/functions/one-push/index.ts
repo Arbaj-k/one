@@ -31,15 +31,15 @@ async function sendToUser(userId:string,payload:Record<string,unknown>){
  return {sent,expired};
 }
 Deno.serve(async(req:Request)=>{
- const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
- if(req.method==="OPTIONS"){const origin=req.headers.get("Origin")||"";if(origin&&!ALLOWED_ORIGINS.has(origin))return new Response("Forbidden",{status:403});return new Response("ok",{headers:corsFor(req)})}if(req.method!=="POST")return json({error:"POST required"},405);
+ function json(req:Request,body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});}
+ if(req.method==="OPTIONS"){const origin=req.headers.get("Origin")||"";if(origin&&!ALLOWED_ORIGINS.has(origin))return new Response("Forbidden",{status:403});return new Response("ok",{headers:corsFor(req)})}if(req.method!=="POST")return json(req, {error:"POST required"},405);
  try{
-  const declared=Number(req.headers.get("content-length")||0);if(declared>25000)return json({error:"Request too large"},413);
-  const raw=await req.text();if(raw.length>25000)return json({error:"Request too large"},413);
+  const declared=Number(req.headers.get("content-length")||0);if(declared>25000)return json(req, {error:"Request too large"},413);
+  const raw=await req.text();if(raw.length>25000)return json(req, {error:"Request too large"},413);
   const body=JSON.parse(raw);
-  if(body.action==="config"){const ip=req.headers.get("cf-connecting-ip")||"unknown";const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(ip));const ipKey=[...new Uint8Array(digest)].slice(0,12).map(x=>x.toString(16).padStart(2,"0")).join("");const {data:ok,error}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"push-config:"+ipKey,p_limit:60,p_window_seconds:60});if(error)return json({error:"Push security check unavailable"},503);if(ok!==true)return json({error:"Too many requests"},429);const config=await getPushConfig();return json({publicKey:config.vapid_public_key,configured:Boolean(config.vapid_public_key&&config.vapid_private_key)});}
+  if(body.action==="config"){const ip=req.headers.get("cf-connecting-ip")||"unknown";const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(ip));const ipKey=[...new Uint8Array(digest)].slice(0,12).map(x=>x.toString(16).padStart(2,"0")).join("");const {data:ok,error}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"push-config:"+ipKey,p_limit:60,p_window_seconds:60});if(error)return json(req, {error:"Push security check unavailable"},503);if(ok!==true)return json(req, {error:"Too many requests"},429);const config=await getPushConfig();return json(req, {publicKey:config.vapid_public_key,configured:Boolean(config.vapid_public_key&&config.vapid_private_key)});}
   if(body.action==="dispatch"){
-   const config=await getPushConfig();if(!config.cron_secret||req.headers.get("x-one-cron-secret")!==config.cron_secret)return json({error:"Unauthorized dispatcher"},401);configurePush(config);
+   const config=await getPushConfig();if(!config.cron_secret||req.headers.get("x-one-cron-secret")!==config.cron_secret)return json(req, {error:"Unauthorized dispatcher"},401);configurePush(config);
    const {data:workspaces,error}=await admin.from("user_workspaces").select("user_id,workspace_data");if(error)throw error;
    const now=new Date(),date=now.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"}),hhmm=now.toLocaleTimeString("en-GB",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:false});let checked=0,sent=0;
    const localDate=(d:Date)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
@@ -73,17 +73,17 @@ Deno.serve(async(req:Request)=>{
      if(result.sent){await admin.from("one_push_deliveries").update({sent_at:new Date().toISOString(),last_error:null}).eq("id",claim.id);}else{await admin.from("one_push_deliveries").delete().eq("id",claim.id);}
     }
    }
-   return json({ok:true,checked,sent});
+   return json(req, {ok:true,checked,sent});
   }
-  const jwt=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");if(!jwt)return json({error:"Sign in required"},401);
-  const authClient=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});const {data:userData,error:userError}=await authClient.auth.getUser(jwt);if(userError||!userData.user)return json({error:"Invalid session"},401);const userId=userData.user.id;
+  const jwt=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");if(!jwt)return json(req, {error:"Sign in required"},401);
+  const authClient=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});const {data:userData,error:userError}=await authClient.auth.getUser(jwt);if(userError||!userData.user)return json(req, {error:"Invalid session"},401);const userId=userData.user.id;
   const max=body.action==="test"?5:body.action==="subscribe"||body.action==="unsubscribe"?20:1;
   const {data:allowed,error:limitError}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"push-user:"+userId+":"+String(body.action||"unknown"),p_limit:max,p_window_seconds:3600});
-  if(limitError)return json({error:"Push security check unavailable"},503);if(allowed!==true)return json({error:"Push request limit reached. Try again later."},429);
-  if(body.action==="subscribe"){const sub=body.subscription;if(!sub?.endpoint||!sub?.keys?.p256dh||!sub?.keys?.auth)return json({error:"Invalid push subscription"},400);
-   const {error}=await admin.from("one_push_subscriptions").upsert({user_id:userId,endpoint:sub.endpoint,p256dh:sub.keys.p256dh,auth:sub.keys.auth,expiration_time:sub.expirationTime?new Date(sub.expirationTime).toISOString():null,user_agent:req.headers.get("user-agent")||null,updated_at:new Date().toISOString()},{onConflict:"user_id,endpoint"});if(error)throw error;return json({ok:true});}
-  if(body.action==="unsubscribe"){const endpoint=String(body.endpoint||"");const {error}=await admin.from("one_push_subscriptions").delete().eq("user_id",userId).eq("endpoint",endpoint);if(error)throw error;return json({ok:true});}
-  if(body.action==="test"){const result=await sendToUser(userId,{title:"One notifications are ready",body:"Your Android push notifications are connected.",tag:"one-push-test-"+Date.now(),url:"./?open=notifications"});return json({ok:true,...result});}
-  return json({error:"Unknown action"},400);
- }catch(error){console.warn("Operation failed; diagnostic details redacted.");return json({error:"Push request failed. Check server logs for a redacted diagnostic."},500);}
+  if(limitError)return json(req, {error:"Push security check unavailable"},503);if(allowed!==true)return json(req, {error:"Push request limit reached. Try again later."},429);
+  if(body.action==="subscribe"){const sub=body.subscription;if(!sub?.endpoint||!sub?.keys?.p256dh||!sub?.keys?.auth)return json(req, {error:"Invalid push subscription"},400);
+   const {error}=await admin.from("one_push_subscriptions").upsert({user_id:userId,endpoint:sub.endpoint,p256dh:sub.keys.p256dh,auth:sub.keys.auth,expiration_time:sub.expirationTime?new Date(sub.expirationTime).toISOString():null,user_agent:req.headers.get("user-agent")||null,updated_at:new Date().toISOString()},{onConflict:"user_id,endpoint"});if(error)throw error;return json(req, {ok:true});}
+  if(body.action==="unsubscribe"){const endpoint=String(body.endpoint||"");const {error}=await admin.from("one_push_subscriptions").delete().eq("user_id",userId).eq("endpoint",endpoint);if(error)throw error;return json(req, {ok:true});}
+  if(body.action==="test"){const result=await sendToUser(userId,{title:"One notifications are ready",body:"Your Android push notifications are connected.",tag:"one-push-test-"+Date.now(),url:"./?open=notifications"});return json(req, {ok:true,...result});}
+  return json(req, {error:"Unknown action"},400);
+ }catch(error){console.warn("Operation failed; diagnostic details redacted.");return json(req, {error:"Push request failed. Check server logs for a redacted diagnostic."},500);}
 });
