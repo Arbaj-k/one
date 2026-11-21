@@ -21,6 +21,10 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   });
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
+  // Today should expose direct, keyboard-accessible quick actions without changing the existing visual shell.
+  for (const label of ['Add task','Save note','Add expense','Upload file']) {
+    assert.equal(await page.locator('.home-quick-actions button').filter({hasText:label}).count(),1,'Today quick action must be visible: '+label);
+  }
   await page.evaluate(()=>{
     const shifted=new Date(Date.now()-2*60*1000);
     const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(shifted);
