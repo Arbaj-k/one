@@ -32,6 +32,14 @@ has("CLOUD_URL+'/functions/v1/one-document-upload'","Staged documents must pass 
 assert.ok(uploadFn.includes('signature(bytes,mime)'),'Server must verify file signatures before promotion');
 assert.ok(uploadFn.includes('from("user_documents").upsert'),'Document metadata must be persisted by the trusted server');
 assert.ok(uploadFn.includes('one_consume_rate_limit'),'Document promotion must be rate limited');
+const appSource=fs.readFileSync('app.js','utf8');
+const secureUploadStart=appSource.indexOf('async function syncOriginalDocumentToCloud');
+const secureUploadEnd=appSource.indexOf('\nasync function syncCloudDocumentMetadata',secureUploadStart);
+const secureUpload=appSource.slice(secureUploadStart,secureUploadEnd);
+assert.ok(secureUpload.includes('Network interrupted during secure upload'), 'Network failures during document promotion must show a recoverable message');
+assert.ok(secureUpload.includes("from('one-document-staging').remove([stagingPath]).catch"), 'Failed secure uploads must clean up their staged file');
+const aiSource=fs.readFileSync('supabase/functions/student-brain-ai/index.ts','utf8');
+assert.ok(!/json\(req,[^;\n]*,undefined,req\)/.test(aiSource), 'AI response helper must only receive supported arguments');
 has("storage.from('one-user-documents').download","Documents must be downloadable on a second signed-in device");
 has("storage.from('one-user-documents').remove","Document deletion must remove the private cloud object");
 has("await syncPendingDocumentFiles();","Pending document uploads must retry after workspace activation");
