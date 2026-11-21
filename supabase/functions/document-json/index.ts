@@ -49,30 +49,30 @@ function validateShape(value: Record<string, unknown> | null) {
     !Array.isArray(value.structured_data);
 }
 Deno.serve(async (req: Request) => {
-  const json=(data:unknown,status=200,_unused?:unknown,_ignored?:Request)=>new Response(JSON.stringify(data),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
+  function json(req: Request, data: unknown, status = 200) { return new Response(JSON.stringify(data), { status, headers: { ...corsFor(req), "Content-Type": "application/json", "Cache-Control": "no-store" } }); }
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
-  if (req.method !== "POST") return json({ error: "Use POST." }, 405, undefined, req);
+  if (req.method !== "POST") return json(req, { error: "Use POST." }, 405, undefined, req);
   try {
-    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json({error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
+    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json(req, {error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
     // Parse a real Bearer token (the regex must use a whitespace escape, not a literal "\\s").
     const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!token) return json({ error: "An active assistant session is required." }, 401, undefined, req);
+    if (!token) return json(req, { error: "An active assistant session is required." }, 401, undefined, req);
     const url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY"), key = Deno.env.get("GEMINI_API_KEY");
-    if (!url || !anon || !key) return json({ error: "AI server configuration is incomplete. Check GEMINI_API_KEY." }, 500, undefined, req);
+    if (!url || !anon || !key) return json(req, { error: "AI server configuration is incomplete. Check GEMINI_API_KEY." }, 500, undefined, req);
     const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: auth, error } = await supabase.auth.getUser(token);
-    if (error || !auth.user) return json({ error: "Assistant session is invalid. Refresh and retry." }, 401, undefined, req);
-    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json({error:"Document security service is unavailable."},503,undefined,req);
+    if (error || !auth.user) return json(req, { error: "Assistant session is invalid. Refresh and retry." }, 401, undefined, req);
+    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json(req, {error:"Document security service is unavailable."},503,undefined,req);
     const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:allowed,error:limitError}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"document-json:"+auth.user.id,p_limit:8,p_window_seconds:3600});
-    if(limitError)return json({error:"Document processing security check unavailable."},503,undefined,req);
-    if(allowed!==true)return json({error:"Document conversion limit reached. Try again later."},429,undefined,req);
+    if(limitError)return json(req, {error:"Document processing security check unavailable."},503,undefined,req);
+    if(allowed!==true)return json(req, {error:"Document conversion limit reached. Try again later."},429,undefined,req);
     const body = await req.json();
     const name = textValue(body?.name, 180) || "Untitled document";
     const mimeType = textValue(body?.mimeType, 80);
-    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(mimeType)) return json({ error: "Only PDF, JPG/JPEG, PNG and WebP files are supported." }, 415, undefined, req);
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(mimeType)) return json(req, { error: "Only PDF, JPG/JPEG, PNG and WebP files are supported." }, 415, undefined, req);
     const rawSourceText = typeof body?.extractedText === "string" ? body.extractedText : "";
-    if (rawSourceText.length > 180000) return json({ error: "OCR text is saved in One, but this document is too large for one JSON conversion request (limit: 180,000 characters). Ask One can still search the full extracted text." }, 413, undefined, req);
+    if (rawSourceText.length > 180000) return json(req, { error: "OCR text is saved in One, but this document is too large for one JSON conversion request (limit: 180,000 characters). Ask One can still search the full extracted text." }, 413, undefined, req);
     const sourceText = rawSourceText.trim();
     const candidate = body?.originalFile && typeof body.originalFile === "object" ? body.originalFile : null;
     let originalFile: { mimeType: string; dataBase64: string } | undefined;
@@ -80,16 +80,16 @@ Deno.serve(async (req: Request) => {
       const visualMime = textValue(candidate.mimeType, 80).toLowerCase();
       const visualData = typeof candidate.dataBase64 === "string" ? candidate.dataBase64 : "";
       if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(visualMime) || visualMime !== mimeType) {
-        return json({ error: "The attached original file type does not match the uploaded document." }, 415, undefined, req);
+        return json(req, { error: "The attached original file type does not match the uploaded document." }, 415, undefined, req);
       }
-      if (visualData.length > 4_194_304) return json({ error: "The original file exceeds the 3 MB visual-analysis limit. OCR text remains available in One." }, 413, undefined, req);
+      if (visualData.length > 4_194_304) return json(req, { error: "The original file exceeds the 3 MB visual-analysis limit. OCR text remains available in One." }, 413, undefined, req);
       if (visualData.length < 100 || !/^[A-Za-z0-9+/]+={0,2}$/.test(visualData) || !validOriginal(visualData,visualMime)) {
-        return json({ error: "The attached original file data is invalid. Re-upload the file and retry." }, 400, undefined, req);
+        return json(req, { error: "The attached original file data is invalid. Re-upload the file and retry." }, 400, undefined, req);
       }
       originalFile = { mimeType: visualMime, dataBase64: visualData };
     }
-    if (!sourceText && !originalFile) return json({ error: "No readable text or original file is available. Re-upload the file and retry." }, 400, undefined, req);
-    if (sourceText.length < 20 && !originalFile) return json({ error: "Not enough readable text. Re-upload the original PDF/image for visual extraction." }, 422, undefined, req);
+    if (!sourceText && !originalFile) return json(req, { error: "No readable text or original file is available. Re-upload the file and retry." }, 400, undefined, req);
+    if (sourceText.length < 20 && !originalFile) return json(req, { error: "Not enough readable text. Re-upload the original PDF/image for visual extraction." }, 422, undefined, req);
 
     const basePrompt = `You are a multilingual document extraction and structuring engine. The supplied text may contain English, Hindi (Devanagari), or mixed Hindi-English/Hinglish. Read and interpret all of these accurately. Preserve original-language names, labels, spellings, dates, amounts, units and wording; do not silently translate or normalize away important details. Use ONLY evidence in the supplied OCR text and the attached original PDF/image when provided. Preserve the original wording, page boundaries and relationships; do not invent unreadable values.
 Identify the document type and choose a meaningful type-specific schema (examples: timetable, university_notice, hostel_menu, academic_calendar, general_document). Do not force every document into one fixed schema.
@@ -114,7 +114,7 @@ ${raw}`;
       raw = await generate(key, repairPrompt, originalFile);
       parsed = parseObject(raw);
     }
-    if (!validateShape(parsed)) return json({ error: "The AI could not produce valid structured JSON. Try Convert to JSON again." }, 502, undefined, req);
+    if (!validateShape(parsed)) return json(req, { error: "The AI could not produce valid structured JSON. Try Convert to JSON again." }, 502, undefined, req);
     const result = {
       ...parsed,
       document_name: typeof parsed.document_name === "string" ? parsed.document_name : name,
@@ -126,9 +126,9 @@ ${raw}`;
       warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map((v: unknown) => String(v).slice(0, 500)).slice(0, 50) : [],
       validation: { valid_json: true, repaired },
     };
-    return json({ json: result, model: MODEL }, undefined, req);
+    return json(req, { json: result, model: MODEL }, undefined, req);
   } catch (err) {
     console.warn("Operation failed; diagnostic details redacted.");
-    return json({ error: "Document conversion failed. Retry." }, 500, undefined, req);
+    return json(req, { error: "Document conversion failed. Retry." }, 500, undefined, req);
   }
 });
