@@ -69,6 +69,7 @@ Deno.serve(async(req:Request)=>{
    if(error||!r)throw new Error("Device binding failed. Refresh and retry.");
    return json(req,{success:true,device_bound:true,member_id:me.id});
   }
+  if(action==="device_identity"){if(!me.device_public_key)throw new Error("This member has not registered a device yet");return json(req,{member_id:me.id});}
   await verifyDevice(admin,b,code,me,action);
   if(action==="get"&&me.approval_status==="pending")return json(req,{pending:true,me:{id:me.id,approval_status:"pending"}});
   if(action==="get"&&me.approval_status==="rejected")return json(req,{rejected:true,me:{id:me.id,approval_status:"rejected"}});
