@@ -109,16 +109,20 @@
     try{
       const user=session?.user;
       const clearLocal=!!user&&confirm('Clear this account’s local One data from this device after confirming cloud sync? Choose Cancel to keep the local copy.');
+      let purgeAfterLogout=false;
       if(clearLocal){
         const synced=await window.OneWorkspace?.flushCloudSync?.();
         if(!synced){status('Cloud sync is not confirmed. Local data was kept; connect to the internet and sync before clearing it.',true)}
-        else{await window.OneWorkspace?.purgeUserLocalData?.(user.id);status('This account’s local workspace cache was cleared.')}
+        else purgeAfterLogout=true;
       }
+      // Never erase the only local copy until Supabase confirms sign-out.
       const {error}=await getClient().auth.signOut();if(error)throw error;
       session=null;window.dispatchEvent(new CustomEvent('one:auth-changed',{detail:{user:null}}));
       $('#one-account-menu')?.remove();document.body.classList.remove('one-is-authenticated');const signIn=$('#one-signin');if(signIn){signIn.hidden=false;signIn.removeAttribute('hidden');signIn.style.removeProperty('display')}close();
-      const s=$('#cloud-status');if(s)s.textContent=clearLocal?'Local data cleared':'Saved on this device';
-    }catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out safely. Please try again.',true)}
+      let localCleared=false;
+      if(purgeAfterLogout&&user){try{localCleared=await window.OneWorkspace?.purgeUserLocalData?.(user.id)===true}catch(_){alert('You are signed out, but One could not clear this device’s local cache. Your cloud account remains safe. You can retry clearing local data from this device.');}}
+      const cloudStatus=$('#cloud-status');if(cloudStatus)cloudStatus.textContent=localCleared?'Local data cleared':'Saved on this device';
+    }catch(err){console.warn("Operation failed; diagnostic details redacted.");status('Could not log out safely. Your local data was kept. Please try again.',true)}
   }
   async function deleteAccount(){
     const user=session?.user;if(!user)return;
