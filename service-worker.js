@@ -1,8 +1,15 @@
 /* One PWA service worker. Bump version on each release. */
-const CACHE_VERSION="one-shell-v42",ASSET_CACHE="one-assets-v41";
+const CACHE_VERSION="one-shell-v43",ASSET_CACHE="one-assets-v42";
 const PRECACHE=["./","./index.html","./404.html","./supabase-client.js","./pwa-init.js","./analytics.js","./workspace-intelligence.js","./styles.css","./quality-guardrails.css","./kuro-theme.css","./kuro-theme-init.js","./kuro-shell.js","./app.js","./commands.js","./one-commands.js","./voice.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./ui-visibility.css","./ask-one-page-fix.css","./profile.css","./group-trip.js","./profile.js","./ask-one-command-ui.js","./ask-one-reply-actions.js","./icons/student-brain.svg"];
 const OFFLINE_PAGE="./index.html";
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_VERSION).then(c=>c.addAll(PRECACHE))));
+const SHELL_PRECACHE=["./","./index.html","./404.html"];
+const ASSET_PRECACHE=PRECACHE.filter(path=>!SHELL_PRECACHE.includes(path));
+self.addEventListener("install",e=>e.waitUntil((async()=>{
+ await Promise.all([
+  caches.open(CACHE_VERSION).then(cache=>cache.addAll(SHELL_PRECACHE)),
+  caches.open(ASSET_CACHE).then(cache=>cache.addAll(ASSET_PRECACHE))
+ ]);
+})()));
 self.addEventListener("activate",e=>e.waitUntil((async()=>{const keep=new Set([CACHE_VERSION,ASSET_CACHE]);const keys=await caches.keys();await Promise.all(keys.filter(k=>/^(one-shell-|one-assets-|student-brain-shell-)/.test(k)&&!keep.has(k)).map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener("message",e=>{if(e.data?.type==="SKIP_WAITING")self.skipWaiting()});
 function safeShareUrl(value){try{const url=new URL(String(value||''),self.location.origin);return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password?url.href:''}catch(_){return ''}}
