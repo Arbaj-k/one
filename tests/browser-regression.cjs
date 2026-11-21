@@ -117,6 +117,13 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   assert.ok(saved.notes.some(n=>n.title==='Browser regression knowledge'&&n.content.includes('reliable browser')),'Knowledge note must persist across reload.');
 
   await page.evaluate(()=>navigator.serviceWorker?.ready);
+  const precached=await page.evaluate(async()=>{
+    const cache=await caches.open('one-assets-v42');
+    const paths=['./app.js','./styles.css','./auth.js','./group-trip.js','./quality-guardrails.css'];
+    const results={};for(const path of paths)results[path]=!!await cache.match(new URL(path,location.href).href);
+    return results;
+  });
+  assert.ok(Object.values(precached).every(Boolean),'Fresh PWA install must precache all core JS/CSS modules in the cache used by offline fetch handling: '+JSON.stringify(precached));
   await page.context().setOffline(true);
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
