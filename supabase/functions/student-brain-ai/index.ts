@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -13,18 +12,12 @@ function corsFor(req: Request) {
 }
 
 
-function json(data: unknown, status = 200, _unused?: unknown, req?: Request) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsFor(req || activeRequest), "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
-}
 const asText = (value: unknown, limit = 4000) => typeof value === "string" ? value.slice(0, limit) : "";
 const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 const validInline=(data:string,mime:string)=>{try{const b=Uint8Array.from(atob(data),c=>c.charCodeAt(0));if(mime==="application/pdf")return new TextDecoder().decode(b.slice(0,8)).startsWith("%PDF-");if(mime==="image/jpeg")return b[0]===255&&b[1]===216&&b[2]===255;if(mime==="image/png")return [137,80,78,71,13,10,26,10].every((v,i)=>b[i]===v);if(mime==="image/webp")return new TextDecoder().decode(b.slice(0,4))==="RIFF"&&new TextDecoder().decode(b.slice(8,12))==="WEBP";return false}catch{return false}};
 
 Deno.serve(async (req: Request) => {
-  activeRequest = req;
+  const json=(data:unknown,status=200,_unused?:unknown,_ignored?:Request)=>new Response(JSON.stringify(data),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405, undefined, req);
 
