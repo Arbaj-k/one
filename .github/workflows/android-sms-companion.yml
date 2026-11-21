@@ -34,8 +34,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create one-sms-sync-v0.1.0 android-sms-companion/app/build/outputs/apk/debug/app-debug.apk \\
-            --repo "$GITHUB_REPOSITORY" \\
-            --title "One SMS Sync v0.1.0" \\
-            --notes "Install the One Android companion app. Sign in with the same One account. SMS access is optional and only used for UPI transaction capture after explicit permission. This is an initial debug-signed build." \\
-            --latest
+          gh release create one-sms-sync-v0.1.0 android-sms-companion/app/build/outputs/apk/debug/app-debug.apk --repo "$GITHUB_REPOSITORY" --title "One SMS Sync v0.1.0" --notes "Install the One Android companion app. Sign in with the same One account. SMS access is optional and only used for UPI transaction capture after explicit permission. This is an initial debug-signed build." --latest
