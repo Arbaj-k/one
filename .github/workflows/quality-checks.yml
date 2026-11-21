@@ -21,6 +21,8 @@ jobs:
         run: node --check app.js
       - name: Run smoke tests
         run: node tests/smoke.test.cjs
+      - name: Run SEO guardrails
+        run: node tests/seo-guardrails.cjs
       - name: Run cloud sync regression tests
         run: node tests/cloud-sync-regression.cjs
       - name: Install Playwright and Chromium
