@@ -33,7 +33,7 @@ Deno.serve(async(req:Request)=>{
   const rawBody=await req.text();if(rawBody.length>600000)return json(req,{error:"Request too large"},413);
   const b=JSON.parse(rawBody),action=txt(b?.action,40),code=txt(b?.invite_code,40);
   const ipHash=await hash(requestIp(req));
-  const actorHash=await hash(txt(b?.member_token,200));const bucket=action==="create"?"trip:create:"+ipHash:action==="join"?"trip:join:"+code+":"+ipHash:"trip:"+code+":"+actorHash+":"+action;
+  const actorHash=await hash(txt(b?.member_token,200));const bucket=action==="create"?"trip:create:"+ipHash:action==="join"?"trip:join:"+code+":"+ipHash:"trip:"+code+":"+actorHash;
   const limits=action==="create"?[3,3600]:action==="join"?[5,600]:[30,60];
   if(!await consume(admin,bucket,limits[0],limits[1]))return json(req,{error:"Too many requests. Please wait and try again."},429);
   const bearer=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1]||"";
