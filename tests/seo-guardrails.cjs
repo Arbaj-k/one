@@ -51,7 +51,7 @@ for (const bot of ['GPTBot','ClaudeBot']) {
 assert.match(files.llms,/^# One/m);
 assert.ok(files.llms.includes(base),'llms.txt should point to canonical homepage');
 for (const [key,slug] of [['dailyGuide','daily-planning-system'],['notesGuide','personal-knowledge-management'],['expenseGuide','expense-tracking-basics']]) {
- assert.match(files[key],/<title>[^<]+<\\/title>/,key+' title');
+ assert.match(files[key],/<title>[^<]+<\/title>/,key+' title');
  assert.match(files[key],/name="description"/,key+' description');
  assert.ok(files[key].includes('rel="canonical" href="'+base+'guides/'+slug+'/'),key+' canonical');
  assert.match(files[key],/<h1>/,key+' H1');
