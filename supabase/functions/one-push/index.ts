@@ -1,7 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -14,7 +13,6 @@ function corsFor(req: Request) {
   return headers;
 }
 
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(activeRequest),"Content-Type":"application/json","Cache-Control":"no-store"}});
 const url=Deno.env.get("SUPABASE_URL")!,anon=Deno.env.get("SUPABASE_ANON_KEY")!,service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
 async function getPushConfig(){
@@ -33,7 +31,7 @@ async function sendToUser(userId:string,payload:Record<string,unknown>){
  return {sent,expired};
 }
 Deno.serve(async(req:Request)=>{
- activeRequest = req;
+ const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsFor(req),"Content-Type":"application/json","Cache-Control":"no-store"}});
  if(req.method==="OPTIONS"){const origin=req.headers.get("Origin")||"";if(origin&&!ALLOWED_ORIGINS.has(origin))return new Response("Forbidden",{status:403});return new Response("ok",{headers:corsFor(req)})}if(req.method!=="POST")return json({error:"POST required"},405);
  try{
   const declared=Number(req.headers.get("content-length")||0);if(declared>25000)return json({error:"Request too large"},413);
