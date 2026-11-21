@@ -5,6 +5,7 @@ const json=(r:Request,d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s
 const txt=(v:unknown,n=200)=>typeof v==="string"?v.trim().slice(0,n):"";
 const isUuid=(v:unknown)=>typeof v==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const hash=async(v:string)=>{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")};
+const qrData=(v:unknown)=>{const q=txt(v,400000);if(q&&!/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(q))throw new Error("Upload a valid PNG, JPG or WebP QR image");return q||null};
 const makeToken=()=>[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,"0")).join("");
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors(req)});
@@ -22,7 +23,7 @@ Deno.serve(async(req:Request)=>{
    const title=txt(b.title,80),name=txt(b.name,60);if(title.length<2||!name)throw new Error("Enter a trip title and your name");
    const invite=crypto.randomUUID().replace(/-/g,"").slice(0,18),raw=makeToken();
    const {data:t,error:te}=await admin.from("one_trip_groups").insert({owner_id:a.user.id,title,invite_code:invite}).select("id,title,invite_code").single();if(te)throw te;
-   const {data:m,error:me}=await admin.from("one_trip_members").insert({trip_id:t.id,display_name:name,upi_id:txt(b.upi_id,100)||null,upi_phone:txt(b.upi_phone,20)||null,token_hash:await hash(raw),is_owner:true}).select("id").single();if(me)throw me;
+   const {data:m,error:me}=await admin.from("one_trip_members").insert({trip_id:t.id,display_name:name,upi_id:txt(b.upi_id,100)||null,upi_phone:txt(b.upi_phone,20)||null,upi_qr_data:qrData(b.upi_qr_data),token_hash:await hash(raw),is_owner:true}).select("id").single();if(me)throw me;
    return json(req,{trip_id:t.id,invite_code:t.invite_code,member_id:m.id,member_token:raw,title:t.title});
   }
   if(!code)throw new Error("Invite link is missing");
@@ -33,7 +34,7 @@ Deno.serve(async(req:Request)=>{
   const active=()=>{if(trip.status!=="active")throw new Error("This trip is closed");};
   if(action==="join"){
    active();const name=txt(b.name,60);if(!name)throw new Error("Enter your name");
-   const raw=makeToken(),qr=txt(b.upi_qr_data,400000)||null;
+   const raw=makeToken(),qr=qrData(b.upi_qr_data);
    const {data:m,error}=await admin.from("one_trip_members").insert({trip_id:trip.id,display_name:name,upi_id:txt(b.upi_id,100)||null,upi_phone:txt(b.upi_phone,20)||null,upi_qr_data:qr,token_hash:await hash(raw)}).select("id").single();
    if(error)throw new Error(error.code==="23505"?"That name is already in this trip. Add a unique name":error.message);
    return json(req,{trip_id:trip.id,invite_code:code,member_id:m.id,member_token:raw,title:trip.title});
@@ -44,7 +45,7 @@ Deno.serve(async(req:Request)=>{
    for(const r of [ms,es,xs])if(r.error)throw r.error;
    return json(req,{trip,me:{id:me.id,display_name:me.display_name,is_owner:me.is_owner},members:ms.data,expenses:es.data,transfers:xs.data});
   }
-  if(action==="profile"){active();const qr=txt(b.upi_qr_data,400000)||null;const {error}=await admin.from("one_trip_members").update({upi_id:txt(b.upi_id,100)||null,upi_phone:txt(b.upi_phone,20)||null,upi_qr_data:qr}).eq("id",me.id).eq("trip_id",trip.id);if(error)throw error;return json(req,{success:true});}
+  if(action==="profile"){active();const qr=qrData(b.upi_qr_data);const {error}=await admin.from("one_trip_members").update({upi_id:txt(b.upi_id,100)||null,upi_phone:txt(b.upi_phone,20)||null,upi_qr_data:qr}).eq("id",me.id).eq("trip_id",trip.id);if(error)throw error;return json(req,{success:true});}
   if(action==="expense"){
    active();const description=txt(b.description,100),amount=Number(b.amount_paise),ids=Array.isArray(b.split_member_ids)?[...new Set(b.split_member_ids.filter(isUuid))]:[],payer=isUuid(b.payer_member_id)?b.payer_member_id:me.id;
    if(!description||!Number.isSafeInteger(amount)||amount<=0||amount>1000000000||!ids.length||ids.length!==(b.split_member_ids||[]).length)throw new Error("Enter a valid expense and split");
