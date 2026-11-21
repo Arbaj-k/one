@@ -30,11 +30,22 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
     const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(shifted);
     const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(shifted).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
     const reminder={id:'browser-reminder-regression',title:'Browser notification regression',category:'Briefing',taskType:'reminder',isReminder:true,due:date,reminderTime:parts.hour+':'+parts.minute,repeatRule:'daily',priority:'Medium',done:false,created:Date.now(),updated:Date.now()};
-    localStorage.setItem('student-brain-data-v1-guest',JSON.stringify({schemaVersion:4,notes:[],tasks:[reminder],projects:[],expenses:[],messages:[],studySessions:[],documents:[],memories:[],notifications:[]}));
+    const overdueDate=new Date(Date.now()-3*24*60*60*1000);
+    const overdueDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(overdueDate);
+    const splitId='browser-attention-split';
+    const overdueTask={id:'browser-overdue-task',title:'Overdue attention task',due:overdueDay,done:false,created:Date.now(),updated:Date.now()};
+    const overdueLoan={id:'browser-overdue-loan',person:'Meera',description:'Old loan',kind:'lent',amount:450,date:overdueDay,dueDate:overdueDay};
+    const splitLedger={id:'browser-split-ledger',person:'Rahul',description:'Trip dinner share',kind:'lent',amount:300,date:date,splitBillId:splitId};
+    const splitBill={id:splitId,title:'Browser trip dinner',payer:'You',date,createdAt:Date.now(),total:600,participants:[{name:'You',share:300},{name:'Rahul',share:300}],method:'equal'};
+    localStorage.setItem('student-brain-data-v1-guest',JSON.stringify({schemaVersion:4,notes:[],tasks:[reminder,overdueTask],projects:[],expenses:[overdueLoan,splitLedger],splitBills:[splitBill],messages:[],studySessions:[],documents:[],memories:[],notifications:[]}));
   });
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#page-content');
   assert.ok(await page.locator('#page-content').innerText().then(t=>t.includes('Good to see you again')));
+  const attentionText=await page.locator('.home-attention').innerText();
+  for (const label of ['Overdue tasks','Overdue repayments','Pending split-bill settlements','Overdue attention task','Meera owes you','Browser trip dinner']) {
+    assert.ok(attentionText.includes(label),'Needs your attention should include '+label);
+  }
   // Routine notifications also use the same Asia/Kolkata clock, independent of browser timezone.
   await page.evaluate(()=>{
     const shifted=new Date(Date.now()-2*60*1000);
