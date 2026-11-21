@@ -1,4 +1,38 @@
+# Public pages are available to search and answer-engine crawlers.
+# Search crawlers are allowed; separate model-training crawlers are disallowed where supported.
+
 User-agent: *
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+# Gemini grounding and training control. Google-Extended combines both permissions.
+User-agent: Google-Extended
+Allow: /
+
+# ChatGPT Search / user-requested retrieval (separate from GPTBot training).
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Disallow: /
+
+# Claude Search / user-requested retrieval (separate from ClaudeBot training).
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+# Perplexity search discovery.
+User-agent: PerplexityBot
 Allow: /
 
 Sitemap: https://arbaj-k.github.io/one/sitemap.xml

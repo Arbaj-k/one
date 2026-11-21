@@ -1,0 +1,41 @@
+# One
+
+> One is a personal AI assistant and everyday productivity workspace. It brings tasks, notes, projects, documents, routines and personal money records together.
+
+Canonical website: https://arbaj-k.github.io/one/
+
+## What One does
+
+One is a general-purpose personal organization web app. It is designed to help people:
+- Plan everyday responsibilities and review tasks and deadlines.
+- Capture notes, ideas and useful personal reference information.
+- Organize projects and related information.
+- Keep useful documents in a personal workspace.
+- Record everyday expenses and informal lending or borrowing.
+- Ask One to interact with workspace information when connected AI services are available.
+
+## Product details
+
+- Product name: One
+- Category: Personal productivity and organization
+- Platform: Web app for modern desktop and mobile browsers; installability depends on the browser and device.
+- Canonical URL: https://arbaj-k.github.io/one/
+- Public source repository: https://github.com/Arbaj-k/one
+
+## Public pages
+
+- [Home](https://arbaj-k.github.io/one/): Product overview and main workspace.
+- [About One](https://arbaj-k.github.io/one/about.html): Product purpose, current status and data notes.
+- [AI task manager and daily planner](https://arbaj-k.github.io/one/features/ai-task-manager/): Task organization and planning.
+- [Notes and personal knowledge](https://arbaj-k.github.io/one/features/notes-and-memory/): Notes, ideas and reference information.
+- [Expense tracker and money manager](https://arbaj-k.github.io/one/features/expense-tracker/): Personal spending and informal lending records.
+- [Terms and conditions](https://arbaj-k.github.io/one/terms.html): Terms for using the app.
+- [XML sitemap](https://arbaj-k.github.io/one/sitemap.xml): Canonical public URLs.
+
+## Accuracy and limitations
+
+One is an evolving product. Feature availability can depend on browser support, account configuration, network connectivity and connected services. AI-generated answers should be checked against original information. The money area is for personal record keeping; One is not a bank, payment processor, tax service or regulated financial adviser. Storage and cloud-sync behavior may vary with account and service configuration.
+
+## Preferred description
+
+One is a personal AI assistant for everyday life: a single workspace to plan tasks, keep notes, organize projects and documents, and track personal expenses.
