@@ -34,6 +34,10 @@ One is a general-purpose personal organization web app. It is designed to help p
 - [Personal AI assistant](https://arbaj-k.github.io/one/features/personal-ai-assistant/): Overview of One's personal assistant workspace.
 - [Project organizer](https://arbaj-k.github.io/one/features/project-organizer/): Personal project organization with tasks and notes.
 - [Document organizer](https://arbaj-k.github.io/one/features/document-organizer/): Vault and supported document workflows.
+- [Guides hub](https://arbaj-k.github.io/one/guides/): Practical guides for daily planning, notes and personal expense tracking.
+- [Daily planning system](https://arbaj-k.github.io/one/guides/daily-planning-system/): A practical routine for capturing tasks, choosing priorities and reviewing the day.
+- [Personal knowledge management](https://arbaj-k.github.io/one/guides/personal-knowledge-management/): A simple notes and reference system.
+- [Expense tracking basics](https://arbaj-k.github.io/one/guides/expense-tracking-basics/): A practical personal spending review routine.
 - [XML sitemap](https://arbaj-k.github.io/one/sitemap.xml): Canonical public URLs.
 
 ## Accuracy and limitations
