@@ -995,3 +995,38 @@ body.kuro #page-content .home-upcoming-task>.task-complete-action{grid-column:3!
  body.kuro #page-content .home-upcoming-task{grid-template-columns:20px minmax(0,1fr)!important;gap:9px!important;padding:12px!important}
  body.kuro #page-content .home-upcoming-task>.task-complete-action{grid-column:2!important;grid-row:2!important;justify-self:start!important;min-width:72px!important}
 }
+
+
+/* Unified task, note and expense forms: compact modal layout, no clipped full-screen fields. */
+body.kuro #modal-root .modal-backdrop{position:fixed!important;inset:0!important;z-index:1000!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow-y:auto!important;padding:18px!important;background:rgba(5,8,15,.76)!important;backdrop-filter:blur(5px)!important;box-sizing:border-box!important}
+body.kuro #modal-root .modal.create-form-screen{display:flex!important;flex-direction:column!important;gap:0!important;width:min(680px,100%)!important;min-width:0!important;min-height:0!important;height:auto!important;max-height:calc(100dvh - 36px)!important;overflow:hidden!important;margin:auto!important;padding:0!important;border:1px solid var(--k-line-2)!important;border-radius:20px!important;background:var(--k-panel)!important;color:var(--k-ink)!important;box-shadow:0 24px 80px rgba(0,0,0,.35)!important;box-sizing:border-box!important}
+body.kuro #modal-root .create-form-screen *{box-sizing:border-box!important}
+body.kuro #modal-root .create-form-screen .modal-head{position:relative!important;display:flex!important;align-items:center!important;gap:13px!important;flex:0 0 auto!important;margin:0!important;padding:18px 22px!important;border-bottom:1px solid var(--k-line)!important;background:var(--k-panel)!important}
+body.kuro #modal-root .create-form-screen .modal-back-button{display:grid!important;place-items:center!important;flex:0 0 38px!important;width:38px!important;min-width:38px!important;height:38px!important;min-height:38px!important;margin:0!important;padding:0!important;border:1px solid var(--k-line)!important;border-radius:11px!important;background:var(--k-sunk)!important;color:var(--k-ink)!important;font-size:22px!important;line-height:1!important}
+body.kuro #modal-root .create-form-screen .modal-back-button span{font-size:22px!important;line-height:1!important}
+body.kuro #modal-root .create-form-screen .modal-title-copy{flex:1 1 auto!important;min-width:0!important}
+body.kuro #modal-root .create-form-screen .modal-head h2{margin:0!important;color:var(--k-ink)!important;font-size:21px!important;font-weight:750!important;line-height:1.25!important;letter-spacing:-.025em!important}
+body.kuro #modal-root .create-form-screen .form-intro{margin:4px 0 0!important;color:var(--k-mute)!important;font-size:12px!important;line-height:1.45!important}
+body.kuro #modal-root .create-form-screen #edit-form{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-content:start!important;gap:16px!important;flex:1 1 auto!important;min-width:0!important;min-height:0!important;width:100%!important;overflow-y:auto!important;overflow-x:hidden!important;margin:0!important;padding:20px 22px 10px!important}
+body.kuro #modal-root .create-form-screen #edit-form>.field{display:flex!important;flex-direction:column!important;gap:7px!important;min-width:0!important;width:100%!important;margin:0!important;padding:0!important}
+body.kuro #modal-root .create-form-screen #edit-form>.field.full,body.kuro #modal-root .create-form-screen #edit-form>.choice-field{grid-column:1/-1!important}
+body.kuro #modal-root .create-form-screen #edit-form>.field>label{display:block!important;margin:0!important;color:var(--k-ink-2)!important;font-size:12px!important;font-weight:700!important;line-height:1.35!important}
+body.kuro #modal-root .create-form-screen #edit-form input:not([type=hidden]),body.kuro #modal-root .create-form-screen #edit-form textarea,body.kuro #modal-root .create-form-screen #edit-form select{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:46px!important;margin:0!important;padding:11px 13px!important;border:1px solid var(--k-line-2)!important;border-radius:11px!important;background:var(--k-sunk)!important;color:var(--k-ink)!important;font:500 14px/1.4 inherit!important;box-shadow:none!important}
+body.kuro #modal-root .create-form-screen #edit-form textarea{min-height:124px!important;resize:vertical!important}
+body.kuro #modal-root .create-form-screen #edit-form input::placeholder,body.kuro #modal-root .create-form-screen #edit-form textarea::placeholder{color:var(--k-mute)!important;opacity:1!important}
+body.kuro #modal-root .create-form-screen #edit-form input:focus,body.kuro #modal-root .create-form-screen #edit-form textarea:focus,body.kuro #modal-root .create-form-screen #edit-form select:focus{outline:2px solid #8298ff!important;outline-offset:1px!important;border-color:#8298ff!important}
+body.kuro #modal-root .create-form-screen #edit-form .choice-field{gap:9px!important}
+body.kuro #modal-root .create-form-screen #edit-form .choice-options{display:flex!important;flex-wrap:wrap!important;gap:8px!important;min-width:0!important}
+body.kuro #modal-root .create-form-screen #edit-form .choice-option{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:38px!important;margin:0!important;padding:8px 13px!important;border:1px solid var(--k-line-2)!important;border-radius:10px!important;background:var(--k-sunk)!important;color:var(--k-ink)!important;font-size:12px!important;font-weight:650!important;line-height:1.25!important}
+body.kuro #modal-root .create-form-screen #edit-form .choice-option.is-selected{border-color:#8298ff!important;background:var(--k-lav)!important;color:var(--k-ink)!important}
+body.kuro #modal-root .create-form-screen .modal-actions{position:sticky!important;bottom:0!important;z-index:4!important;display:flex!important;flex:0 0 auto!important;justify-content:stretch!important;grid-column:1/-1!important;margin:0!important;padding:13px 22px calc(15px + env(safe-area-inset-bottom))!important;border-top:1px solid var(--k-line)!important;background:var(--k-panel)!important}
+body.kuro #modal-root .create-form-screen .modal-save-button{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:48px!important;margin:0!important;padding:12px 18px!important;border:0!important;border-radius:12px!important;background:var(--k-solid)!important;color:var(--k-on-solid)!important;font-size:14px!important;font-weight:750!important;line-height:1.2!important;box-shadow:none!important}
+@media(max-width:600px){
+ body.kuro #modal-root .modal-backdrop{align-items:flex-end!important;padding:0!important}
+ body.kuro #modal-root .modal.create-form-screen{width:100%!important;max-width:100%!important;max-height:min(92dvh,860px)!important;margin:0!important;border-radius:20px 20px 0 0!important}
+ body.kuro #modal-root .create-form-screen .modal-head{padding:16px 17px 14px!important}
+ body.kuro #modal-root .create-form-screen .modal-head h2{font-size:19px!important}
+ body.kuro #modal-root .create-form-screen #edit-form{grid-template-columns:minmax(0,1fr)!important;gap:15px!important;padding:17px 17px 9px!important}
+ body.kuro #modal-root .create-form-screen #edit-form>.field.full,body.kuro #modal-root .create-form-screen #edit-form>.choice-field{grid-column:1!important}
+ body.kuro #modal-root .create-form-screen .modal-actions{padding:11px 17px calc(13px + env(safe-area-inset-bottom))!important}
+}
