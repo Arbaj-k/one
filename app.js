@@ -812,12 +812,12 @@ function overview(){
    <div class="home-prompts"><span>Try:</span><button type="button" data-question="Summarize today's priorities">Today's priorities</button><button type="button" data-question="Track an expense">Add expense</button><button type="button" data-question="Draft a note">New note</button></div>
   </section>
   <section class="card home-quick-actions" aria-labelledby="home-quick-actions-title">
-   <div class="home-quick-actions-heading"><div><div class="eyebrow">QUICK ACTIONS</div><h2 id="home-quick-actions-title">Create something</h2></div></div>
+   <div class="home-quick-actions-heading"><div><div class="eyebrow">QUICK ACTIONS</div><h2 id="home-quick-actions-title">Quick actions</h2></div></div>
    <div class="home-create-grid" aria-label="Create shortcuts">
-    <button class="home-create-action" type="button" data-action="new-task"><span class="home-create-icon" aria-hidden="true">✓</span><span class="home-create-copy"><b>Add task</b><small>Plan what’s next</small></span><span class="home-create-arrow" aria-hidden="true">↗</span></button>
-    <button class="home-create-action" type="button" data-action="new-note"><span class="home-create-icon" aria-hidden="true">✎</span><span class="home-create-copy"><b>Save note</b><small>Keep an idea</small></span><span class="home-create-arrow" aria-hidden="true">↗</span></button>
-    <button class="home-create-action" type="button" data-action="new-expense"><span class="home-create-icon" aria-hidden="true">₹</span><span class="home-create-copy"><b>Add expense</b><small>Track your money</small></span><span class="home-create-arrow" aria-hidden="true">↗</span></button>
-    <button class="home-create-action" type="button" data-action="quick-add-upload"><span class="home-create-icon" aria-hidden="true">↑</span><span class="home-create-copy"><b>Upload file</b><small>PDF or image</small></span><span class="home-create-arrow" aria-hidden="true">↗</span></button>
+    <button class="home-create-action is-primary" type="button" data-action="new-task"><span aria-hidden="true">+</span><b>Add task</b></button>
+    <button class="home-create-action" type="button" data-action="new-note"><span aria-hidden="true">+</span><b>Save note</b></button>
+    <button class="home-create-action" type="button" data-action="new-expense"><span aria-hidden="true">+</span><b>Add expense</b></button>
+    <button class="home-create-action" type="button" data-action="quick-add-upload"><span aria-hidden="true">↑</span><b>Upload file</b></button>
    </div>
   </section>
   ${homeAttentionSection()}
