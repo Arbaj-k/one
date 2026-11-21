@@ -889,3 +889,36 @@ body.kuro #page-content .smart-insight-card>p{margin:10px 0!important}
  body.kuro #page-content .home-attention .home-section-heading{align-items:flex-start!important}
  body.kuro #page-content .home-attention .tag{max-width:66px!important}
 }
+
+/* Unified Today create tiles: compact, tactile and consistent with One cards. */
+body.kuro #page-content .home-quick-actions{padding:15px!important;gap:12px!important}
+body.kuro #page-content .home-quick-actions-heading{display:flex;align-items:center;justify-content:space-between;min-width:0}
+body.kuro #page-content .home-quick-actions-heading h2{margin:3px 0 0!important;font-size:18px!important;line-height:1.25!important}
+body.kuro #page-content .home-create-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px!important;width:100%;min-width:0}
+body.kuro #page-content .home-create-action{
+ display:flex!important;align-items:center!important;gap:10px!important;width:100%!important;min-width:0!important;
+ min-height:66px!important;padding:10px 11px!important;text-align:left!important;
+ color:var(--k-text)!important;background:var(--k-panel-2, var(--k-panel))!important;
+ border:1px solid var(--k-line)!important;border-radius:12px!important;
+ box-shadow:none!important;transition:background .16s ease,border-color .16s ease,transform .16s ease!important;
+}
+body.kuro #page-content .home-create-action:active{transform:scale(.985)}
+body.kuro #page-content .home-create-action:hover{border-color:var(--k-muted)!important}
+body.kuro #page-content .home-create-icon{
+ display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;
+ width:34px!important;height:34px!important;border-radius:10px!important;
+ color:var(--k-text)!important;background:var(--k-soft)!important;
+ font-size:17px!important;font-weight:700!important;
+}
+body.kuro #page-content .home-create-copy{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;gap:3px!important;min-width:0!important}
+body.kuro #page-content .home-create-copy b{font-size:13px!important;font-weight:700!important;line-height:1.25!important;white-space:normal!important}
+body.kuro #page-content .home-create-copy small{font-size:11px!important;line-height:1.25!important;color:var(--k-mute)!important;white-space:normal!important}
+body.kuro #page-content .home-create-arrow{flex:0 0 auto!important;color:var(--k-mute)!important;font-size:13px!important}
+@media(max-width:390px){
+ body.kuro #page-content .home-quick-actions{padding:13px!important}
+ body.kuro #page-content .home-create-grid{gap:8px!important}
+ body.kuro #page-content .home-create-action{min-height:62px!important;padding:8px!important;gap:8px!important}
+ body.kuro #page-content .home-create-icon{width:30px!important;height:30px!important;flex-basis:30px!important;font-size:15px!important}
+ body.kuro #page-content .home-create-copy b{font-size:12px!important}
+ body.kuro #page-content .home-create-copy small{font-size:10px!important}
+}
