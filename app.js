@@ -334,7 +334,7 @@ function mergeWorkspaceSnapshots(localSnapshot,remoteSnapshot){
   if(!previousRaw)return next;
   let previous;
   try{previous=migrateData(JSON.parse(previousRaw))}catch(_){return next}
-  const collections=['notes','tasks','projects','routines','people','expenses','moneyBudgets','messages','studySessions','documents','memories','notifications','followUps'];
+  const collections=['notes','tasks','projects','routines','people','expenses','splitBills','moneyBudgets','messages','studySessions','documents','memories','notifications','followUps'];
   const tombstones=new Map();
   for(const item of next.deletedRecords||[])if(item?.collection&&item?.id)tombstones.set(item.collection+':'+item.id,item);
   const deletedAt=Date.now();
@@ -966,7 +966,7 @@ function saveSplitBill(form){
  const values=new FormData(form),title=String(values.get('title')||'').trim(),total=Number(values.get('total')),payer=String(values.get('payer')||'').trim(),date=String(values.get('date')||today()),method=String(values.get('method')||'equal');
  if(!title||!payer||!Number.isFinite(total)||total<=0){toast('Enter a title, payer and valid total');return}
  const userName=String(cloudUser?.user_metadata?.full_name||cloudUser?.user_metadata?.name||cloudUser?.email?.split('@')[0]||'You').trim();
- const names=String(values.get('participants')||'').split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+ const names=String(values.get('participants')||'').split(/[,\n]/).map(x=>x.trim()).filter(Boolean).map(n=>n.toLowerCase()==='you'?userName:n);
  if(!names.some(n=>n.toLowerCase()===userName.toLowerCase()||n.toLowerCase()==='you'))names.unshift(userName);
  if(!names.some(n=>n.toLowerCase()===payer.toLowerCase()))names.push(payer);
  const unique=[...new Map(names.map(n=>[n.toLowerCase(),n])).values()];
