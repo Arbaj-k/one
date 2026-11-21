@@ -221,3 +221,25 @@ body.kuro .modal :is(p,small,label){color:var(--ui-sub)!important}
  body.kuro #page-content .chat-context-pill{width:100%;justify-content:center}
  body.kuro #page-content .chat-form .chat-send{min-width:68px!important}
 }
+
+/* Human-centred Today improvements: surface overdue work without changing One's visual identity. */
+body.kuro #page-content .home-overdue{
+  margin:18px 0!important;padding:18px!important;
+  border-inline-start:3px solid var(--ui-muted)!important;
+}
+body.kuro #page-content .home-overdue .home-section-heading{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+}
+body.kuro #page-content .home-overdue h2{margin:2px 0 5px!important}
+body.kuro #page-content .home-overdue .list{margin-top:12px}
+body.kuro #page-content .home-overdue .planner-task{min-width:0}
+body.kuro #page-content .home-overdue .planner-task-open{min-width:0;text-align:left}
+body.kuro #page-content .home-overdue .task-due{font-weight:650}
+body.kuro #page-content .home-overdue button:focus-visible{
+  outline:2px solid var(--ui-text)!important;outline-offset:3px!important;
+}
+@media(max-width:600px){
+ body.kuro #page-content .home-overdue{padding:14px!important}
+ body.kuro #page-content .home-overdue .home-section-heading{flex-direction:column;align-items:stretch}
+ body.kuro #page-content .home-overdue .home-section-heading>.btn{align-self:flex-start}
+}
