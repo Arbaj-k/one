@@ -42,6 +42,9 @@ Deno.serve(async (req: Request) => {
 
     const userId = authData.user.id;
     const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+    const {data:allowed,error:limitError}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:"account-delete:"+userId,p_limit:2,p_window_seconds:3600});
+    if(limitError)return json(req,{error:"Account deletion security check unavailable. Retry later."},503);
+    if(allowed!==true)return json(req,{error:"Too many deletion attempts. Try again later."},429);
 
     // Remove private document objects recursively through the Storage API.
     const bucket = "one-user-documents";
