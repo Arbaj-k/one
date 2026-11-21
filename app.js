@@ -996,12 +996,27 @@ function saveSplitBill(form){
  persist();window.moneyTab='split';render();toast('Bill saved · shares added to Money & Udhaar');
 }
 function splitBillSummary(bill){
- const userName=String(cloudUser?.user_metadata?.full_name||cloudUser?.user_metadata?.name||cloudUser?.email?.split('@')[0]||'You').trim();
- const lines=['🧾 '+bill.title,bill.group?'Group: '+bill.group:'', 'Total: '+money(bill.total),'Paid by: '+bill.payer,'Date: '+dateFmt(bill.date),'','Shares:',...(bill.participants||[]).map(p=>'• '+p.name+': '+money(p.share)),'','Tracked in One · Money → Split bills'];
+ const lines=['🧾 '+bill.title,bill.group?'Group: '+bill.group:'', 'Total: '+money(bill.total),'Paid by: '+bill.payer,'Date: '+dateFmt(bill.date),'','Shares:',...(bill.participants||[]).map(p=>'• '+p.name+': '+money(p.share))];
+ const upiId=String(bill.upiId||'').trim();
+ if(upiId){
+  const upiLink='upi://pay?pa='+encodeURIComponent(upiId)+'&pn='+encodeURIComponent(bill.payer)+'&cu=INR&tn='+encodeURIComponent(('Split bill: '+bill.title).slice(0,80));
+  lines.push('','Pay via UPI','UPI ID: '+upiId,'UPI payment link: '+upiLink);
+ }else{
+  lines.push('','UPI: Not added yet. Add a UPI ID to this bill before sharing to include payment details.');
+ }
+ lines.push('','Tracked in One · Money → Split bills');
  return lines.filter(Boolean).join('\n');
 }
 function shareSplitBillWhatsApp(id){
  const bill=(data.splitBills||[]).find(x=>x.id===id);if(!bill){toast('Bill not found');return}
+ let upiId=String(bill.upiId||'').trim();
+ if(!upiId){
+  upiId=String(prompt('Add the payee UPI ID so it is included in the WhatsApp share (example: name@upi)')||'').trim();
+  if(!upiId)return;
+  if(!/^[\\w.\\-]{2,256}@[A-Za-z]{2,64}$/.test(upiId)){toast('Enter a valid UPI ID');return}
+  bill.upiId=upiId;persist();
+ }
+ if(!/^[\\w.\\-]{2,256}@[A-Za-z]{2,64}$/.test(upiId)){toast('This bill has an invalid UPI ID. Edit it and try again.');return}
  const message=splitBillSummary(bill);
  window.open('https://wa.me/?text='+encodeURIComponent(message),'_blank','noopener,noreferrer');
 }
