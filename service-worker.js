@@ -1,5 +1,5 @@
 /* One PWA service worker. Bump version on each release. */
-const CACHE_VERSION="one-shell-v43",ASSET_CACHE="one-assets-v42";
+const CACHE_VERSION="one-shell-v44",ASSET_CACHE="one-assets-v44";
 const PRECACHE=["./","./index.html","./404.html","./supabase-client.js","./pwa-init.js","./analytics.js","./workspace-intelligence.js","./styles.css","./quality-guardrails.css","./kuro-theme.css","./kuro-theme-init.js","./kuro-shell.js","./app.js","./commands.js","./one-commands.js","./voice.js","./auth.js","./voice-assistant.js","./document-extractor.js","./manifest.json","./ui-visibility.css","./ask-one-page-fix.css","./profile.css","./group-trip.js","./profile.js","./ask-one-command-ui.js","./ask-one-reply-actions.js","./icons/student-brain.svg"];
 const OFFLINE_PAGE="./index.html";
 const SHELL_PRECACHE=["./","./index.html","./404.html"];
