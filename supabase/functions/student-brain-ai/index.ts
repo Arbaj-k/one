@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+let activeRequest: Request;
 const ALLOWED_ORIGINS = new Set(["https://one-7na.pages.dev","https://arbaj-k.github.io"]);
 function corsFor(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -12,55 +13,54 @@ function corsFor(req: Request) {
 }
 
 
-function json(req: Request, data: unknown, status = 200) {
+function json(data: unknown, status = 200, _unused?: unknown, req?: Request) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsFor(req), "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: { ...corsFor(req || activeRequest), "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 }
 const asText = (value: unknown, limit = 4000) => typeof value === "string" ? value.slice(0, limit) : "";
-const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+const validInline=(data:string,mime:string)=>{try{const b=Uint8Array.from(atob(data),c=>c.charCodeAt(0));if(mime==="application/pdf")return new TextDecoder().decode(b.slice(0,8)).startsWith("%PDF-");if(mime==="image/jpeg")return b[0]===255&&b[1]===216&&b[2]===255;if(mime==="image/png")return [137,80,78,71,13,10,26,10].every((v,i)=>b[i]===v);if(mime==="image/webp")return new TextDecoder().decode(b.slice(0,4))==="RIFF"&&new TextDecoder().decode(b.slice(8,12))==="WEBP";return false}catch{return false}};
 
 Deno.serve(async (req: Request) => {
+  activeRequest = req;
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsFor(req) });
-  if (req.method !== "POST") return json(req, { error: "Use POST." }, 405);
+  if (req.method !== "POST") return json({ error: "Use POST." }, 405, undefined, req);
 
   try {
+    const declared=Number(req.headers.get("content-length")||0);if(declared>6_000_000)return json({error:"Request exceeds the 6 MB processing limit."},413,undefined,req);
     const authorization = req.headers.get("Authorization") || "";
     const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!token) return json(req, { error: "An active Student Brain session is required." }, 401);
+    if (!token) return json({ error: "An active Student Brain session is required." }, 401, undefined, req);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
     if (!supabaseUrl || !supabaseAnonKey || !geminiKey) {
       console.warn("Operation failed; diagnostic details redacted.");
-      return json(req, { error: "AI server configuration is incomplete. Check the Supabase function secret GEMINI_API_KEY." }, 500);
+      return json({ error: "AI server configuration is incomplete. Check the Supabase function secret GEMINI_API_KEY." }, 500, undefined, req);
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data: authData, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !authData.user) return json(req, { error: "Student Brain session is invalid. Refresh the page and retry." }, 401);
-
+    if (authError || !authData.user) return json({ error: "Student Brain session is invalid. Refresh the page and retry." }, 401, undefined, req);
+    const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!service)return json({error:"AI security service is unavailable."},503,undefined,req);
+    const admin=createClient(supabaseUrl,service,{auth:{persistSession:false,autoRefreshToken:false}});
+    const ipHash=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(req.headers.get("cf-connecting-ip")||"unknown"));
+    const ipKey=[...new Uint8Array(ipHash)].slice(0,12).map(x=>x.toString(16).padStart(2,"0")).join("");
+    const checks=await Promise.all([admin.rpc("one_consume_rate_limit",{p_bucket_key:"ai-user:"+authData.user.id,p_limit:30,p_window_seconds:60}),admin.rpc("one_consume_rate_limit",{p_bucket_key:"ai-ip:"+ipKey,p_limit:90,p_window_seconds:60})]);
+    if(checks.some(x=>x.error))return json({error:"AI security check unavailable."},503,undefined,req);
+    if(checks.some(x=>x.data!==true))return json({error:"Too many AI requests. Please wait a minute and retry."},429,undefined,req);
     const body = await req.json();
     const message = asText(body?.message, 3000).trim();
-    if (!message) return json(req, { error: "Please enter a question." }, 400);
+    if (!message) return json({ error: "Please enter a question." }, 400, undefined, req);
 
-    const workspace = body?.workspace && typeof body.workspace === "object" && !Array.isArray(body.workspace) ? { ...body.workspace } : {};
-    const requestedTimezone = typeof workspace.timezone === "string" ? workspace.timezone.trim() : "";
-    let workspaceTimezone = "UTC";
-    if (requestedTimezone && requestedTimezone.length <= 80) {
-      try { new Intl.DateTimeFormat("en-US", { timeZone: requestedTimezone }); workspaceTimezone = requestedTimezone; }
-      catch { workspaceTimezone = "UTC"; }
-    }
-    const dateParts = new Intl.DateTimeFormat("en-US", { timeZone: workspaceTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-    const dateValues = Object.fromEntries(dateParts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
-    workspace.timezone = workspaceTimezone;
-    workspace.today = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
+    const workspace = body?.workspace && typeof body.workspace === "object" && !Array.isArray(body.workspace) ? body.workspace : {};
     const workspaceText = JSON.stringify(workspace);
-    if (workspaceText.length > 55000) return json(req, { error: "Your combined workspace context is too large. Try a more specific question or reduce the number of very large uploads." }, 413);
+    if (workspaceText.length > 55000) return json({ error: "Your combined workspace context is too large. Try a more specific question or reduce the number of very large uploads." }, 413, undefined, req);
 
     const allowedSources = Array.isArray(body?.allowedSources)
       ? [...new Set(body.allowedSources.filter((s: unknown): s is string => typeof s === "string").map((s: string) => s.slice(0, 220)))].slice(0, 60)
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
       const name = asText(inlineFile.name, 180) || "uploaded file";
       const mimeType = asText(inlineFile.mimeType, 80);
       const data = asText(inlineFile.dataBase64, 4_300_000);
-      if (ALLOWED_MIME.has(mimeType) && data.length > 100 && data.length <= 4_200_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(data)) {
+      if (ALLOWED_MIME.has(mimeType) && data.length > 100 && data.length <= 4_200_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(data) && validInline(data,mimeType)) {
         const label = "File: " + name + " · original file";
         if (!allowedSources.includes(label)) allowedSources.push(label);
         validatedInline = { label, name, mimeType, data };
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
 
 LANGUAGE AND TONE:
 - Reply in the same language as the user (Hindi, English, or Hinglish). Keep answers short, clear, and natural.
-- The workspace timezone is ${workspaceTimezone}. Interpret relative dates using the server-validated workspace.today and timezone. Treat date-only values as calendar dates, not UTC instants.
+- The workspace timezone is Asia/Kolkata. Interpret relative dates using the supplied workspace.today and timezone.
 
 DOCUMENT READING CONTRACT (HIGHEST PRIORITY FOR OCR / EXTRACTION REQUESTS):
 - If the user asks to read, transcribe, extract, or fully inspect a supplied PDF/image, process the complete supplied document before answering: every supplied page, section, heading, list, table, footer, and visible annotation. Do not silently stop after a sample or first page.
@@ -157,7 +157,7 @@ Answering rules:
 - Use compact headings, numbered steps, or bullets when they make the answer easier to follow. Keep simple answers as simple prose.
 - Return ONLY valid JSON with keys "answer" (string) and "sources" (array of exact source labels from this allow-list): ${JSON.stringify(allowedSources)}
 - Include only labels that directly support the answer. If no supplied source supports it, return an empty array.
-TODAY: ${workspace.today}
+TODAY: ${new Date().toISOString().slice(0, 10)}
 WORKSPACE AND RELEVANT DOCUMENT EXTRACTS:
 ${workspaceText}
 STUDENT QUESTION:
@@ -187,13 +187,6 @@ Rules:
 - For complete_task/update_task, the app will validate the target against the user's own saved records before changing anything.
 - Do not output markdown, explanations, or extra keys.`;
     }
-    const mealQuestion = /\b(?:mess|menu|meal|breakfast|lunch|dinner|hostel|canteen|food)\b|मेस|भोजन|नाश्ता|खाना/iu.test(message);
-    const weekdayMatch = message.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i) || message.match(/सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार/u);
-    const requestedWeekday = weekdayMatch?.[1] || ({सोमवार:"Monday",मंगलवार:"Tuesday",बुधवार:"Wednesday",गुरुवार:"Thursday",शुक्रवार:"Friday",शनिवार:"Saturday",रविवार:"Sunday"} as Record<string,string>)[weekdayMatch?.[0] || ""] || "";
-    if (mealQuestion) {
-      prompt += "\n\nMESS MENU SINGLE-ANSWER MODE:\n- This is one narrow question about the saved mess/hostel menu. Answer ONLY for the requested weekday" + (requestedWeekday ? " (" + requestedWeekday + ")" : "") + ".\n- Find that weekday's matching row/column in the most relevant saved mess/menu document. Cross-check meal labels and values in the same row/column; do not mix weekdays or meals.\n- Return exactly ONE consolidated answer, not multiple candidate answers, alternatives, drafts, repeated sections, or reasoning.\n- Include only meal entries actually present for that weekday (breakfast/lunch/dinner if listed). Do not repeat meals or dishes.\n- If an entry is missing or unclear, say so; never guess or substitute another day's menu.\n- Keep it concise: weekday heading and at most one bullet per meal. Do not list all seven days unless explicitly asked.";
-    }
-
     const parts: Array<Record<string, unknown>> = [{ text: prompt }];
     if (validatedInline) {
       parts.push({ text: "The original file attached next is: " + validatedInline.name + ". Read it visually and use it as primary evidence for file-specific questions. Cite \"" + validatedInline.label + "\" when used." });
@@ -233,7 +226,7 @@ Rules:
       const reason = upstreamError instanceof Error ? upstreamError.name : "unknown";
       console.warn("Gemini request transport failed.", JSON.stringify({ model: usedModel, reason }));
       if (reason === "TimeoutError" || reason === "AbortError") {
-        return json(req, { error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504);
+        return json({ error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504, undefined, req);
       }
       // A network failure may be transient or model-specific; try the alternate
       // stable model once before returning an error.
@@ -243,7 +236,7 @@ Rules:
       } catch (fallbackError) {
         const fallbackReason = fallbackError instanceof Error ? fallbackError.name : "unknown";
         console.warn("Gemini fallback transport failed.", JSON.stringify({ model: fallbackModel, reason: fallbackReason }));
-        return json(req, { error: "Could not connect to Gemini after trying the backup model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502);
+        return json({ error: "Could not connect to Gemini after trying the backup model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502, undefined, req);
       }
     }
 
@@ -258,34 +251,34 @@ Rules:
       // user content, or provider messages.
       console.warn("Gemini provider returned an error.", JSON.stringify({ model: usedModel, httpStatus: status, providerCode }));
       if (status === 400) {
-        return json(req, { error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502);
+        return json({ error: "Gemini rejected the request format or content. Try a shorter question or a smaller/clearer file.", code: "GEMINI_BAD_REQUEST" }, 502, undefined, req);
       }
       if (status === 401 || status === 403) {
-        return json(req, { error: "Gemini authentication or access was rejected. In Supabase Edge Function secrets, verify GEMINI_API_KEY is valid and has Gemini API access; then redeploy/retry.", code: "GEMINI_KEY_OR_ACCESS" }, 502);
+        return json({ error: "Gemini authentication or access was rejected. In Supabase Edge Function secrets, verify GEMINI_API_KEY is valid and has Gemini API access; then redeploy/retry.", code: "GEMINI_KEY_OR_ACCESS" }, 502);
       }
       if (status === 404) {
-        return json(req, { error: "The configured Gemini model or endpoint was not found. Check model availability for this API key and update the Edge Function model name if needed.", code: "GEMINI_MODEL_NOT_FOUND" }, 502);
+        return json({ error: "The configured Gemini model or endpoint was not found. Check model availability for this API key and update the Edge Function model name if needed.", code: "GEMINI_MODEL_NOT_FOUND" }, 502, undefined, req);
       }
       if (status === 429) {
-        return json(req, { error: "Gemini rate limit or quota was reached. Check the Gemini project quota/billing and retry after it resets.", code: "GEMINI_QUOTA" }, 429);
+        return json({ error: "Gemini rate limit or quota was reached. Check the Gemini project quota/billing and retry after it resets.", code: "GEMINI_QUOTA" }, 429, undefined, req);
       }
       if (status >= 500) {
-        return json(req, { error: "Gemini is temporarily experiencing a server error. Retry shortly; your saved data remains local.", code: "GEMINI_UPSTREAM" }, 502);
+        return json({ error: "Gemini is temporarily experiencing a server error. Retry shortly; your saved data remains local.", code: "GEMINI_UPSTREAM" }, 502);
       }
-      return json(req, { error: "Gemini returned an unexpected HTTP " + status + " response. Check the Supabase function logs for the provider diagnostic.", code: "GEMINI_HTTP_ERROR" }, 502);
+      return json({ error: "Gemini returned an unexpected HTTP " + status + " response. Check the Supabase function logs for the provider diagnostic.", code: "GEMINI_HTTP_ERROR" }, 502, undefined, req);
     }
 
     const output = aiResult?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim();
-    if (!output) return json(req, { error: "Gemini returned no answer. Please try a shorter question." }, 502);
+    if (!output) return json({ error: "Gemini returned no answer. Please try a shorter question." }, 502, undefined, req);
     let parsed: { answer?: unknown; sources?: unknown };
     try { parsed = JSON.parse(output); } catch { parsed = { answer: output, sources: [] }; }
     const answer = typeof parsed.answer === "string" ? parsed.answer.trim() : output;
     const sourceList = Array.isArray(parsed.sources)
       ? [...new Set(parsed.sources.filter((source: unknown): source is string => typeof source === "string" && allowedSources.includes(source)))]
       : [];
-    return json(req, { answer, sources: sourceList.slice(0, 10), model: usedModel });
+    return json({ answer, sources: sourceList.slice(0, 10), model: usedModel }, undefined, req);
   } catch (error) {
     console.warn("Operation failed; diagnostic details redacted.");
-    return json(req, { error: "Something went wrong while answering. Please retry." }, 500);
+    return json({ error: "Something went wrong while answering. Please retry." }, 500, undefined, req);
   }
 });
