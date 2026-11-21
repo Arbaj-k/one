@@ -8,9 +8,9 @@ const hash=async(v:string)=>{const b=await crypto.subtle.digest("SHA-256",new Te
 const qrData=(v:unknown)=>{const q=txt(v,400000);if(q&&!/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(q))throw new Error("Upload a valid PNG, JPG or WebP QR image");return q||null};
 const makeToken=()=>[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,"0")).join("");
 const validJwk=(k:unknown)=>!!k&&typeof k==="object"&&(k as any).kty==="EC"&&(k as any).crv==="P-256"&&typeof (k as any).x==="string"&&typeof (k as any).y==="string"&&!(k as any).d;
-const consume=async(key:string,limit:number,seconds:number)=>{const {data,error}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:key,p_limit:limit,p_window_seconds:seconds});if(error)throw new Error("Rate limiter unavailable");return data===true};
+const consume=async(admin:any,key:string,limit:number,seconds:number)=>{const {data,error}=await admin.rpc("one_consume_rate_limit",{p_bucket_key:key,p_limit:limit,p_window_seconds:seconds});if(error)throw new Error("Rate limiter unavailable");return data===true};
 const requestIp=(r:Request)=>r.headers.get("cf-connecting-ip")||r.headers.get("x-real-ip")||(r.headers.get("x-forwarded-for")||"").split(",")[0].trim()||"unknown";
-const verifyDevice=async(b:any,code:string,me:any,action:string)=>{
+const verifyDevice=async(admin:any,b:any,code:string,me:any,action:string)=>{
  if(!me.device_public_key)throw new Error("Device verification is not registered. Refresh and try again.");
  const ts=Number(b.device_ts),nonce=txt(b.device_nonce,80),sig=txt(b.device_signature,200);
  if(!Number.isSafeInteger(ts)||Math.abs(Date.now()-ts)>60000||!/^[a-f0-9]{40,80}$/i.test(nonce)||!sig)throw new Error("Device proof expired. Retry the request.");
@@ -35,7 +35,7 @@ Deno.serve(async(req:Request)=>{
   const ipHash=await hash(requestIp(req));
   const actorHash=await hash(txt(b?.member_token,200));const bucket=action==="create"?"trip:create:"+ipHash:action==="join"?"trip:join:"+code+":"+ipHash:"trip:"+code+":"+actorHash+":"+action;
   const limits=action==="create"?[3,3600]:action==="join"?[5,600]:[30,60];
-  if(!await consume(bucket,limits[0],limits[1]))return json(req,{error:"Too many requests. Please wait and try again."},429);
+  if(!await consume(admin,bucket,limits[0],limits[1]))return json(req,{error:"Too many requests. Please wait and try again."},429);
   const bearer=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1]||"";
   if(action==="create"){
    if(!bearer)throw new Error("Sign in to One to create a trip");
@@ -69,7 +69,7 @@ Deno.serve(async(req:Request)=>{
    if(error||!r)throw new Error("Device binding failed. Refresh and retry.");
    return json(req,{success:true,device_bound:true,member_id:me.id});
   }
-  await verifyDevice(b,code,me,action);
+  await verifyDevice(admin,b,code,me,action);
   if(action==="get"&&me.approval_status==="pending")return json(req,{pending:true,me:{id:me.id,approval_status:"pending"}});
   if(action==="get"&&me.approval_status==="rejected")return json(req,{rejected:true,me:{id:me.id,approval_status:"rejected"}});
   if(!me.is_owner&&me.approval_status!=="approved")throw new Error("Your join request is not approved");
