@@ -167,10 +167,16 @@ async function syncOriginalDocumentToCloud(record,file){
  if(uploadError)throw uploadError;
  const {data:sessionData,error:sessionError}=await cloudClient.auth.getSession();const accessToken=sessionData?.session?.access_token;
  if(sessionError||!accessToken){await cloudClient.storage.from('one-document-staging').remove([stagingPath]);throw new Error('Sign in again to finish secure document upload.')}
- const response=await fetch(CLOUD_URL+'/functions/v1/one-document-upload',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+accessToken},body:JSON.stringify({storage_path:stagingPath,document_id:String(record.id),file_name:String(record.originalName||file.name||safeName).slice(0,255),mime_type:mimeType,byte_size:file.size,extracted_text:String(record.extractedText||'').slice(0,180000),display_name:String(record.name||record.originalName||file.name||safeName).slice(0,255),document_type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending'})});
+ let response;
+ try{
+  response=await fetch(CLOUD_URL+'/functions/v1/one-document-upload',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+accessToken},body:JSON.stringify({storage_path:stagingPath,document_id:String(record.id),file_name:String(record.originalName||file.name||safeName).slice(0,255),mime_type:mimeType,byte_size:file.size,extracted_text:String(record.extractedText||'').slice(0,180000),display_name:String(record.name||record.originalName||file.name||safeName).slice(0,255),document_type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending'})});
+ }catch(error){
+  await cloudClient.storage.from('one-document-staging').remove([stagingPath]).catch(()=>{});
+  throw new Error('Network interrupted during secure upload. Your local document is safe; reconnect and retry.');
+ }
  let result={};try{result=await response.json()}catch(_){}
- if(!response.ok||!result.ok){await cloudClient.storage.from('one-document-staging').remove([stagingPath]);throw new Error(result.error||'Secure document upload failed.')}
- if(result.storage_path!==storagePath)throw new Error('Secure upload returned an unexpected storage path.');
+ if(!response.ok||!result.ok){await cloudClient.storage.from('one-document-staging').remove([stagingPath]).catch(()=>{});throw new Error(result.error||'Secure document upload failed.')}
+ if(result.storage_path!==storagePath){await cloudClient.storage.from('one-document-staging').remove([stagingPath]).catch(()=>{});throw new Error('Secure upload returned an unexpected storage path.');}
  if(ownerId!==cloudUser?.id)return false;
  record.storagePath=storagePath;record.cloudUploadStatus='synced';record.cloudUploadedAt=Date.now();record.cloudMetadataSyncedAt=Date.now();record.cloudMetadataSyncStatus='synced';record.cloudUploadError='';record.updated=Date.now();persist();return true;
 }
