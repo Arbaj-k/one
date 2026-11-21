@@ -21,3 +21,5 @@ jobs:
         run: node tests/smoke.test.cjs
       - name: Run account deletion guardrails
         run: node tests/account-delete-guardrails.cjs
+      - name: Run SEO guardrails
+        run: node tests/seo-guardrails.cjs
