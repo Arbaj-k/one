@@ -47,3 +47,13 @@ One is an evolving product. Feature availability can depend on browser support, 
 ## Preferred description
 
 One is a personal AI assistant for everyday life: a single workspace to plan tasks, keep notes, organize projects and documents, and track personal expenses.
+
+
+## Product comparisons
+
+- [Productivity app comparisons](https://arbaj-k.github.io/one/compare/): Balanced, use-case-based comparisons.
+- [One vs Notion](https://arbaj-k.github.io/one/compare/one-vs-notion/): Personal workspace and knowledge organization comparison.
+- [One vs Todoist](https://arbaj-k.github.io/one/compare/one-vs-todoist/): Broad personal workspace versus focused task management.
+- [One vs Google Keep](https://arbaj-k.github.io/one/compare/one-vs-google-keep/): Combined personal organization versus quick notes and lists.
+
+These are independent editorial comparisons. One is an evolving MVP; review product limitations and official provider pages for current capabilities and pricing.
