@@ -329,3 +329,91 @@ html body.ask-page #page-content .chat-shell .chat-note{flex:0 0 auto!important}
  html body.ask-page #page-content .chat-shell .chat-form{bottom:env(safe-area-inset-bottom)!important}
 }
 @media(prefers-reduced-motion:reduce){html body.ask-page #page-content .chat-shell .chat-messages{scroll-behavior:auto!important}}
+
+
+
+/* Ask One: make source attribution and reply actions readable in both themes. */
+#page-content #chat-messages .chat-message-row.from-one .bubble.assistant .source{
+ display:flex!important;
+ align-items:flex-start!important;
+ flex-wrap:wrap!important;
+ gap:4px!important;
+ width:100%!important;
+ margin:12px 0 0!important;
+ padding:10px 12px!important;
+ border:1px solid var(--k-line, var(--border,#45474d))!important;
+ border-radius:10px!important;
+ background:var(--k-sunk, var(--surface-secondary,#202127))!important;
+ color:var(--k-ink-2, var(--text-secondary,#d2d5dc))!important;
+ -webkit-text-fill-color:var(--k-ink-2, var(--text-secondary,#d2d5dc))!important;
+ font-size:12px!important;
+ font-weight:600!important;
+ line-height:1.55!important;
+ overflow-wrap:anywhere!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-actions{
+ display:flex!important;
+ align-items:center!important;
+ justify-content:flex-start!important;
+ flex-wrap:wrap!important;
+ gap:9px!important;
+ width:100%!important;
+ margin:10px 0 2px!important;
+ padding:0!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-action{
+ display:inline-flex!important;
+ align-items:center!important;
+ justify-content:center!important;
+ gap:8px!important;
+ min-width:88px!important;
+ min-height:40px!important;
+ padding:9px 13px!important;
+ border:1px solid var(--k-line-2, var(--border-strong,#747984))!important;
+ border-radius:10px!important;
+ background:var(--k-panel, var(--surface,#fff))!important;
+ color:var(--k-ink, var(--text,#17191e))!important;
+ -webkit-text-fill-color:var(--k-ink, var(--text,#17191e))!important;
+ font-family:inherit!important;
+ font-size:13px!important;
+ font-weight:700!important;
+ line-height:1.2!important;
+ text-decoration:none!important;
+ opacity:1!important;
+ box-shadow:0 1px 2px rgba(0,0,0,.08)!important;
+ cursor:pointer!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-action span{
+ display:inline!important;
+ color:var(--k-ink, var(--text,#17191e))!important;
+ -webkit-text-fill-color:var(--k-ink, var(--text,#17191e))!important;
+ font-size:13px!important;
+ font-weight:700!important;
+ line-height:1.2!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-action svg{
+ display:block!important;
+ flex:0 0 16px!important;
+ width:16px!important;
+ height:16px!important;
+ color:var(--k-ink, var(--text,#17191e))!important;
+ stroke:currentColor!important;
+ opacity:1!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-action:hover{
+ border-color:var(--k-ink-2,#8b93a1)!important;
+ background:var(--k-sunk,var(--surface-secondary,#f3f4f6))!important;
+ transform:translateY(-1px)!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-action:active{transform:translateY(0)!important}
+#page-content #chat-messages .chat-message-row.from-one .one-reply-action:focus-visible{
+ outline:2px solid var(--k-accent,#8298ff)!important;
+ outline-offset:3px!important;
+}
+#page-content #chat-messages .chat-message-row.from-one .bubble.assistant,
+#page-content #chat-messages .chat-message-row.from-one .bubble-content{min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important}
+@media(max-width:600px){
+ #page-content #chat-messages .chat-message-row.from-one .bubble.assistant .source{margin-top:10px!important;padding:9px 10px!important;font-size:11px!important}
+ #page-content #chat-messages .chat-message-row.from-one .one-reply-actions{gap:8px!important;margin-top:9px!important}
+ #page-content #chat-messages .chat-message-row.from-one .one-reply-action{min-height:40px!important;min-width:94px!important;padding:9px 13px!important}
+}
