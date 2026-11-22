@@ -15,6 +15,7 @@ const files = {
  robots: fs.readFileSync('robots.txt','utf8'),
  sitemap: fs.readFileSync('sitemap.xml','utf8'),
  llms: fs.readFileSync('llms.txt','utf8'),
+ ga4: fs.readFileSync('ga4.js','utf8'),
  guides: fs.readFileSync('guides/index.html','utf8'),
  dailyGuide: fs.readFileSync('guides/daily-planning-system/index.html','utf8'),
  notesGuide: fs.readFileSync('guides/personal-knowledge-management/index.html','utf8'),
@@ -42,7 +43,10 @@ assert.ok(files.privacy.includes('rel="canonical" href="'+base+'privacy.html"'))
 assert.match(files.privacy,/<h1>Privacy Policy<\/h1>/);
 assert.ok(files.privacy.includes('Google Gemini'));
 assert.ok(files.privacy.includes('Google Analytics 4'));
-assert.ok(files.home.includes('G-HELE44ZGB0'));
+assert.ok(files.home.includes('/one/ga4.js'));
+assert.ok(files.ga4.includes('G-HELE44ZGB0'));
+assert.ok(files.ga4.includes('window.dataLayer'));
+assert.ok(!/<script>/.test(files.home));
 assert.ok(files.privacy.includes('G-HELE44ZGB0'));
 assert.ok(files.privacy.includes('Supabase'));
 assert.ok(files.sitemap.includes('<loc>'+base+'privacy.html</loc>'));
