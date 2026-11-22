@@ -27,8 +27,8 @@
       if (!bubble || bubble.querySelector('.one-reply-actions')) return;
       const actions = document.createElement('div');
       actions.className = 'one-reply-actions';
-      actions.innerHTML = '<button type="button" class="one-reply-action" data-one-reply-action="copy" aria-label="Copy this answer" title="Copy answer">' + icons.copy + 'Copy</button>' +
-        '<button type="button" class="one-reply-action" data-one-reply-action="share" aria-label="Share this answer" title="Share answer">' + icons.share + 'Share</button>';
+      actions.innerHTML = '<button type="button" class="one-reply-action icon-only" data-one-reply-action="copy" aria-label="Copy this answer" title="Copy answer">' + icons.copy + '</button>' +
+        '<button type="button" class="one-reply-action icon-only" data-one-reply-action="share" aria-label="Share this answer" title="Share answer">' + icons.share + '</button>';
       // Set important inline styles so global button/span theme rules cannot hide labels.
       actions.style.setProperty('display','flex','important');
       actions.style.setProperty('align-items','center','important');
@@ -39,25 +39,27 @@
         button.style.setProperty('display','inline-flex','important');
         button.style.setProperty('align-items','center','important');
         button.style.setProperty('justify-content','center','important');
-        button.style.setProperty('gap','6px','important');
-        button.style.setProperty('min-height','32px','important');
-        button.style.setProperty('min-width','70px','important');
-        button.style.setProperty('padding','5px 9px','important');
+        button.style.setProperty('gap','0','important');
+        button.style.setProperty('width','34px','important');
+        button.style.setProperty('height','34px','important');
+        button.style.setProperty('min-height','34px','important');
+        button.style.setProperty('min-width','34px','important');
+        button.style.setProperty('padding','0','important');
         button.style.setProperty('border','1px solid #8b8f98','important');
         button.style.setProperty('border-radius','8px','important');
         button.style.setProperty('background-color','#ffffff','important');
         button.style.setProperty('color','#17191e','important');
         button.style.setProperty('-webkit-text-fill-color','#17191e','important');
         button.style.setProperty('font-family','Arial,sans-serif','important');
-        button.style.setProperty('font-size','12px','important');
+        button.style.setProperty('font-size','0','important');
         button.style.setProperty('font-weight','700','important');
         button.style.setProperty('line-height','1.2','important');
         button.style.setProperty('opacity','1','important');
         button.style.setProperty('visibility','visible','important');
         button.style.setProperty('box-shadow','0 1px 2px rgba(0,0,0,.12)','important');
-        button.querySelector('svg')?.style.setProperty('width','13px');
-        button.querySelector('svg')?.style.setProperty('height','13px');
-        button.querySelector('svg')?.style.setProperty('flex','0 0 13px');
+        button.querySelector('svg')?.style.setProperty('width','16px');
+        button.querySelector('svg')?.style.setProperty('height','16px');
+        button.querySelector('svg')?.style.setProperty('flex','0 0 16px');
         button.querySelector('svg')?.style.setProperty('stroke','#17191e');
       });
       bubble.appendChild(actions);
