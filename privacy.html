@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy | One Personal Workspace</title>
+<meta name="description" content="Understand how One handles account details, workspace data, documents, AI prompts, analytics, cloud sync and connected services.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://arbaj-k.github.io/one/privacy.html">
+<link rel="alternate" hreflang="x-default" href="https://arbaj-k.github.io/one/privacy.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="One">
+<meta property="og:title" content="Privacy Policy | One">
+<meta property="og:description" content="Learn what information One handles, where it may be stored and how connected services are used.">
+<meta property="og:url" content="https://arbaj-k.github.io/one/privacy.html">
+<link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="kuro-theme.css">
+<style>
+.policy{max-width:850px;margin:0 auto;padding:36px 24px 72px;line-height:1.75}
+.policy h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15;letter-spacing:-.035em}
+.policy h2{font-size:1.4rem;margin:32px 0 8px}
+.policy p,.policy li{color:var(--text-secondary,var(--text-primary,#444))}
+.policy a{color:var(--accent,#4169e1);text-underline-offset:3px}
+.policy table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+.policy th,.policy td{border:1px solid var(--border-color,#ddd);padding:10px;text-align:left;vertical-align:top;min-width:150px}
+.policy th{font-weight:650}
+.policy .note{border:1px solid var(--border-color,#ddd);border-radius:14px;padding:16px;margin:20px 0}
+</style>
+</head>
+<body class="kuro">
+<main class="policy">
+<p><a href="./">← Back to One</a></p>
+<h1>Privacy Policy</h1>
+<p><strong>Last updated: November 22, 2026</strong></p>
+<p>This page explains how the One personal productivity workspace may handle information when you use the website and app. One is an evolving project; actual features and data flows depend on the version deployed, your account settings, browser and connected services. This policy describes the current intended app behavior and known integrations, not a guarantee about third-party provider retention.</p>
+<div class="note"><strong>Important:</strong> Do not store passwords, payment card details, identity credentials, confidential business information or highly sensitive personal information in One. Keep independent backups of important records.</div>
+<h2>1. Information you provide</h2>
+<ul>
+<li><strong>Account information:</strong> email address, authentication details and optional profile information when you sign up or use a supported sign-in provider.</li>
+<li><strong>Workspace information:</strong> tasks, notes, projects, personal memories, reminders, chat messages and money records you choose to save.</li>
+<li><strong>Files:</strong> uploaded documents, file names and extracted text when you use supported Vault and document features.</li>
+<li><strong>Optional companion features:</strong> if you enable Android SMS sync or notifications, the companion or notification feature may process the limited transaction fields or device subscription information described below.</li>
+</ul>
+<h2>2. Where information may be stored</h2>
+<p>Some workspace information is stored in your browser using local browser storage so that local-first and offline features can work. Depending on the feature and your account configuration, workspace records may also be synced to Supabase. Uploaded files may be held in the browser's IndexedDB cache and/or the private One document storage bucket. Removing browser data can remove local copies; do not assume that clearing browser data deletes cloud copies.</p>
+<h2>3. Connected services and data sharing</h2>
+<table>
+<thead><tr><th>Service</th><th>Information that may be processed</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>Supabase</td><td>Account credentials through Auth, profile details, cloud workspace records, document metadata/files, chat and optional notification data.</td><td>Authentication, database, file storage, sync and server-side features.</td></tr>
+<tr><td>Google Gemini</td><td>Your AI prompt and selected workspace or document context when you use enabled AI features.</td><td>Generate AI-assisted responses or document results.</td></tr>
+<tr><td>Google sign-in</td><td>Authentication and profile claims returned through the OAuth flow.</td><td>Account sign-in.</td></tr>
+<tr><td>Browser push services</td><td>Push subscription endpoint/key material and notification payloads when you enable notifications.</td><td>Deliver reminders and notifications.</td></tr>
+<tr><td>Hosting and content delivery providers</td><td>Operational request data and requests for website assets or scripts.</td><td>Host and deliver the website and libraries.</td></tr>
+</tbody>
+</table>
+<p>Connected providers operate under their own terms and privacy policies. One does not control their infrastructure, retention periods or processing locations. Review the provider policies before enabling a connected feature.</p>
+<h2>4. AI features</h2>
+<p>When you use Ask One or a document AI workflow, the app may send your prompt and selected context to the configured server-side AI function, which can forward it to Google Gemini. Only use AI features with information you are comfortable sharing with the connected provider. AI-generated output can be incomplete or wrong; verify important details against your original records before relying on them or making changes.</p>
+<h2>5. Analytics and diagnostics</h2>
+<p>The app includes first-party usage analytics intended to record events such as page or feature usage with a pseudonymous browser identifier. The app analytics implementation is designed not to include the contents of your notes, chats or money records in event payloads. Hosting and connected service providers may separately process operational logs, such as IP address, device or request information. Analytics behavior may change as the project evolves; consult this page for updates.</p>
+<h2>6. Optional Android SMS sync and notifications</h2>
+<p>If you separately install and enable the Android companion's SMS sync feature, it may parse transaction-related fields such as amount, direction, merchant, UPI reference, sender and timestamp and send those parsed fields to the configured sync endpoint. The inspected app flow is designed to send parsed fields rather than the full SMS body; the separately deployed sync service should be reviewed independently. If you enable push notifications, task titles, dates or related titles may appear in notification text on your device, including on a lock screen depending on device settings.</p>
+<h2>7. Security and account separation</h2>
+<p>Cloud workspace tables and private document storage are designed with owner-scoped access policies. Browser-local data is accessible to scripts running in the same browser origin, and the app's browser session is not an HttpOnly-cookie-only architecture. No web app can promise absolute security. Keep your browser and device protected and sign out on shared devices.</p>
+<h2>8. Your choices and deletion</h2>
+<ul>
+<li>Use app settings and account controls to review available data and privacy options.</li>
+<li>Export or back up important information where the app provides that option.</li>
+<li>Use the account deletion control if available in your deployed version. Deletion behavior can depend on connected services and may not remove files or copies already exported or processed by third parties.</li>
+<li>Clear local browser data only when you understand that doing so may remove local-only information.</li>
+</ul>
+<p>For questions or privacy requests, use the <a href="https://github.com/Arbaj-k/one">One project repository</a> to contact the project maintainer. Do not post private account details or sensitive records in public issues.</p>
+<h2>9. Children and age</h2>
+<p>One is a general-purpose productivity tool and is not designed specifically for children. If you believe a child has provided personal information inappropriately, contact the project maintainer through the repository.</p>
+<h2>10. Policy changes</h2>
+<p>This policy may change as One's features and integrations change. The date above indicates the latest revision. Check this page periodically, especially before enabling new integrations.</p>
+<p><a href="terms.html">Terms &amp; Conditions</a> · <a href="about.html">About One</a></p>
+</main>
+</body>
+</html>
