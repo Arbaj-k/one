@@ -2583,7 +2583,7 @@ async function chatActionIntent(question){
   const duplicate=(data.tasks||[]).find(t=>!t.done&&String(t.title||'').toLowerCase()===title.toLowerCase()&&t.due===due&&(t.repeatRule||'none')===repeatRule);
   if(duplicate)return {answer:'Reminder already exists for '+title+' on '+dateFmt(due)+'. Duplicate nahi banaya.',sources:['Planner']};
   const task={id:uid(),title,category:'Briefing',due,reminderTime,repeatRule,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Created from a natural-language Ask One reminder.'};
-  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Reminders',page:'overview',successMessage:'Reminder saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Turn on alerts in One to receive alerts.',requestedAt:Date.now()};
+  pendingAction={type:'create-record',collection:'tasks',record:task,source:'Task briefing',page:'overview',successMessage:'Reminder saved: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Turn on alerts in One to receive alerts.',requestedAt:Date.now()};
   return {answer:'Confirm '+(repeatRule!=='none'?repeatRule+' ':'')+'reminder: '+title+' · '+(repeatRule!=='none'?'repeats '+repeatRule:dateFmt(due))+' at '+reminderTime+'. Reply YES to save or NO to cancel. It will appear under Task Briefing on Home.',sources:['Task Briefing','Planner']};
  }
  const addTask=explicitTaskAdd&&!naturalReminder||!naturalReminder&&/\b(?:schedule|bana do|banao|add kar|jod do|likh lo)\b/i.test(lower)&&/\b(?:task|todo|assignment|deadline|homework|exam|submit|kaam)\b/i.test(lower);
