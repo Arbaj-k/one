@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://tcthrfpkydcmenxwajfg.supabase.co wss://tcthrfpkydcmenxwajfg.supabase.co https://tessdata.projectnaptha.com https://generativelanguage.googleapis.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: https://www.google-analytics.com; font-src 'self' data:; connect-src 'self' https://tcthrfpkydcmenxwajfg.supabase.co wss://tcthrfpkydcmenxwajfg.supabase.co https://tessdata.projectnaptha.com https://generativelanguage.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://www.googletagmanager.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>One – Personal AI Assistant, Tasks, Notes & Planner</title>
 <meta name="description" content="Organize everyday life with One: a personal AI workspace for tasks, notes, projects, documents and expense records, with AI assistance when available.">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -24,6 +24,21 @@
 
 <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="kuro-theme.css?v=20261120-system-polish1"><link rel="stylesheet" href="ui-visibility.css"><link rel="stylesheet" href="ask-one-page-fix.css?v=20261122-ask-bottom3"><link rel="stylesheet" href="quality-guardrails.css?v=20261120-quality1"><link rel="stylesheet" href="profile.css"><script src="kuro-theme-init.js"></script>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f4f4f1"><meta name="google-site-verification" content="j7p1r3NhJxaOUtzdJwzkjT3_l3Y61bnObboSkIlghSs"><link rel="icon" href="icons/student-brain.svg" type="image/svg+xml">
+<style>
+.one-discovery{background:var(--bg-primary,#f4f4f1);color:var(--text-primary,#202124);padding:clamp(36px,7vw,76px) 22px;border-top:1px solid var(--border-color,#deded8)}
+.one-discovery-inner{max-width:900px;margin:0 auto;line-height:1.75}
+.one-discovery h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.12;letter-spacing:-.04em;margin:18px 0}
+.one-discovery h2{font-size:1.45rem;line-height:1.3;margin:34px 0 10px}
+.one-discovery h3{font-size:1.05rem;margin:20px 0 6px}
+.one-discovery p,.one-discovery li{color:var(--text-secondary,var(--text-primary,#424242))}
+.one-discovery a{color:var(--accent,#4169e1);text-underline-offset:3px}
+.one-discovery ul{padding-left:22px}
+.one-discovery nav,.one-discovery footer{display:flex;gap:16px;flex-wrap:wrap;font-size:.94rem}
+.one-discovery footer{border-top:1px solid var(--border-color,#deded8);padding-top:20px;margin-top:38px}
+</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"One","url":"https://arbaj-k.github.io/one/","inLanguage":"en","description":"A personal AI assistant and productivity workspace for everyday life."}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is One?","acceptedAnswer":{"@type":"Answer","text":"One is a personal productivity workspace that combines task planning, notes, projects, document organization and personal money records."}},{"@type":"Question","name":"Is One only for students?","acceptedAnswer":{"@type":"Answer","text":"No. One is designed for anyone who wants a single place to organize everyday life, work, learning and personal goals."}},{"@type":"Question","name":"Does One work offline?","acceptedAnswer":{"@type":"Answer","text":"Some locally stored information may remain available in your browser. AI and cloud features require an internet connection, and offline behavior varies by feature and device."}},{"@type":"Question","name":"Does One sync across devices?","acceptedAnswer":{"@type":"Answer","text":"Cloud sync depends on your account, connectivity and the services configured for your version of One. Keep independent backups of important information."}},{"@type":"Question","name":"Is One a bank or payment app?","acceptedAnswer":{"@type":"Answer","text":"No. Its Money area is for personal record keeping, such as spending and informal lending or borrowing. It does not process payments or provide regulated financial advice."}}]}</script>
+<script src="ga4.js" defer></script>
 </head>
 <body class="kuro">
 <div class="app">
@@ -55,7 +70,35 @@
 <nav class="mobile-nav" aria-label="Primary navigation"><button type="button" data-page="overview">Today</button><button type="button" data-page="tasks">Tasks</button><button type="button" data-page="notes">Notes</button><button type="button" data-page="ask">Ask One</button><button type="button" data-action="toggle-more-nav" aria-expanded="false">More</button></nav>
 <div id="one-more-nav" class="one-more-nav" hidden><button type="button" id="kuro-theme-toggle-mobile" class="one-mobile-theme-toggle" data-action="toggle-theme" aria-pressed="false">☾ Dark mode</button><button type="button" data-page="vault">Vault</button><button type="button" data-page="projects">Projects</button><button type="button" data-page="expenses">Money &amp; Udhaar</button><button type="button" data-page="analytics">Analytics</button><button type="button" data-page="study">Routines / Study</button><button type="button" data-page="memory">Personal Memory</button><button type="button" data-page="settings">Settings</button></div>
 <section id="page-content" class="content"></section></main></div>
-
+<section class="one-discovery" aria-labelledby="one-discovery-title">
+<div class="one-discovery-inner">
+<nav aria-label="Breadcrumb"><a href="./">One</a><span aria-hidden="true">/</span><span>Personal productivity workspace</span></nav>
+<h1 id="one-discovery-title">One — a personal workspace for everyday life</h1>
+<p>One brings everyday tasks, notes, projects, documents and personal money records into one workspace. Use it to plan what needs doing, keep useful information close to your work and return to the context behind your goals. Ask One can help you work with saved information when connected AI services are available.</p>
+<h2>What can you organize with One?</h2>
+<ul>
+<li><a href="features/ai-task-manager/">Tasks and daily planning</a> — capture responsibilities, review deadlines and keep next actions visible.</li>
+<li><a href="features/notes-and-memory/">Notes and personal knowledge</a> — save ideas, reference details and information you want to revisit.</li>
+<li><a href="features/project-organizer/">Personal projects</a> — keep related work, notes and tasks together.</li>
+<li><a href="features/document-organizer/">Documents and files</a> — organize supported PDFs, images and reference material in the Vault.</li>
+<li><a href="features/expense-tracker/">Expenses and money owed</a> — maintain personal spending, lending and borrowing records.</li>
+<li><a href="features/personal-ai-assistant/">Ask One and AI assistance</a> — interact with selected workspace information when AI services are enabled.</li>
+</ul>
+<h2>How does Ask One work?</h2>
+<p>Ask One is an AI-assisted way to interact with information saved in your workspace. What it can retrieve depends on the records and documents available to your account, the features enabled and the connected AI service. AI responses can be incomplete or incorrect, so check important details against the original record and confirm changes before applying them.</p>
+<h2>Is One suitable for work and personal life?</h2>
+<p>Yes. One is designed as a general-purpose personal organizer for everyday responsibilities, work, learning and personal goals. It is not positioned as an enterprise team-management platform, bank, payment processor or professional financial adviser.</p>
+<h2>How are information and cloud features handled?</h2>
+<p>Some workspace information may be stored in your browser for local use. When you sign in and cloud sync is configured, selected data can also be stored through connected services. AI prompts may include selected workspace context when you use AI features. Review the <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms &amp; Conditions</a> before using the app for important information.</p>
+<h2>Frequently asked questions</h2>
+<h3>What is One?</h3><p>One is a personal productivity workspace that combines task planning, notes, projects, document organization and personal money records.</p>
+<h3>Is One only for students?</h3><p>No. One is designed for anyone who wants a single place to organize everyday life, work, learning and personal goals.</p>
+<h3>Does One work offline?</h3><p>Some locally stored information may remain available in your browser. AI and cloud features require an internet connection, and offline behavior varies by feature and device.</p>
+<h3>Does One sync across devices?</h3><p>Cloud sync depends on your account, connectivity and the services configured for your version of One. Check the connection status in the app and keep independent backups of important information.</p>
+<h3>Is One a bank or payment app?</h3><p>No. Its Money area is for personal record keeping, such as spending and informal lending or borrowing. It does not process payments or provide regulated financial advice.</p>
+<footer aria-label="One information links"><a href="about.html">About One</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms &amp; Conditions</a><a href="https://github.com/Arbaj-k/one">Source code and project history</a></footer>
+</div>
+</section>
 <div id="modal-root"></div><div id="one-auth-root" hidden></div><div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="document-extractor.js"></script><script src="supabase-client.js"></script><script src="app.js"></script><script src="group-trip.js"></script><script src="workspace-intelligence.js"></script><script src="analytics.js"></script><script src="auth.js"></script><script src="profile.js"></script><script src="commands.js"></script><script src="one-commands.js"></script><script src="ask-one-command-ui.js"></script><script src="voice.js"></script><script src="kuro-shell.js"></script><script src="pwa-init.js" defer></script>

@@ -33,6 +33,7 @@ One is presented in English for a global audience. The public website does not c
 - [AI task manager and daily planner](https://arbaj-k.github.io/one/features/ai-task-manager/): Task organization and planning.
 - [Notes and personal knowledge](https://arbaj-k.github.io/one/features/notes-and-memory/): Notes, ideas and reference information.
 - [Expense tracker and money manager](https://arbaj-k.github.io/one/features/expense-tracker/): Personal spending and informal lending records.
+- [Privacy Policy](https://arbaj-k.github.io/one/privacy.html): Data flows, connected services, analytics and user choices.
 - [Terms and conditions](https://arbaj-k.github.io/one/terms.html): Terms for using the app.
 
 - [Personal AI assistant](https://arbaj-k.github.io/one/features/personal-ai-assistant/): Overview of One's personal assistant workspace.
@@ -61,3 +62,9 @@ One is a personal AI assistant for everyday life: a single workspace to plan tas
 - [One vs Google Keep](https://arbaj-k.github.io/one/compare/one-vs-google-keep/): Combined personal organization versus quick notes and lists.
 
 These are independent editorial comparisons. One is an evolving MVP; review product limitations and official provider pages for current capabilities and pricing.
+
+## Transparency and source
+
+- [Public source repository](https://github.com/Arbaj-k/one): implementation, release history and project changes.
+- [Privacy Policy](https://arbaj-k.github.io/one/privacy.html): current known data handling and third-party service flows.
+- Product statements describe an evolving MVP. Do not infer features, guarantees, certifications, reviews, pricing or regional availability that are not explicitly documented.
