@@ -43,7 +43,7 @@ assert.ok(files.privacy.includes('rel="canonical" href="'+base+'privacy.html"'))
 assert.match(files.privacy,/<h1>Privacy Policy<\/h1>/);
 assert.ok(files.privacy.includes('Google Gemini'));
 assert.ok(files.privacy.includes('Google Analytics 4'));
-assert.ok(files.home.includes('/one/ga4.js'));
+assert.ok(files.home.includes('src="ga4.js"'));
 assert.ok(files.ga4.includes('G-HELE44ZGB0'));
 assert.ok(files.ga4.includes('window.dataLayer'));
 assert.ok(!/<script>/.test(files.home));
