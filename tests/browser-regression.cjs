@@ -177,10 +177,10 @@ http.createServer((req,res)=>{let p=decodeURIComponent(new URL(req.url,'http://l
   const mobileLayout=await mobile.evaluate(()=>({
     viewport:document.documentElement.clientWidth,
     documentWidth:document.documentElement.scrollWidth,
-    createVisible:!!document.querySelector('.floating-create-button')&&getComputedStyle(document.querySelector('.floating-create-button')).display!=='none',
+    createVisible:!!document.querySelector('.home-create-action')&&getComputedStyle(document.querySelector('.home-create-action')).display!=='none',
     shortcuts:[...document.querySelectorAll('#page-content [data-page]')].filter(x=>getComputedStyle(x).display!=='none').length
   }));
-  assert.ok(mobileLayout.createVisible,'Mobile Create shortcut must be visible');
+  assert.ok(mobileLayout.createVisible,'Mobile Home quick-create action must be visible');
   assert.ok(mobileLayout.shortcuts>=5,'Home must expose reachable shortcuts without restoring removed navigation');
   assert.ok(mobileLayout.documentWidth<=mobileLayout.viewport+1,'Mobile layout must not overflow horizontally');
   const mobileRoutes=[
