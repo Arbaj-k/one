@@ -7,9 +7,10 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-# Gemini grounding and training control. Google-Extended combines both permissions.
+# Google-Extended controls Google's extended-use permissions; disallow it to opt out.
+# Googlebot remains allowed above for ordinary Search crawling.
 User-agent: Google-Extended
-Allow: /
+Disallow: /
 
 # ChatGPT Search / user-requested retrieval (separate from GPTBot training).
 User-agent: OAI-SearchBot
