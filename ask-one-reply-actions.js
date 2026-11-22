@@ -10,16 +10,21 @@
       #page-content #chat-messages .chat-message-row.from-one .one-reply-actions{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:7px!important;margin:8px 0 2px!important;padding:0!important;flex-wrap:wrap!important;width:100%!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action{appearance:none!important;-webkit-appearance:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-width:78px!important;min-height:34px!important;padding:6px 10px!important;border:1px solid #777!important;border-radius:10px!important;background:#f7f7f8!important;color:#17191e!important;-webkit-text-fill-color:#17191e!important;font-family:inherit!important;font-size:12px!important;font-weight:700!important;line-height:1.2!important;cursor:pointer!important;opacity:1!important;box-shadow:0 1px 2px rgba(0,0,0,.12)!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action span{display:inline!important;color:#17191e!important;-webkit-text-fill-color:#17191e!important;font-size:12px!important;font-weight:700!important;line-height:1.2!important}
-      #page-content #chat-messages .chat-message-row.from-one .one-reply-action.icon-only svg{display:block!important;visibility:visible!important;opacity:1!important;width:18px!important;height:18px!important;min-width:18px!important;min-height:18px!important;flex:0 0 18px!important;overflow:visible!important;fill:none!important;stroke:#17191e!important;stroke-width:2!important;color:#17191e!important}
-      #page-content #chat-messages .chat-message-row.from-one .one-reply-action:hover{background:#e9ebef!important;border-color:#454b55!important}
+      #page-content #chat-messages .chat-message-row.from-one .one-reply-action.icon-only{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;padding:0!important;background:#292d35!important;border:1px solid #697180!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+      #page-content #chat-messages .chat-message-row.from-one .one-reply-glyph{position:relative!important;display:block!important;width:19px!important;height:19px!important;min-width:19px!important;min-height:19px!important;flex:0 0 19px!important;color:#fff!important;background-color:transparent!important}
+      #page-content #chat-messages .chat-message-row.from-one .copy-glyph:before,#page-content #chat-messages .chat-message-row.from-one .copy-glyph:after{content:''!important;position:absolute!important;width:11px!important;height:12px!important;border:1.8px solid #fff!important;border-radius:2px!important;background:#292d35!important;box-sizing:border-box!important}
+      #page-content #chat-messages .chat-message-row.from-one .copy-glyph:before{left:6px!important;top:2px!important}
+      #page-content #chat-messages .chat-message-row.from-one .copy-glyph:after{left:2px!important;top:6px!important}
+      #page-content #chat-messages .chat-message-row.from-one .share-glyph{background:radial-gradient(circle at 4px 9px,#fff 0 2.5px,transparent 2.8px),radial-gradient(circle at 15px 3px,#fff 0 2.5px,transparent 2.8px),radial-gradient(circle at 15px 16px,#fff 0 2.5px,transparent 2.8px),linear-gradient(151deg,transparent 44%,#fff 46% 53%,transparent 55%) 5px 3px/10px 7px no-repeat,linear-gradient(29deg,transparent 44%,#fff 46% 53%,transparent 55%) 5px 10px/10px 7px no-repeat!important}
+      #page-content #chat-messages .chat-message-row.from-one .one-reply-action:hover{background:#3a414d!important;border-color:#aab3c2!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action:focus-visible{outline:2px solid #8298ff!important;outline-offset:3px!important}
       @media(max-width:600px){#page-content #chat-messages .chat-message-row.from-one .bubble.assistant .source{margin-top:10px!important;padding:9px 10px!important}#page-content #chat-messages .chat-message-row.from-one .one-reply-actions{margin-top:8px!important;gap:7px!important}#page-content #chat-messages .chat-message-row.from-one .one-reply-action{min-height:34px!important;min-width:78px!important;padding:6px 10px!important}}
     `;
     document.head.appendChild(style);
   }
   const icons = {
-    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>',
-    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.4m-6.6 7 6.6 4.4"/></svg>'
+    copy: '<span class="one-reply-glyph copy-glyph" aria-hidden="true"></span>',
+    share: '<span class="one-reply-glyph share-glyph" aria-hidden="true"></span>'
   };
   function install(root = document) {
     root.querySelectorAll('#chat-messages .chat-message-row.from-one').forEach(row => {
@@ -40,16 +45,16 @@
         button.style.setProperty('align-items','center','important');
         button.style.setProperty('justify-content','center','important');
         button.style.setProperty('gap','0','important');
-        button.style.setProperty('width','34px','important');
-        button.style.setProperty('height','34px','important');
-        button.style.setProperty('min-height','34px','important');
-        button.style.setProperty('min-width','34px','important');
+        button.style.setProperty('width','36px','important');
+        button.style.setProperty('height','36px','important');
+        button.style.setProperty('min-height','36px','important');
+        button.style.setProperty('min-width','36px','important');
         button.style.setProperty('padding','0','important');
         button.style.setProperty('border','1px solid #8b8f98','important');
         button.style.setProperty('border-radius','8px','important');
-        button.style.setProperty('background-color','#ffffff','important');
-        button.style.setProperty('color','#17191e','important');
-        button.style.setProperty('-webkit-text-fill-color','#17191e','important');
+        button.style.setProperty('background-color','#292d35','important');
+        button.style.setProperty('color','#ffffff','important');
+        button.style.setProperty('-webkit-text-fill-color','#ffffff','important');
         button.style.setProperty('font-family','Arial,sans-serif','important');
         button.style.setProperty('font-size','0','important');
         button.style.setProperty('font-weight','700','important');
@@ -57,6 +62,18 @@
         button.style.setProperty('opacity','1','important');
         button.style.setProperty('visibility','visible','important');
         button.style.setProperty('box-shadow','0 1px 2px rgba(0,0,0,.12)','important');
+        const glyph = button.querySelector('.one-reply-glyph');
+        if (glyph) {
+          glyph.style.setProperty('display','block','important');
+          glyph.style.setProperty('visibility','visible','important');
+          glyph.style.setProperty('opacity','1','important');
+          glyph.style.setProperty('width','19px','important');
+          glyph.style.setProperty('height','19px','important');
+          glyph.style.setProperty('min-width','19px','important');
+          glyph.style.setProperty('min-height','19px','important');
+          glyph.style.setProperty('flex','0 0 19px','important');
+          glyph.style.setProperty('background-color','transparent','important');
+        }
         const svg = button.querySelector('svg');
         if (svg) {
           svg.setAttribute('width','18');
