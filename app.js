@@ -813,7 +813,7 @@ function overview(){
    <div class="home-prompts"><span>Try:</span><button type="button" data-question="Summarize today's priorities">Today's priorities</button><button type="button" data-question="Track an expense">Add expense</button><button type="button" data-question="Draft a note">New note</button></div>
   </section>
   <section class="card home-quick-actions" aria-labelledby="home-quick-actions-title">
-   <div class="home-quick-actions-heading"><div><div class="eyebrow">QUICK ACTIONS</div><h2 id="home-quick-actions-title">Quick actions</h2></div></div>
+   <div class="home-quick-actions-heading"><div><h2 id="home-quick-actions-title">Quick actions</h2></div></div>
    <div class="home-create-grid" aria-label="Create shortcuts">
     <button class="home-create-action is-primary" type="button" data-action="new-task"><span aria-hidden="true">+</span><b>Add task</b></button>
     <button class="home-create-action" type="button" data-action="new-note"><span aria-hidden="true">+</span><b>Save note</b></button>
