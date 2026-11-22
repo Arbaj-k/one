@@ -1,7 +1,7 @@
 {
   "name": "One",
   "short_name": "One",
-  "description": "Your personal assistant",
+  "description": "A personal workspace for everyday tasks, notes, projects and money records.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
