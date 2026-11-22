@@ -10,7 +10,7 @@
       #page-content #chat-messages .chat-message-row.from-one .one-reply-actions{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:7px!important;margin:8px 0 2px!important;padding:0!important;flex-wrap:wrap!important;width:100%!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action{appearance:none!important;-webkit-appearance:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-width:78px!important;min-height:34px!important;padding:6px 10px!important;border:1px solid #777!important;border-radius:10px!important;background:#f7f7f8!important;color:#17191e!important;-webkit-text-fill-color:#17191e!important;font-family:inherit!important;font-size:12px!important;font-weight:700!important;line-height:1.2!important;cursor:pointer!important;opacity:1!important;box-shadow:0 1px 2px rgba(0,0,0,.12)!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action span{display:inline!important;color:#17191e!important;-webkit-text-fill-color:#17191e!important;font-size:12px!important;font-weight:700!important;line-height:1.2!important}
-      #page-content #chat-messages .chat-message-row.from-one .one-reply-action svg{display:block!important;width:14px!important;height:14px!important;flex:0 0 14px!important;color:#17191e!important;stroke:#17191e!important;opacity:1!important}
+      #page-content #chat-messages .chat-message-row.from-one .one-reply-action.icon-only svg{display:block!important;visibility:visible!important;opacity:1!important;width:18px!important;height:18px!important;min-width:18px!important;min-height:18px!important;flex:0 0 18px!important;overflow:visible!important;fill:none!important;stroke:#17191e!important;stroke-width:2!important;color:#17191e!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action:hover{background:#e9ebef!important;border-color:#454b55!important}
       #page-content #chat-messages .chat-message-row.from-one .one-reply-action:focus-visible{outline:2px solid #8298ff!important;outline-offset:3px!important}
       @media(max-width:600px){#page-content #chat-messages .chat-message-row.from-one .bubble.assistant .source{margin-top:10px!important;padding:9px 10px!important}#page-content #chat-messages .chat-message-row.from-one .one-reply-actions{margin-top:8px!important;gap:7px!important}#page-content #chat-messages .chat-message-row.from-one .one-reply-action{min-height:34px!important;min-width:78px!important;padding:6px 10px!important}}
@@ -57,10 +57,28 @@
         button.style.setProperty('opacity','1','important');
         button.style.setProperty('visibility','visible','important');
         button.style.setProperty('box-shadow','0 1px 2px rgba(0,0,0,.12)','important');
-        button.querySelector('svg')?.style.setProperty('width','16px');
-        button.querySelector('svg')?.style.setProperty('height','16px');
-        button.querySelector('svg')?.style.setProperty('flex','0 0 16px');
-        button.querySelector('svg')?.style.setProperty('stroke','#17191e');
+        const svg = button.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('width','18');
+          svg.setAttribute('height','18');
+          svg.setAttribute('viewBox','0 0 24 24');
+          svg.setAttribute('fill','none');
+          svg.setAttribute('stroke','#17191e');
+          svg.setAttribute('stroke-width','2');
+          svg.setAttribute('stroke-linecap','round');
+          svg.setAttribute('stroke-linejoin','round');
+          svg.style.setProperty('display','block','important');
+          svg.style.setProperty('visibility','visible','important');
+          svg.style.setProperty('opacity','1','important');
+          svg.style.setProperty('width','18px','important');
+          svg.style.setProperty('height','18px','important');
+          svg.style.setProperty('min-width','18px','important');
+          svg.style.setProperty('min-height','18px','important');
+          svg.style.setProperty('flex','0 0 18px','important');
+          svg.style.setProperty('overflow','visible','important');
+          svg.style.setProperty('stroke','#17191e','important');
+          svg.style.setProperty('color','#17191e','important');
+        }
       });
       bubble.appendChild(actions);
     });
