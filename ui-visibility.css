@@ -261,3 +261,36 @@ html[data-kuro="dark"] body.kuro #page-content .chat-confirm-actions .btn:not(.p
 body.kuro #page-content .chat-confirm-actions .btn:not(.primary):hover{
   filter:brightness(1.08)!important;border-color:#8298ff!important;
 }
+
+/* Account popover contrast repair: keep every profile detail and action readable. */
+body.kuro .one-account-menu>div#one-account-pop,
+body.kuro .one-account-menu>div#one-account-pop[hidden]{
+  background:#ffffff!important;color:#172033!important;
+  -webkit-text-fill-color:#172033!important;opacity:1!important;
+  border:1px solid #d8dee8!important;box-shadow:0 16px 42px rgba(0,0,0,.28)!important;
+}
+body.kuro .one-account-menu>div#one-account-pop .one-profile-heading,
+body.kuro .one-account-menu>div#one-account-pop .one-profile-heading *{
+  color:#172033!important;-webkit-text-fill-color:#172033!important;opacity:1!important;
+}
+body.kuro .one-account-menu>div#one-account-pop .one-profile-heading small{
+  color:#596579!important;-webkit-text-fill-color:#596579!important;
+}
+body.kuro .one-account-menu>div#one-account-pop .one-profile-heading .one-profile-avatar{
+  background:#17191f!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+}
+body.kuro .one-account-menu>div#one-account-pop button{
+  display:flex!important;align-items:center!important;width:100%!important;min-height:42px!important;
+  padding:11px 12px!important;background:#ffffff!important;color:#202a3a!important;
+  -webkit-text-fill-color:#202a3a!important;font-size:14px!important;font-weight:700!important;
+  line-height:1.35!important;opacity:1!important;visibility:visible!important;
+}
+body.kuro .one-account-menu>div#one-account-pop button:hover{
+  background:#edf1f7!important;color:#111827!important;-webkit-text-fill-color:#111827!important;
+}
+body.kuro .one-account-menu>div#one-account-pop button:focus-visible{
+  outline:2px solid #4569d4!important;outline-offset:2px!important;
+}
+body.kuro .one-account-menu>div#one-account-pop #one-update-now{
+  background:#3159cf!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+}
