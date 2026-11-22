@@ -493,3 +493,47 @@ html body.ask-page #page-content .chat-shell .chat-note{
   html body.ask-page #page-content form#chat-form #one-voice-mic{width:36px!important;min-width:36px!important}
   html body.ask-page #page-content form#chat-form button.chat-send{width:70px!important;min-width:70px!important;max-width:70px!important}
 }
+
+/* Reduce unused vertical space on the Ask One page, especially on phones. */
+html body.ask-page .main:has(.chat-shell),
+html body.ask-page .main:has(.chat-shell) .content:has(.chat-shell),
+html body.ask-page .main:has(.chat-shell) #page-content{
+  height:auto!important;min-height:0!important;max-height:none!important;
+  align-content:start!important;
+}
+html body.ask-page .main:has(.chat-shell) .chat-shell{
+  display:flex!important;flex-direction:column!important;
+  height:auto!important;min-height:0!important;max-height:none!important;
+  gap:8px!important;margin-block:0!important;
+  padding:8px 12px 12px!important;
+}
+html body.ask-page .main:has(.chat-shell) .chat-intro{margin:0!important;padding:10px 12px!important}
+html body.ask-page .main:has(.chat-shell) .chat-welcome{margin:4px 0!important;padding:10px 12px!important}
+html body.ask-page .main:has(.chat-shell) .one-command-picker{margin:0!important;padding:10px 12px!important}
+html body.ask-page .main:has(.chat-shell) .one-command-picker-head{margin-bottom:7px!important}
+html body.ask-page .main:has(.chat-shell) .one-command-picker-categories{gap:6px!important}
+html body.ask-page .main:has(.chat-shell) .one-command-category{min-height:36px!important;padding:6px 8px!important}
+html body.ask-page .main:has(.chat-shell) .chat-messages{
+  flex:0 1 auto!important;min-height:0!important;
+  height:auto!important;max-height:34dvh!important;
+  margin:0!important;padding:4px 2px 8px!important;
+}
+html body.ask-page .main:has(.chat-shell) form#chat-form.chat-form{
+  flex:0 0 auto!important;margin:0!important;min-height:0!important;
+}
+html body.ask-page .main:has(.chat-shell) .chat-note{
+  flex:0 0 auto!important;margin:0!important;padding:8px 2px 2px!important;
+  line-height:1.45!important;
+}
+@media(max-width:700px){
+  html body.ask-page .main:has(.chat-shell) .chat-shell{
+    min-height:0!important;height:auto!important;padding:6px 10px calc(8px + env(safe-area-inset-bottom))!important;gap:7px!important;
+  }
+  html body.ask-page .main:has(.chat-shell) .chat-messages{
+    flex:0 1 auto!important;min-height:0!important;max-height:28dvh!important;
+    padding:2px 1px 5px!important;
+  }
+  html body.ask-page .main:has(.chat-shell) .one-command-picker{padding:9px 10px!important}
+  html body.ask-page .main:has(.chat-shell) .one-command-category{min-height:34px!important;padding:5px 4px!important}
+  html body.ask-page .main:has(.chat-shell) .chat-note{font-size:11px!important;padding-top:6px!important}
+}
