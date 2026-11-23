@@ -299,9 +299,9 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   return answer('Is hafte ka kharcha ('+dateFmt(from)+' – '+dateFmt(to)+'): '+money(spent)+'. Income: '+money(income)+(breakdown?'. Categories: '+breakdown:''),'Money summary');
  }
  if(p.action==='summary'&&p.summary==='category-spending'){
-  const category=String((q.match(/\\b(?:on|for|category)\\s+(food|travel|shopping|bills|other|health)\\b/i)||[])[1]||'').toLowerCase();
+  const category=String((q.match(/\b(?:on|for|category)\s+(food|travel|shopping|bills|other|health)\b/i)||[])[1]||'').toLowerCase();
   const entries=(data.expenses||[]).filter(x=>(x.kind||'expense')==='expense'&&String(x.category||'Other').toLowerCase()===category),total=entries.reduce((n,x)=>n+Number(x.amount||0),0);
-  return answer('Aapka '+(category||'selected category')+' spending total: '+money(total)+'\\nRecords: '+entries.length,'Money summary');
+  return answer('Aapka '+(category||'selected category')+' spending total: '+money(total)+'\nRecords: '+entries.length,'Money summary');
  }
  if(p.action==='summary'&&p.summary==='month-spending'){
   const month=today().slice(0,7),entries=(data.expenses||[]).filter(x=>String(x.date||'').slice(0,7)===month),expenses=entries.filter(x=>(x.kind||'expense')==='expense'),total=expenses.reduce((n,x)=>n+Number(x.amount||0),0),categories={};
