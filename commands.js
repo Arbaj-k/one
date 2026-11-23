@@ -93,7 +93,7 @@
   const explicitTaskCue=workTaskAdd||taskManagementCue||taskListCue||/\b(?:add|create|make|delete|remove|complete|finish|mark|update|change)\b.*\b(?:task|todo|assignment|homework|exam)\b/i.test(q);
   const explicitNoteCue=/\b(?:note|notes|memo)\b/i.test(q)||/^(?:remember|yaad rakhna)\b/i.test(q)||/\b(?:what did i write|what did i save|maine .{1,70} kya save|maine .{1,70} kya likha|save this idea|remember that|note karo|likh kar rakho)\b/i.test(q);
   const noteReadQuestion=/\b(?:what did i|what have i|what do i remember|maine .{1,90} kya (?:save|likh|note)|what did i save)\b/i.test(q);
-  const explicitUdhaarCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye)\b/i.test(q);
+  const explicitUdhaarCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye|owe(?:s)? me|how much do i owe)\b/i.test(q);
   const explicitIncomeCue=/\b(?:income|salary|earned|earning|received|credited|kamai|mila|mili)\b/i.test(q);
   const explicitExpenseCue=/\b(?:expense|expenses|kharcha|kharch|spent|spending|purchase|bought)\b/i.test(q);
   const personPaymentCue=/(?:^|[^a-z0-9])paid\s+[\p{L}][\p{L}\p{M}'-]*\s+\d/iu.test(q)&&!explicitExpenseCue;
