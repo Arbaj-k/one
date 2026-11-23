@@ -186,7 +186,7 @@ async function syncCloudDocumentMetadata(record){
  try{
   const {data:updated,error}=await cloudClient.from('user_documents').update({
    extracted_text:String(record.extractedText||'').slice(0,180000),
-   metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||'Document').slice(0,255),original_name:String(record.originalName||record.name||'Document').slice(0,255),type:record.type||'file',mime_type:record.mimeType||'',file_size:Number(record.size)||0,ocr_status:record.ocrStatus||'pending',ocr_quality:Number(record.ocrQuality)||0,ocr_completed_at:record.ocrCompletedAt||null,json_status:record.jsonStatus||'pending',json_converted_at:record.jsonConvertedAt||null,structured_data_available:!!record.extractedJson,extracted_json:record.extractedJson||null,extracted_text_chars:String(record.extractedText||'').length,summary:String(record.summary||'').slice(0,4000)},
+   metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||'Document').slice(0,255),original_name:String(record.originalName||record.name||'Document').slice(0,255),type:record.type||'file',mime_type:record.mimeType||'',file_size:Number(record.size)||0,ocr_status:record.ocrStatus||'pending',ocr_quality:Number(record.ocrQuality)||0,ocr_completed_at:record.ocrCompletedAt||null,json_status:record.jsonStatus||'pending',json_converted_at:record.jsonConvertedAt||null,structured_data_available:!!record.extractedJson,extracted_json:record.extractedJson||null,extracted_text_chars:String(record.extractedText||'').length,extraction_completed_at:record.extractionCompletedAt||record.ocrCompletedAt||record.jsonConvertedAt||null,summary:String(record.summary||'').slice(0,4000)},
    updated_at:new Date().toISOString()
   }).eq('user_id',ownerId).eq('storage_path',record.storagePath).select('id').maybeSingle();
   if(error)throw error;
@@ -1237,7 +1237,7 @@ async function recoverLegacyDocumentText(){
   const hasOriginal=!!doc.storagePath||!!doc.fileStored;
   const attempted=Number(doc.legacyRecoveryAttemptAt||0);
   return stale&&hasOriginal&&Date.now()-attempted>24*60*60*1000&&!oneLegacyRecoveryInFlight.has(doc.id);
- }).slice(0,6);
+ }).slice(0,10);
  for(const doc of docs){
   if(!cloudReady||!cloudUser||!navigator.onLine)break;
   oneLegacyRecoveryInFlight.add(doc.id);
@@ -1251,16 +1251,17 @@ async function recoverLegacyDocumentText(){
     refreshed.extractedText=extracted;refreshed.chunks=splitDocumentIntoChunks(extracted);
     refreshed.ocrQuality=Math.round(documentTextQuality(extracted)*100);
     refreshed.ocrEngine='gemini-vision-auto-recovery';refreshed.ocrStatus='complete';
-    refreshed.ocrCompletedAt=Date.now();refreshed.legacyRecoveryStatus='recovered';
-    persist();await autoProcessDocumentInsights(refreshed.id);
+    refreshed.ocrCompletedAt=Date.now();refreshed.extractionCompletedAt=Date.now();refreshed.legacyRecoveryStatus='recovered';
+    refreshed.jsonStatus=refreshed.extractedJson?'saved_to_knowledge':refreshed.jsonStatus;
+    persist();await syncCloudDocumentMetadata(refreshed);await autoProcessDocumentInsights(refreshed.id);
    }else{
     refreshed.ocrStatus='failed';refreshed.legacyRecoveryStatus='no_readable_text';
     refreshed.legacyRecoveryError='The original file was processed, but no readable text could be recovered.';
-    persist();
+    refreshed.extractionCompletedAt=Date.now();persist();await syncCloudDocumentMetadata(refreshed);
    }
   }catch(error){
    const refreshed=(data.documents||[]).find(item=>item.id===doc.id);
-   if(refreshed){refreshed.ocrStatus='failed';refreshed.legacyRecoveryStatus='error';refreshed.legacyRecoveryError=String(error.message||'Automatic recovery failed').slice(0,240);persist();}
+   if(refreshed){refreshed.ocrStatus='failed';refreshed.legacyRecoveryStatus='error';refreshed.legacyRecoveryError=String(error.message||'Automatic recovery failed').slice(0,240);refreshed.extractionCompletedAt=Date.now();persist();await syncCloudDocumentMetadata(refreshed);}
    console.warn('Legacy document recovery failed; details redacted.');
   }finally{oneLegacyRecoveryInFlight.delete(doc.id);render();}
  }
