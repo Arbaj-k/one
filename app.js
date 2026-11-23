@@ -1589,7 +1589,8 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
   const savedText=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'');
   const structuredFallback=doc.extractedJson?.structured_data&&typeof doc.extractedJson.structured_data==='object'?JSON.stringify(doc.extractedJson.structured_data):'';
   const searchableText=savedText.trim()||structuredFallback;
-  const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(searchableText);
+  const cachedChunks=Array.isArray(doc.chunks)?doc.chunks.filter(chunk=>String(chunk?.text||'').trim()&&!/^\[(?:no readable text|no selectable text|text extraction is processing)/i.test(String(chunk.text).trim())):[];
+  const sourceChunks=cachedChunks.length?cachedChunks:splitDocumentIntoChunks(searchableText);
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
   // Explicit document/knowledge questions must still retrieve a saved file when
   // the query is generic or Hinglish and has no OCR keyword overlap.
@@ -1630,7 +1631,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?2:0;
   return {doc,score:tokenHits+phraseHit};
  }).filter(item=>targetDocId||item.score>0||isDocumentContentQuestion(question)).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)).slice(0,targetDocId?1:3);
- const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
+ const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||doc.ocrText||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
  const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
@@ -1748,7 +1749,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
- const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
+ const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||doc.ocrText||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
  for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
  return {workspace:{today:today(),notes,tasks,projects,memories,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile,fileRef};
 }
@@ -2095,7 +2096,7 @@ function resolveAskDocumentId(question,targetDocId){
  const day=(raw.match(/\b(friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/i)||[])[1]?.toLowerCase()||'';
  const ranked=docs.map(doc=>{
   const name=askOneNormalize([doc.name,doc.originalName,doc.tags||'',doc.note||''].join(' '));
-  const evidence=String(doc.extractedText||doc.ocrText||doc.summary||'')+' '+JSON.stringify(doc.extractedJson||{});
+  const evidence=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||doc.summary||'')+' '+JSON.stringify(doc.extractedJson||{});
   const normalizedEvidence=askOneNormalize(evidence);
   let score=0;
   for(const token of name){if(token.length>2&&askOneNormalize(question).includes(token))score+=4;}
