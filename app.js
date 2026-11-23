@@ -2889,7 +2889,7 @@ const commandPrefix=query.match(/^\/(task|expense|income|udhaar|reminder|note|fi
   else if(section==='routine')query=/^(?:add|create|save|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add routine '+body;
   else if(section==='scan')query='scan '+(body||'document');
   else if(section==='reminder')query=/^(?:remind|set|show|list|delete|remove|edit|update|pause|resume)\b/i.test(body)?body:'remind me '+body;
-  else if(section==='note')query=/^(?:add|save|create|write|show|list|search|find|edit|update|delete|remove)\b/i.test(body)?body:'save note '+body;
+  else if(section==='note')query=/^(?:add|save|create|write|show|list|search|find|edit|update|rename|delete|remove)\b/i.test(body)?body:'save note '+body;
   else if(section==='project')query=/^(?:add|create|start|show|list|search|edit|update|delete|remove)\b/i.test(body)?body:'create project '+body;
   else if(section==='money'||section==='memory'||section==='file')query=body;
  }
