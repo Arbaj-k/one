@@ -186,7 +186,7 @@ async function syncCloudDocumentMetadata(record){
  try{
   const {data:updated,error}=await cloudClient.from('user_documents').update({
    extracted_text:String(record.extractedText||'').slice(0,180000),
-   metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||'Document').slice(0,255),type:record.type||'file',ocr_status:record.ocrStatus||'pending',json_status:record.jsonStatus||'pending',structured_data_available:!!record.extractedJson,summary:String(record.summary||'').slice(0,4000)},
+   metadata:{workspace_doc_id:record.id,display_name:String(record.name||record.originalName||'Document').slice(0,255),original_name:String(record.originalName||record.name||'Document').slice(0,255),type:record.type||'file',mime_type:record.mimeType||'',file_size:Number(record.size)||0,ocr_status:record.ocrStatus||'pending',ocr_quality:Number(record.ocrQuality)||0,ocr_completed_at:record.ocrCompletedAt||null,json_status:record.jsonStatus||'pending',json_converted_at:record.jsonConvertedAt||null,structured_data_available:!!record.extractedJson,extracted_json:record.extractedJson||null,extracted_text_chars:String(record.extractedText||'').length,summary:String(record.summary||'').slice(0,4000)},
    updated_at:new Date().toISOString()
   }).eq('user_id',ownerId).eq('storage_path',record.storagePath).select('id').maybeSingle();
   if(error)throw error;
@@ -2177,10 +2177,11 @@ function resolveAskDocumentId(question,targetDocId){
  const raw=String(question||'').toLowerCase();
  const timetableQuestion=isTimetableQuestion(question);
  // Reuse the document cited by the previous assistant answer for implicit follow-ups.
- const previousFileReply=[...(data.messages||[])].reverse().find(message=>message?.role==='assistant'&&Array.isArray(message.sources)&&message.sources.some(source=>/^(?:File: |Document JSON: )/i.test(String(source))));
+ const previousFileReply=[...(data.messages||[])].reverse().find(message=>message?.role==='assistant'&&(message.documentId||Array.isArray(message.sources)&&message.sources.some(source=>/^(?:File: |Document JSON: )/i.test(String(source)))));
  if(previousFileReply){
-  for(const source of previousFileReply.sources){
-   const label=String(source||'').replace(/^(?:File: |Document JSON: )/i,'').replace(/\\s+·\\s+(?:Page\\s+\\d+|original file).*$/i,'').trim();
+  if(previousFileReply.documentId&&docs.some(doc=>doc.id===previousFileReply.documentId))return previousFileReply.documentId;
+  for(const source of previousFileReply.sources||[]){
+   const label=String(source||'').replace(/^(?:File: |Document JSON: )/i,'').replace(/\\s+·\\s+(?:Page\\s+\\d+|original file).*$/i,'').replace(/\\s+[-–—]\\s+original file.*$/i,'').trim();
    const matched=docs.find(doc=>[doc.name,doc.originalName].some(name=>String(name||'').trim()===label));
    if(matched)return matched.id;
   }
@@ -2865,7 +2866,7 @@ const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|proje
  const reply=(result,extra={})=>{
   if(activeAskTurnId!==userMessage.id)return;
   if(data.messages.some(message=>message?.role==='assistant'&&message.replyTo===userMessage.id))return;
-  data.messages.push({id:uid(),role:'assistant',content:String(result?.answer||'I could not prepare an answer for that question.'),sources:Array.isArray(result?.sources)?result.sources:[],replyTo:userMessage.id,createdAt:Date.now(),...extra});
+  data.messages.push({id:uid(),role:'assistant',content:String(result?.answer||'I could not prepare an answer for that question.'),sources:Array.isArray(result?.sources)?result.sources:[],documentId:extra.documentId||targetDocId||null,replyTo:userMessage.id,createdAt:Date.now(),...extra});
   persist();
  };
  try{
