@@ -1686,7 +1686,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
    const label='File: '+matchedDoc.name+' · original file';
    const mimeType=normalizedDocumentMime({name:matchedDoc.originalName||matchedDoc.name,type:matchedDoc.mimeType||''});
    try{
-    let original=matchedDoc.fileStored?await getOriginalDocument(matchedDoc.id):null;
+    let original=await getOriginalDocument(matchedDoc.id);
     let blob=original?.blob||null;
     if(blob&&['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType)&&blob.size>0&&blob.size<=3*1024*1024){
      inlineFile={name:matchedDoc.originalName||matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
@@ -2875,9 +2875,11 @@ const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|proje
    const localResult=window.OneCommands?.executeCommand?.(query);
    if(localResult?.answer){reply(localResult,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
   }
-  if(isDocumentContentQuestion(query)&&!targetDocId){
-   reply({answer:'Abhi One mein koi uploaded PDF/image nahi mili. Pehle Uploaded Items mein file upload karo, phir uske baare mein poochho.',sources:['Uploaded Items']});return;
+  if(isDocumentContentQuestion(query)&&!(data.documents||[]).some(doc=>doc&&doc.id)){
+   reply({answer:'Abhi is account ke workspace mein koi uploaded PDF/image record nahi mila. Agar file Uploaded Items mein dikh rahi hai, refresh ke baad sync status check karo; main bina file access ke uske baare mein guess nahi karunga.',sources:['Uploaded Items']});return;
   }
+  // A null targetDocId means the question did not uniquely identify one file; it
+  // does NOT mean there are no uploads. Let document retrieval search all saved files.
   const explicitMoneyWriteIntent=/\b(?:add|save|record|log|spent|spend|earned|received|salary|kharcha|kharch|khaye|khaya|bought)\b/i.test(query)&&/\b(?:spending|expense|expenses|income|salary|rupee|rupees|rs\.?|₹|kharcha|kharch|biryani|food)\b/i.test(query);
   if(isSpendingAmountQuestion(query)&&!targetDocId&&!explicitMoneyWriteIntent){
    reply(answerSpendingAmount(query));return;
