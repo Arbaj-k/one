@@ -1834,8 +1834,8 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
   }));
  const overviewIntent=/\b(?:summari[sz]e|daily briefing|my day|overview|what should i do|today'?s priorities)\b/i.test(question);
  const asksProjects=overviewIntent||/\b(?:project|projects|milestone|progress)\b/i.test(question);
- const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework)\b/i.test(question);
- const asksMoney=overviewIntent||/\b(?:money|expense|expenses|spent|spending|udhaar|owe|lent|borrowed|budget|rupees?|rs\.?|₹|payment|paid)\b/i.test(question);
+ const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework|kaam|kam|karna|karne|baaki|bache|adhure|zimmedari|zimmedariyan)\b|काम|कार्य|बाकी|बचे|अधूरे|जिम्मेदारी/iu.test(question);
+ const asksMoney=overviewIntent||/\b(?:money|expense|expenses|spent|spending|udhaar|owe|lent|borrowed|budget|rupees?|rs\.?|₹|payment|paid|kharch|kharcha|kharche|kharchaa|paise|paisa|len.?den|income|kamaya|kamai|salary|hisab|hisaab|kitna laga|kitna kharch)\b|खर्च|खर्चा|पैसे|पैसा|उधार|कमाई|आमदनी|हिसाब/iu.test(question);
  const asksMemories=/\b(?:remember|memory|memories|preference|previously|before|last time|what did i tell)\b/i.test(question);
  const asksRoutines=overviewIntent||/\b(?:habit|habits|routine|routines|study session|focus session)\b/i.test(question);
  const taskPool=(data.tasks||[]);
@@ -1848,7 +1848,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
    const weekKey=nextWeek.getFullYear()+'-'+String(nextWeek.getMonth()+1).padStart(2,'0')+'-'+String(nextWeek.getDate()).padStart(2,'0');
    selectedTasks=taskPool.filter(task=>!task.done&&(!task.due||task.due<=weekKey)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,25);
   }else if(matches.length)selectedTasks=matches.map(item=>item.task).slice(0,40);
-  else if(/\b(?:my|mere|meri|saare|all|list|show|batao|dikhao|tasks?|todos?|pending|to.?do)\b|मेरे|मेरी|काम|टास्क/iu.test(String(question||''))){
+  else if(/\b(?:my|mere|meri|saare|all|list|show|batao|dikhao|tasks?|todos?|pending|to.?do|kaam|kam|karna|karne|baaki|bache|adhure)\b|मेरे|मेरी|काम|कार्य|बाकी|बचे|टास्क/iu.test(String(question||''))){
    selectedTasks=taskPool.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0)).slice(0,40);
   }
  }
