@@ -1621,17 +1621,21 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
 }
 async function buildStudentBrainAIRequest(question,targetDocId=null){
  const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
-const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(!targetDocId||doc.id===targetDocId));
+const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
+  doc.extractedJson||String(doc.extractedText||doc.ocrText||'').trim()||
+  (Array.isArray(doc.chunks)&&doc.chunks.some(chunk=>String(chunk?.text||'').trim()))
+ ));
  const normalizedQuery=String(question||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097f]+/g,' ').trim();
  const stopWords=new Set(['the','and','for','from','with','what','when','where','which','who','how','does','did','are','was','were','this','that','these','those','tell','show','give','please','about','document','file','hai','kya','ka','ki','ke','ko','me','mai','mein','par','se','kaun','kab','kahan','batao','bata','mujhe','mera','meri','mere']);
  const qTokens=normalizedQuery.split(/\s+/).filter(token=>token.length>2&&!stopWords.has(token));
  const rankedJson=docList.map(doc=>{
-  const searchable=JSON.stringify(doc.extractedJson).toLowerCase();
+  const searchable=(String(doc.name||'')+' '+String(doc.originalName||'')+' '+String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||' ')+' '+JSON.stringify(doc.extractedJson?.structured_data||doc.extractedJson||{})+' '+(Array.isArray(doc.chunks)?doc.chunks.map(chunk=>chunk?.text||'').join(' '):'')).toLowerCase();
   const tokenHits=qTokens.reduce((sum,token)=>sum+(searchable.includes(token)?1:0),0);
-  const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?2:0;
-  return {doc,score:tokenHits+phraseHit};
- }).filter(item=>targetDocId||item.score>0||isDocumentContentQuestion(question)).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)).slice(0,targetDocId?1:3);
- const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||doc.ocrText||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
+  const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?4:0;
+  const contentQuality=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').trim().length?1:0;
+  return {doc,score:tokenHits+phraseHit+contentQuality};
+ }).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||b.doc.updated||0)-Number(a.doc.createdAt||a.doc.created||a.doc.updated||0)).slice(0,targetDocId?1:8);
+ const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson?.document_type||'unclassified',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,9000),structured_data:doc.extractedJson?.structured_data||{},source_pages:doc.extractedJson?.source_pages||doc.extractedJson?.pages||[],warnings:doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[]}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
  const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
@@ -1749,7 +1753,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
- const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||doc.ocrText||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
+ const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson?.document_type||'unknown',extractionStatus:doc.extractedJson?.extraction_status||doc.ocrStatus||'saved',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,9000),structured_data:doc.extractedJson?.structured_data||{},source_pages:doc.extractedJson?.source_pages||doc.extractedJson?.pages||[],warnings:doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[]}));
  for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
  return {workspace:{today:today(),notes,tasks,projects,memories,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile,fileRef};
 }
