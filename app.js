@@ -881,7 +881,7 @@ function documentExtractionStatus(doc){
  const stats=documentExtractionStats(doc);
  const pageLabel=stats.totalPages? ' · '+stats.pagesWithText+'/'+stats.totalPages+' pages with text':'';
  const qualityLabel=stats.quality===null?' · Readability unavailable':' · Readability estimate '+stats.quality+'%';
- const struct=doc?.jsonStatus==='saved_to_knowledge'?' · Structured data ready':doc?.jsonStatus==='error'?' · Structuring failed: '+(doc.jsonError||'Retry available'):doc?.jsonStatus==='processing'?' · Structuring data…':'';
+ const struct=doc?.jsonStatus==='saved_to_knowledge'?' · Structured data ready':doc?.jsonStatus==='no_text'?' · No readable text or structured data recovered':doc?.jsonStatus==='error'?' · Structuring failed: '+(doc.jsonError||'Retry available'):doc?.jsonStatus==='processing'?' · Structuring data…':'';
  return 'Extracted '+stats.words.toLocaleString('en-IN')+' words · '+stats.chars.toLocaleString('en-IN')+' characters'+pageLabel+qualityLabel+struct;
 }
 function documentsCards(){
@@ -1459,7 +1459,19 @@ async function convertDocumentToJSON(id){
   let payload={};try{payload=await response.json()}catch{}
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
-  doc.extractedJson=payload.json;if(typeof payload.json.extracted_text==='string'&&payload.json.extracted_text.trim()){doc.extractedText=payload.json.extracted_text.trim().slice(0,180000);doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.ocrQuality=Math.round(documentTextQuality(doc.extractedText)*100);doc.ocrEngine='gemini-vision';doc.ocrStatus='complete';}doc.jsonStatus='saved_to_knowledge';doc.jsonSavedToKnowledge=true;doc.jsonConvertedAt=Date.now();doc.jsonSavedAt=Date.now();doc.updated=Date.now();doc.structuredSearchText=JSON.stringify(payload.json);persist();if(doc.storagePath)syncCloudDocumentMetadata(doc);render();toast('Structured JSON saved to My Knowledge');
+  const recoveredText=String(payload.json.extracted_text||'').trim().slice(0,180000);
+  const structured=payload.json.structured_data||{};
+  const structuredHasContent=Object.values(structured).some(value=>Array.isArray(value)?value.length>0:typeof value==='string'?value.trim().length>0:!!value&&typeof value==='object'?Object.keys(value).length>0:!!value);
+  const usableText=recoveredText.replace(/\[Page\s+\d+\]|\[(?:No readable text[^\]]*|No selectable text[^\]]*)\]/gi,'').trim();
+  if(usableText.length<12&&!structuredHasContent){
+   doc.extractedJson={...payload.json,extraction_status:payload.json.extraction_status||'no_text',extracted_text:recoveredText,structured_data:structured};
+   doc.jsonStatus='no_text';doc.jsonSavedToKnowledge=false;doc.jsonError='The original file was processed, but no readable text or structured information was recovered.';
+   doc.ocrStatus='failed';doc.ocrQuality=0;doc.legacyRecoveryStatus='no_readable_text';doc.updated=Date.now();persist();if(doc.storagePath)syncCloudDocumentMetadata(doc);render();
+   throw new Error('No readable text was recovered. The original file may be unavailable or unreadable. Re-upload the original file to run OCR again.');
+  }
+  doc.extractedJson=payload.json;
+  if(recoveredText){doc.extractedText=recoveredText;doc.chunks=splitDocumentIntoChunks(recoveredText);doc.ocrQuality=Math.round(documentTextQuality(recoveredText)*100);doc.ocrEngine='gemini-vision';doc.ocrStatus='complete';}
+  doc.jsonStatus='saved_to_knowledge';doc.jsonSavedToKnowledge=true;doc.jsonConvertedAt=Date.now();doc.jsonSavedAt=Date.now();doc.updated=Date.now();doc.structuredSearchText=JSON.stringify(payload.json);persist();if(doc.storagePath)syncCloudDocumentMetadata(doc);render();toast('Structured JSON saved to My Knowledge');
  }catch(error){doc.jsonStatus='error';doc.jsonError=String(error.message||'Conversion failed');persist();render();console.warn("Operation failed; diagnostic details redacted.");toast(error.message||'Could not convert document');}
 }
 function downloadDocumentJSON(id){
