@@ -1817,7 +1817,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
    }catch(fileError){console.warn('Original document could not be attached to Ask One; details redacted.');if(documentQuestion)throw fileError}
   }
  }
- const asksNotes=/\\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me)\\b|नोट|नोट्स|लिखा|सेव/iu.test(String(question||''));
+ const asksNotes=/\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me)\b|नोट|नोट्स|लिखा|सेव/iu.test(String(question||''));
  const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||b.note.created||0)-Number(a.note.updated||a.note.created||0));
  // For explicit note questions, return recent saved notes even when generic wording has no keyword overlap.
  const noteMatches=rankedNotes.filter(item=>item.score>0);
@@ -1848,7 +1848,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
    const weekKey=nextWeek.getFullYear()+'-'+String(nextWeek.getMonth()+1).padStart(2,'0')+'-'+String(nextWeek.getDate()).padStart(2,'0');
    selectedTasks=taskPool.filter(task=>!task.done&&(!task.due||task.due<=weekKey)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,25);
   }else if(matches.length)selectedTasks=matches.map(item=>item.task).slice(0,40);
-  else if(/\\b(?:my|mere|meri|saare|all|list|show|batao|dikhao|tasks?|todos?|pending|to.?do)\\b|मेरे|मेरी|काम|टास्क/iu.test(String(question||''))){
+  else if(/\b(?:my|mere|meri|saare|all|list|show|batao|dikhao|tasks?|todos?|pending|to.?do)\b|मेरे|मेरी|काम|टास्क/iu.test(String(question||''))){
    selectedTasks=taskPool.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0)).slice(0,40);
   }
  }
@@ -2688,7 +2688,7 @@ async function chatActionIntent(question){
   const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none';
   let due=repeatRule!=='none'?today():parseDate();
   const weekdayMap={sunday:0,ravivar:0,monday:1,somvar:1,tuesday:2,mangalvar:2,wednesday:3,budhvar:3,thursday:4,guruwar:4,friday:5,shukravar:5,saturday:6,shanivar:6};
-  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\\b'+day+'\\b','i').test(lower));
+  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\b'+day+'\b','i').test(lower));
   if(weekly&&requestedWeekday){const base=new Date(due+'T12:00:00Z');const offset=(weekdayMap[requestedWeekday]-base.getUTCDay()+7)%7;base.setUTCDate(base.getUTCDate()+offset);due=base.toISOString().slice(0,10);}
   if(!daily&&!due){const dayOnly=lower.match(/\b(\d{1,2})\s*(?:tarikh|tareekh|तारीख)\b/i);if(dayOnly){const n=Number(dayOnly[1]);if(n>=1&&n<=31){const [yy,mm]=today().split('-').map(Number);let d=new Date(yy,mm-1,n);if(d.getDate()===n&&d.toISOString().slice(0,10)<today())d=new Date(yy,mm,n);if(d.getDate()===n)due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}}}
   if(!due)return {answer:'Kis date ko briefing chahiye? Example: 20 November ko mujhe project update batana, ya roz subah 9 baje batana.',sources:['Planner','Ask One']};
@@ -2715,7 +2715,7 @@ async function chatActionIntent(question){
   const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none';
   let due=repeatRule!=='none'?today():parseDate();
   const weekdayMap={sunday:0,ravivar:0,monday:1,somvar:1,tuesday:2,mangalvar:2,wednesday:3,budhvar:3,thursday:4,guruwar:4,friday:5,shukravar:5,saturday:6,shanivar:6};
-  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\\b'+day+'\\b','i').test(lower));
+  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\b'+day+'\b','i').test(lower));
   if(weekly&&requestedWeekday){const base=new Date(due+'T12:00:00Z');const offset=(weekdayMap[requestedWeekday]-base.getUTCDay()+7)%7;base.setUTCDate(base.getUTCDate()+offset);due=base.toISOString().slice(0,10);}
   if(!due)return {answer:'Reminder ki date batao. Example: Remind me to pay electricity bill tomorrow at 7 pm, ya daily/weekly/monthly at 9 am.',sources:['Planner']};
   const timeMatch=raw.match(/\b(?:at\s+(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm|baje))?|(?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)))\b/i);
