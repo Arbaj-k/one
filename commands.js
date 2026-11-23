@@ -138,7 +138,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
-  if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
+  if(det.intent==='projects'&&/\bmilestone\b/.test(q)){const milestone=q.match(/\bmilestone\s+(.+?)\s+to\s+(.+?)\s+project\b/i);title=milestone?milestone[1].trim():'New milestone'}
   const summary=planSummary?'today-plan':weeklySpending?'week-spending':dailySpending?'today-spending':monthlySpending?'month-spending':completeOverview?'complete-overview':udhaarSummary?'udhaar-summary':categorySpending?'category-spending':null;
   return {action,section:det.intent,domainIntent:domainIntent||({tasks:'task',reminders:'reminder',notes:'note',money:udhaarType?'udhaar':'money'}[det.intent]||det.intent),ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,bulkDeleteCompletedTasks,...recurrence};
  }
@@ -203,11 +203,19 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   pending={apply:()=>{item.status=next;item.updated=Date.now();persist();render()},done:'Project status updated: '+(item.name||item.title)+' · '+next};pendingExpiresAt=Date.now()+120000;
   return answer('“'+(item.name||item.title)+'” ka status '+old+' se '+next+' kar doon? YES / NO.','Projects');
  }
- const projectTask=String(query||'').match(/\badd\s+(?:a\s+)?task\s+to\s+(.+?)\s+project\s*[:,-]?\s*(.+)$/i);
+ const milestoneCommand=String(query||'').match(/\badd\s+milestone\s+(.+?)\s+to\s+(.+?)\s+project\b/i);
+ if(milestoneCommand){
+  const [,milestoneTitle,projectTitle]=milestoneCommand,key=norm(projectTitle),matches=(data.projects||[]).filter(x=>norm(x.name||x.title)===key||norm(x.name||x.title).includes(key)||key.includes(norm(x.name||x.title)));
+  if(matches.length!==1)return answer(matches.length?'Multiple projects match. Exact project name bhejo.':'Project “'+projectTitle+'” nahi mila. Pehle project create karo.','Projects');
+  const project=matches[0],milestone={id:uid(),title:milestoneTitle.trim(),done:false,created:Date.now()};
+  pending={apply:()=>{project.milestones=project.milestones||[];project.milestones.push(milestone);project.updated=Date.now();persist();render()},done:'Milestone added to '+(project.name||project.title)+': '+milestone.title};pendingExpiresAt=Date.now()+120000;
+  return answer('Milestone add kar doon? “'+milestone.title+'” → '+(project.name||project.title)+'. YES / NO. Abhi save nahi hua.','Projects');
+ }
+ const projectTask=String(query||'').match(/\badd\s+(?:a\s+)?task\s+to\s+(.+?)\s+project\s*[:,-]?\s*(.+)$/i)||String(query||'').match(/\badd\s+(?:a\s+)?task\s+(.+?)\s+to\s+(.+?)\s+project\b/i);
  if(projectTask){
-  const key=norm(projectTask[1]),project=(data.projects||[]).find(x=>norm(x.name||x.title)===key||norm(x.name||x.title).includes(key));
-  if(!project)return answer('Project “'+projectTask[1]+'” nahi mila. Pehle project create karo.','Projects');
-  const title=projectTask[2].trim(),due=parseDate(query),record={id:uid(),title,projectId:project.id,projectName:project.name||project.title,category:'Project',due,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Linked to '+(project.name||project.title)};
+  const naturalOrder=/\badd\s+(?:a\s+)?task\s+to\s+/i.test(String(query||'')),taskTitle=(naturalOrder?projectTask[2]:projectTask[1]).trim(),projectTitle=(naturalOrder?projectTask[1]:projectTask[2]).trim(),key=norm(projectTitle),matches=(data.projects||[]).filter(x=>norm(x.name||x.title)===key||norm(x.name||x.title).includes(key)||key.includes(norm(x.name||x.title))),project=matches.length===1?matches[0]:null;
+  if(!project)return answer(matches.length?'Multiple projects match. Exact project name bhejo.':'Project “'+projectTitle+'” nahi mila. Pehle project create karo.','Projects');
+  const title=taskTitle,due=parseDate(query),record={id:uid(),title,projectId:project.id,projectName:project.name||project.title,category:'Project',due,priority:'Medium',done:false,created:Date.now(),updated:Date.now(),notes:'Linked to '+(project.name||project.title)};
   pending={apply:()=>{data.tasks.push(record);persist();render()},done:'Task added to '+(project.name||project.title)+': '+title};pendingExpiresAt=Date.now()+120000;
   return answer('Project task add kar doon? “'+title+'” → '+(project.name||project.title)+'. YES / NO. Abhi save nahi hua.','Projects');
  }
