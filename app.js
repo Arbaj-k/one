@@ -450,6 +450,37 @@ async function refreshCloudWorkspace(ownerId=cloudUser?.id){
   if(ownerId!==cloudUser?.id)return;
   if(!row){await saveCloudSnapshot(data,ownerId);return}
   const merged=mergeWorkspaceSnapshots(data,row.workspace_data||{});
+  // Restore private Storage references and server-side extraction metadata for
+  // legacy workspace documents. Workspace snapshots intentionally omit file bytes
+  // and storage paths; without this join automatic OCR recovery cannot reach originals.
+  const {data:cloudDocs,error:cloudDocsError}=await cloudClient.from('user_documents')
+   .select('storage_path,file_name,mime_type,byte_size,extracted_text,metadata,updated_at')
+   .eq('user_id',ownerId);
+  if(cloudDocsError)throw cloudDocsError;
+  const cloudByWorkspaceId=new Map((cloudDocs||[]).map(record=>[String(record.metadata?.workspace_doc_id||''),record]).filter(([id])=>id));
+  merged.documents=(merged.documents||[]).map(doc=>{
+   const cloudDoc=cloudByWorkspaceId.get(String(doc.id||''));
+   if(!cloudDoc)return doc;
+   const metadata=cloudDoc.metadata||{};
+   const cloudText=String(cloudDoc.extracted_text||'').trim();
+   const localText=String(doc.extractedText||'').trim();
+   const placeholder=/^\\[Text extraction is processing/i.test(localText);
+   return {
+    ...doc,
+    storagePath:cloudDoc.storage_path||doc.storagePath||'',
+    originalName:doc.originalName||metadata.original_name||cloudDoc.file_name||doc.name,
+    mimeType:doc.mimeType||cloudDoc.mime_type||metadata.mime_type||'',
+    size:Number(doc.size||cloudDoc.byte_size||metadata.file_size||0),
+    extractedText:(!localText||placeholder)&&cloudText?cloudText:doc.extractedText,
+    extractedJson:doc.extractedJson||metadata.extracted_json||null,
+    ocrStatus:metadata.ocr_status||doc.ocrStatus||'pending',
+    ocrQuality:Number(metadata.ocr_quality??doc.ocrQuality??0),
+    ocrCompletedAt:metadata.ocr_completed_at?new Date(metadata.ocr_completed_at).getTime():doc.ocrCompletedAt||null,
+    jsonStatus:metadata.json_status||doc.jsonStatus||'pending',
+    jsonConvertedAt:metadata.json_converted_at?new Date(metadata.json_converted_at).getTime():doc.jsonConvertedAt||null,
+    cloudUploadStatus:'synced'
+   };
+  });
   const mergedText=JSON.stringify(merged),remoteText=JSON.stringify(migrateData(row.workspace_data||{}));
   data=merged;
   await writeLocalWorkspace(data);
