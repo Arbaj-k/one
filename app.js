@@ -1818,8 +1818,8 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
   }
  }
  const noteQuestionText=String(question||'');
- const asksNotes=/\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me)\b|नोट|नोट्स|लिखा|सेव/iu.test(noteQuestionText);
- const asksAllNotes=/\b(?:all|every|saare|saari|sabhi|sab|jo\s+(?:bhi\s+)?saved|what(?:'s| is)\s+(?:saved|in)|kya\s+(?:kya\s+)?saved|mere\s+notes|meri\s+notes|notes\s+(?:mein|me)\s+(?:kya|jo)|notes\s+(?:batao|dikhao)|show\s+(?:all\s+)?(?:my\s+)?notes|list\s+(?:all\s+)?(?:my\s+)?notes)\b|सारे\s*नोट्स|सभी\s*नोट्स/iu.test(noteQuestionText);
+ const asksNotes=/\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me|notes mai|notes mae)\b|नोट|नोट्स|लिखा|सेव/iu.test(noteQuestionText);
+ const asksAllNotes=/\b(?:all|every|saare|saari|sabhi|sab|jo\s+(?:bhi\s+)?saved|what(?:'s| is)\s+(?:saved|in)|kya\s+(?:kya\s+)?saved|mere\s+notes|meri\s+notes|notes\s+(?:mein|me|mai|mae)\s+(?:kya|jo)|notes\s+(?:batao|dikhao)|show\s+(?:all\s+)?(?:my\s+)?notes|list\s+(?:all\s+)?(?:my\s+)?notes)\b|सारे\s*नोट्स|सभी\s*नोट्स/iu.test(noteQuestionText);
  const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||b.note.created||0)-Number(a.note.updated||a.note.created||0));
  // Inventory-style questions must return the user's saved notes, not only keyword matches.
  const noteMatches=rankedNotes.filter(item=>item.score>0);
@@ -1841,7 +1841,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
  const overviewIntent=/\b(?:summari[sz]e|daily briefing|my day|overview|what should i do|today'?s priorities)\b/i.test(question);
  const asksProjects=overviewIntent||/\b(?:project|projects|milestone|progress)\b/i.test(question);
  const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework|kaam|kam|karna|karne|baaki|bache|adhure|zimmedari|zimmedariyan)\b|काम|कार्य|बाकी|बचे|अधूरे|जिम्मेदारी/iu.test(question);
- const asksMoney=overviewIntent||/\b(?:money|expense|expenses|spent|spending|udhaar|owe|lent|borrowed|budget|rupees?|rs\.?|₹|payment|paid|kharch|kharcha|kharche|kharchaa|paise|paisa|len.?den|income|kamaya|kamai|salary|hisab|hisaab|kitna laga|kitna kharch)\b|खर्च|खर्चा|पैसे|पैसा|उधार|कमाई|आमदनी|हिसाब/iu.test(question);
+ const asksMoney=overviewIntent||/\b(?:money|expense|expenses|spend|spent|spending|iss?\s+month|this\s+month|last\s+month|monthly|udhaar|owe|lent|borrowed|budget|rupees?|rs\.?|₹|payment|paid|kharch|kharcha|kharche|kharchaa|paise|paisa|len.?den|income|kamaya|kamai|salary|hisab|hisaab|kitna laga|kitna kharch)\b|खर्च|खर्चा|पैसे|पैसा|उधार|कमाई|आमदनी|हिसाब/iu.test(question);
  const asksMemories=/\b(?:remember|memory|memories|preference|previously|before|last time|what did i tell)\b/i.test(question);
  const asksRoutines=overviewIntent||/\b(?:habit|habits|routine|routines|study session|focus session)\b/i.test(question);
  const taskPool=(data.tasks||[]);
@@ -2156,7 +2156,7 @@ function isSpendingAmountQuestion(question){
  const q=String(question||'').toLowerCase();
  // Imperative transaction commands must never be answered with a spending summary.
  if(/^\s*(?:please\s+)?(?:add|create|save|record|log|track|spend|spent|i\s+spent|maine\s+kharch)\b/i.test(q))return false;
- return /\b(spend|spent|spending|kharch|kharcha|kharchaa|खर्च|खर्चा)\b/.test(q)&&/\b(how much|kitna|kitne|kitni|total|amount|paisa|paise|rupees?|rs.?|₹|mera|meri|my|today|aaj|yesterday|kal|month|week|overall|all time)\b/.test(q);
+ return /\b(spend|spent|spending|kharch|kharcha|kharchaa|खर्च|खर्चा)\b/.test(q)&&/\b(how much|kitna|kitne|kitni|total|amount|paisa|paise|rupees?|rs.?|₹|mera|meri|my|today|aaj|yesterday|kal|month|week|overall|all time|iss?\s+month|this\s+month)\b/.test(q);
 }
 function phase4SpendingInsights(){
  const now=today(),month=now.slice(0,7),previous=addDaysToDate(month+'-01',-1).slice(0,7);
