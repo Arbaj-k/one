@@ -28,8 +28,8 @@
  function parseDate(text){
   const q=norm(text),d=new Date(today()+'T12:00:00');
   if(/\b(aaj|today)\b/.test(q))return today();
-  if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);
-  else if(/\b(parso|parson)\b/.test(q))d.setDate(d.getDate()+2);
+  if(/\b(day after tomorrow|parso|parson)\b/.test(q))d.setDate(d.getDate()+2);
+  else if(/\b(kal|tomorrow)\b/.test(q))d.setDate(d.getDate()+1);
   else{
    const months={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sep:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
    const named=q.match(/\b(\d{1,2})\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?\b/i)
@@ -64,6 +64,7 @@
   if(/\b(chai|tea|coffee|breakfast|lunch|dinner|food|restaurant|grocery|groceries|pizza|snack|biryani|khana|khaye|nashta|sabzi|doodh)\b/.test(q)||/खाना|खाये|बिरयानी/.test(q))return 'Food';
   if(/\b(petrol|diesel|fuel|uber|ola|taxi|cab|bus|train|metro|flight|travel|hotel|trip|auto|rickshaw)\b/.test(q))return 'Travel';
   if(/\b(rent|electricity|bijli|water|internet|mobile bill|recharge)\b/.test(q))return 'Bills';
+  if(/\b(clothes|shopping|mall|amazon|flipkart|purchase|bought|shoes|shirt|gift)\b/.test(q))return 'Shopping';
   if(/\b(medicine|doctor|hospital|pharmacy|medical)\b/.test(q))return 'Health';
   return 'Other';
  }
@@ -90,7 +91,7 @@
   const taskManagementCue=/\b(?:mark|complete|finish|done|delete|remove|edit|update)\b/i.test(q)&&/\b(?:assignment|assignments|homework|exam|exams)\b/i.test(q);
   const taskListCue=/\b(?:tasks?|todo|to do|kaam)\b/i.test(q)&&/\b(?:show|list|display|tell|batao|dikhao|pending|completed|complete|done|all|saare|saari|sabhi|mere|my|find|search|today|aaj|overdue)\b/i.test(q);
   const explicitTaskCue=workTaskAdd||taskManagementCue||taskListCue||/\b(?:add|create|make|delete|remove|complete|finish|mark|update|change)\b.*\b(?:task|todo|assignment|homework|exam)\b/i.test(q);
-  const explicitNoteCue=/\b(?:note|notes|memo)\b/i.test(q)||/^(?:remember|yaad rakhna)\b/i.test(q);
+  const explicitNoteCue=/\b(?:note|notes|memo)\b/i.test(q)||/^(?:remember|yaad rakhna)\b/i.test(q)||/\b(?:what did i write|what did i save|maine .{1,70} kya save|maine .{1,70} kya likha|save this idea|remember that|note karo|likh kar rakho)\b/i.test(q);
   const explicitUdhaarCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|wapas|diye|diya|liya|liye)\b/i.test(q);
   const explicitIncomeCue=/\b(?:income|salary|earned|earning|received|credited|kamai|mila|mili)\b/i.test(q);
   const explicitExpenseCue=/\b(?:expense|expenses|kharcha|kharch|spent|spending|purchase|bought)\b/i.test(q);
@@ -101,6 +102,8 @@
   const planSummary=/\b(aaj ka plan|today'?s plan|plan for today|aaj kya karna hai)\b/i.test(q);
   const weeklySpending=/\b(is hafte|iss hafte|this week|weekly)\b/i.test(q)&&/\b(kitna|kitni|kharcha|kharch|spent|spending|expense)\b/i.test(q);
   const dailySpending=/\b(aaj|today)\b/i.test(q)&&/\b(kharcha|kharch|spent|spending|expense|expenses)\b/i.test(q);
+  const monthlySpending=/\b(?:this month|this month's|is month|iss month|isse month|is mahine|iss mahine|monthly|mahine ka|mahine ki)\b/i.test(q)&&/\b(?:kitna|kitni|kharcha|kharch|spent|spending|expense|expenses|total)\b/i.test(q);
+  const completeOverview=/\b(?:complete overview|full overview|my overview|mera overview|meri summary|dashboard summary)\b/i.test(q);
   const udhaarSummary=/\b(who owes me|who do i owe|how much do i owe|mere paise kis ke paas|kis se paise lene|kisko paise dene|udhaar summary)\b/i.test(q);
   const explicitRecurringCommand=reminderCue||/\b(?:daily|every day|roz|roj|har roz|har din|weekly|every week|har hafte|monthly|every month|each month|har mahine|mahine me ek baar|mahine mein ek baar)\b/i.test(q)||/\b(?:add|create|make|save|schedule|set)\b.{0,30}\b(?:task|todo|reminder|routine|habit)\b/i.test(q);
 // A weekday alone is a lookup filter, not a task or reminder.
@@ -121,7 +124,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
   // A spend/add command may mention "aaj" and "spending/expense"; do not
   // downgrade that write into the daily-spending read-only summary.
-  if((planSummary||weeklySpending||dailySpending||udhaarSummary)&&!writeVerb)action='summary';
+  if((planSummary||weeklySpending||dailySpending||monthlySpending||completeOverview||udhaarSummary)&&!writeVerb)action='summary';
   const date=parseDate(query),time=parseTime(query);
   let title=q
    .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|me|for|mere liye|mark|complete|finish|done|delete|remove|edit|update|do)\b/gi,' ')
@@ -132,7 +135,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q))title='New milestone';
-  const summary=planSummary?'today-plan':weeklySpending?'week-spending':dailySpending?'today-spending':udhaarSummary?'udhaar-summary':null;
+  const summary=planSummary?'today-plan':weeklySpending?'week-spending':dailySpending?'today-spending':monthlySpending?'month-spending':completeOverview?'complete-overview':udhaarSummary?'udhaar-summary':null;
   return {action,section:det.intent,domainIntent:domainIntent||({tasks:'task',reminders:'reminder',notes:'note',money:udhaarType?'udhaar':'money'}[det.intent]||det.intent),ambiguous:det.ambiguous,matched:det.matched,amount,date,time,title,projectName,query,summary,udhaarType,person,bulkDeleteCompletedTasks,...recurrence};
  }
 
@@ -254,8 +257,8 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
  }
  if(!s)return null;
  const collection={tasks:'tasks',reminders:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
- const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','saare','saari','sabhi','sab','jo','mere','mera','meri','history','lending','borrowing','november','december','january','february','march','april','may','june','july','august','september','october','pending','completed','complete','finished','done','incomplete','open','overdue','late','today','aaj','tomorrow','kal','for','my','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please','mere','mera','meri','my','all','aaj','today','who','owes','me','ka','ki','ke'].includes(t));
- const statusCompleted=/\b(?:completed|complete|done|finished)\b/i.test(q),statusPending=/\b(?:pending|incomplete|open|baaki)\b/i.test(q),statusToday=/\b(?:today|aaj)\b/i.test(q),statusOverdue=/\b(?:overdue|late)\b/i.test(q),monthMatch=q.match(/\b(?:this month|is month|november|december|january|february|march|april|may|june|july|august|september|october)\b/i);
+ const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','saare','saari','sabhi','sab','jo','mere','mera','meri','history','lending','borrowing','november','december','january','february','march','april','may','june','july','august','september','october','pending','completed','complete','finished','done','incomplete','open','overdue','late','today','aaj','tomorrow','kal','for','my','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please','mere','mera','meri','my','all','aaj','today','who','owes','me','ka','ki','ke','mai','mein','meine','jo','hai','tha','thi','the','kya','save','saved','likha','likhi','kiya','baare','bare','about','related','please','tell','write','wrote','mujhe','mera','meri','mere'].includes(t));
+ const statusCompleted=/\b(?:completed|complete|done|finished)\b/i.test(q),statusPending=/\b(?:pending|incomplete|open|baaki)\b/i.test(q),statusToday=/\b(?:today|aaj)\b/i.test(q),statusOverdue=/\b(?:overdue|late)\b/i.test(q),monthMatch=q.match(/\b(?:this month|this month's|is month|iss month|isse month|is mahine|iss mahine|november|december|january|february|march|april|may|june|july|august|september|october)\b/i);
  const rows=arr().filter(x=>s==='reminders'?isReminderRow(x):s==='tasks'?!isReminderRow(x):true).filter(x=>s==='tasks'&&statusCompleted?isDoneRow(x):s==='tasks'&&statusPending?!isDoneRow(x):s==='tasks'&&statusToday?String(x.due||'')===today():s==='tasks'&&statusOverdue?!isDoneRow(x)&&!!x.due&&x.due<today():s==='reminders'&&statusToday?String(x.due||'')===today():s==='money'&&q.includes('lending')?['lent','lent_repayment'].includes(x.kind):s==='money'&&q.includes('borrowing')?['borrowed','borrowed_repayment'].includes(x.kind):true).filter(x=>s!=='money'||!monthMatch||String(x.date||'').slice(0,7)===today().slice(0,7)).map(x=>{const hay=norm([x.title,x.name,x.description,x.content,x.note,x.tags,x.subject,x.category,x.person,x.kind,x.amount,x.date].flat().join(' '));return {x,score:terms.reduce((n,t)=>n+(hay.split(' ').includes(t)?2:hay.includes(t)?1:0),0)}}).filter(x=>!terms.length||x.score>0).sort((a,b)=>b.score-a.score).map(x=>x.x);
  if(p.action==='add'){
   if(s==='scan'){const picker=document.createElement('input');picker.type='file';picker.accept='image/*';picker.capture='environment';picker.onchange=()=>{const file=picker.files?.[0];if(file)openFileMetadataDialog(file)};picker.click();return answer('Camera scan khul gaya. Document ki photo lo, phir save karo.','Scan')}if(s==='files'){openUploadForm();return answer('File picker khul gaya. PDF ya photo choose karo.','Uploaded Items')}
@@ -291,6 +294,18 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const categories={};entries.filter(x=>!['income','lent_repayment','borrowed_repayment'].includes(x.kind)).forEach(x=>{const k=x.category||'Other';categories[k]=(categories[k]||0)+Number(x.amount||0)});
   const breakdown=Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+money(v)).join(' · ');
   return answer('Is hafte ka kharcha ('+dateFmt(from)+' – '+dateFmt(to)+'): '+money(spent)+'. Income: '+money(income)+(breakdown?'. Categories: '+breakdown:''),'Money summary');
+ }
+ if(p.action==='summary'&&p.summary==='month-spending'){
+  const month=today().slice(0,7),entries=(data.expenses||[]).filter(x=>String(x.date||'').slice(0,7)===month),expenses=entries.filter(x=>(x.kind||'expense')==='expense'),total=expenses.reduce((n,x)=>n+Number(x.amount||0),0),categories={};
+  expenses.forEach(x=>{const key=x.category||'Other';categories[key]=(categories[key]||0)+Number(x.amount||0)});
+  const breakdown=Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([key,value])=>key+': '+money(value)).join(' · ');
+  return answer('Is month ka total kharcha: '+money(total)+(breakdown?'\\nCategory-wise: '+breakdown:'\\nAbhi is month koi expense record nahi mila.'),'Money summary');
+ }
+ if(p.action==='summary'&&p.summary==='complete-overview'){
+  const date=today(),pending=(data.tasks||[]).filter(x=>!x.done&&!x.completed&&!(x.isReminder||x.taskType==='reminder')),todayReminders=(data.tasks||[]).filter(x=>(x.isReminder||x.taskType==='reminder'||x.category==='Briefing')&&!x.done&&!x.paused&&String(x.due||'')===date),weekStart=new Date(date+'T12:00:00');weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+6)%7));const from=weekStart.toISOString().slice(0,10),weekExpenses=(data.expenses||[]).filter(x=>(x.date||'')>=from&&(x.date||'')<=date&&(x.kind||'expense')==='expense'),spent=weekExpenses.reduce((n,x)=>n+Number(x.amount||0),0),activeProjects=(data.projects||[]).filter(x=>!['completed','complete','done'].includes(String(x.status||'').toLowerCase()));
+  const lent={},borrowed={};(data.expenses||[]).forEach(x=>{const name=String(x.person||'').trim();if(!name)return;if(x.kind==='lent')lent[name]=(lent[name]||0)+Number(x.amount||0);if(x.kind==='lent_repayment')lent[name]=(lent[name]||0)-Number(x.amount||0);if(x.kind==='borrowed')borrowed[name]=(borrowed[name]||0)+Number(x.amount||0);if(x.kind==='borrowed_repayment')borrowed[name]=(borrowed[name]||0)-Number(x.amount||0)});
+  const oweMe=Object.values(lent).reduce((n,v)=>n+Math.max(0,v),0),iOwe=Object.values(borrowed).reduce((n,v)=>n+Math.max(0,v),0);
+  return answer('Your complete overview ✨\\nPending tasks: '+pending.length+'\\nToday reminders: '+todayReminders.length+'\\nThis week spending: '+money(spent)+'\\nPeople owe you: '+money(oweMe)+'\\nYou owe: '+money(iOwe)+'\\nActive projects: '+activeProjects.length,'One overview');
  }
  if(p.action==='summary'&&p.summary==='today-plan'){
   const date=today(),pending=(data.tasks||[]).filter(x=>!x.done&&x.due&&x.due<=date).sort((a,b)=>String(a.reminderTime||'99:99').localeCompare(String(b.reminderTime||'99:99')));
