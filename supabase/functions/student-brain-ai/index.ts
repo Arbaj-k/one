@@ -84,6 +84,33 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // If the browser could not attach the original from IndexedDB, securely
+    // fetch the user's own cloud-stored original for visual PDF/image analysis.
+    const fileRef = body?.fileRef;
+    if (!validatedInline && fileRef && typeof fileRef === "object") {
+      const name = asText(fileRef.name, 180) || "uploaded file";
+      const mimeType = asText(fileRef.mimeType, 80);
+      const storagePath = asText(fileRef.storagePath, 600);
+      const ownerPrefix = authData.user.id + "/";
+      if (ALLOWED_MIME.has(mimeType) && storagePath.startsWith(ownerPrefix) &&
+          !storagePath.split("/").some((part: string) => part === "." || part === "..")) {
+        const { data: originalBlob, error: originalError } = await admin.storage.from("one-user-documents").download(storagePath);
+        if (!originalError && originalBlob && originalBlob.size > 0 && originalBlob.size <= 3 * 1024 * 1024) {
+          const bytes = new Uint8Array(await originalBlob.arrayBuffer());
+          let binary = "";
+          for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+            binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+          }
+          const data = btoa(binary);
+          if (validInline(data, mimeType)) {
+            const label = "File: " + name + " · original file";
+            if (!allowedSources.includes(label)) allowedSources.push(label);
+            validatedInline = { label, name, mimeType, data };
+          }
+        }
+      }
+    }
+
     let prompt = `You are One, the user's personal AI assistant inside a private workspace app. You help manage notes, tasks, reminders, projects, routines, documents, and spending.
 
 LANGUAGE AND TONE:
