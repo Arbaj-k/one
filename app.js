@@ -2879,11 +2879,15 @@ async function sendChat(question,targetDocId=null){
  let query=originalQuery;
  // Normalize slash commands into deterministic intents before routing. Keep the
  // original slash-prefixed text in the displayed conversation bubble.
-const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|project|memory)\b\s*(.*)$/i);
+const commandPrefix=query.match(/^\/(task|expense|income|udhaar|reminder|note|file|scan|routine|project|money|memory)\b\s*(.*)$/i);
  if(commandPrefix){
   const section=commandPrefix[1].toLowerCase(),body=(commandPrefix[2]||'').trim();
   if(section==='task')query=/^(?:add|create|make|task|todo)\b/i.test(body)?body:'add task '+body;
   else if(section==='expense')query=/^(?:add|save|record|log|track|spent|spend|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add expense '+body;
+  else if(section==='income')query=/^(?:add|save|record|log|track|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add income '+body;
+  else if(section==='udhaar')query=/^(?:add|save|record|log|show|list|search|delete|remove|edit|update|lent|borrowed|repay)\b/i.test(body)?body:'add udhaar '+body;
+  else if(section==='routine')query=/^(?:add|create|save|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add routine '+body;
+  else if(section==='scan')query='scan '+(body||'document');
   else if(section==='reminder')query=/^(?:remind|set|show|list|delete|remove|edit|update|pause|resume)\b/i.test(body)?body:'remind me '+body;
   else if(section==='note')query=/^(?:add|save|create|write|show|list|search|find|edit|update|delete|remove)\b/i.test(body)?body:'save note '+body;
   else if(section==='project')query=/^(?:add|create|start|show|list|search|edit|update|delete|remove)\b/i.test(body)?body:'create project '+body;
