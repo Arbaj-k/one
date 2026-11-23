@@ -229,7 +229,7 @@ Rules:
     let usedModel = primaryModel;
     const requestBody = JSON.stringify({
       contents: [{ role: "user", parts }],
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1000, temperature: 0.2 },
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: validatedInline ? 6000 : 1800, temperature: 0.2 },
     });
     async function callGemini(model: string): Promise<Response> {
       return await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
