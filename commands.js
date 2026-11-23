@@ -110,10 +110,10 @@
 if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.intent=/\b(routine|habit|walk|exercise|meditation)\b/i.test(q)?'routines':'tasks';
   if(planSummary)det.intent='tasks';
   const readVerb=/\b(?:show|list|display|tell|batao|dikhao|sunao|what|which|when|where|how|kitna|kitne|kitni|kya\s+(?:set|saved|scheduled|hai))\b/i.test(q);
+  const amount=parseAmount(query);
   const expenseWrite=/\b(?:spent|spend|kharch(?:a|e)?\s+(?:kiya|kiye|hua|hue)|kharch\s+kar(?:a|e)?|paid\s+for|bought)\b/i.test(q)&&amount>0;
   const writeVerb=/\b(?:add|create|make|save|record|log|schedule|set|lagao|laga|banao|bana|jodo|daalo|dalo|yaad\s+dila)\b/i.test(q)||expenseWrite;
   let action=bulkDeleteCompletedTasks?'delete':readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
-  const amount=parseAmount(query);
   const explicitLoanCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|liya|liye|wapas)\b/i.test(q);
   const udhaarType=personPaymentCue?'borrowed_repayment':explicitLoanCue?( /\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|returned|return|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
   const person=(q.match(/(?:^|[^a-z0-9])to\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/(?:^|[^\p{L}\p{N}])([\p{L}][\p{L}\p{M}'-]*)\s+ko(?:$|[^\p{L}\p{N}])/iu)||q.match(/(?:^|[^a-z0-9])from\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/(?:^|[^a-z0-9])with\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/(?:^|[^a-z0-9])(?:lent|borrowed|paid|returned)\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/^\s*([\p{L}][\p{L}\p{M}'-]*)\s+returned(?:$|[^\p{L}\p{N}])/iu)||[])[1]||'';
