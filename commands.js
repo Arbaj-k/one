@@ -307,7 +307,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const month=today().slice(0,7),entries=(data.expenses||[]).filter(x=>String(x.date||'').slice(0,7)===month),expenses=entries.filter(x=>(x.kind||'expense')==='expense'),total=expenses.reduce((n,x)=>n+Number(x.amount||0),0),categories={};
   expenses.forEach(x=>{const key=x.category||'Other';categories[key]=(categories[key]||0)+Number(x.amount||0)});
   const breakdown=Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([key,value])=>key+': '+money(value)).join(' · ');
-  return answer('Is month ka total kharcha: '+money(total)+(breakdown?'\\nCategory-wise: '+breakdown:'\\nAbhi is month koi expense record nahi mila.'),'Money summary');
+  return answer('Is month ka total kharcha: '+money(total)+(breakdown?'\nCategory-wise: '+breakdown:'\nAbhi is month koi expense record nahi mila.'),'Money summary');
  }
  if(p.action==='summary'&&p.summary==='complete-overview'){
   const date=today(),pending=(data.tasks||[]).filter(x=>!x.done&&!x.completed&&!(x.isReminder||x.taskType==='reminder')),todayReminders=(data.tasks||[]).filter(x=>(x.isReminder||x.taskType==='reminder'||x.category==='Briefing')&&!x.done&&!x.paused&&String(x.due||'')===date),weekStart=new Date(date+'T12:00:00');weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+6)%7));const from=weekStart.toISOString().slice(0,10),weekExpenses=(data.expenses||[]).filter(x=>(x.date||'')>=from&&(x.date||'')<=date&&(x.kind||'expense')==='expense'),spent=weekExpenses.reduce((n,x)=>n+Number(x.amount||0),0),activeProjects=(data.projects||[]).filter(x=>!['completed','complete','done'].includes(String(x.status||'').toLowerCase()));
