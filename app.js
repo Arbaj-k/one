@@ -2161,12 +2161,14 @@ function isDocumentContentQuestion(question){
  const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|based|contains?|inside|says?|written|mentioned|answer|details|content|info(?:rmation)?|meaning|saved|save|knowledge|iska|iske|isme|issme|usme|usse|isse|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kitne|kitni|kab|kaise|kahan|nikalo|dikhao|samjha|btao|bta|hai|hain|jankari|jaankari|maloom|pata|poora|saara|saari)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|कितने|कितनी|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये|जानकारी|सेव|सहेजा)/u.test(q);
  const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
  const asksTimetable=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(q);
+ const asksExamDetails=/\b(?:mid ?term|midterm|semester|sem(?:ester)?|exam(?:ination)?s?|date ?sheet|exam schedule|admit card|course code|subject code|internal assessment)\b/i.test(q)
+  && /\b(?:detail|details|date|dates|when|which|what|schedule|paper|subject|time|timing|saara|saari|saare|poora|pura|batao|bata|kab|kya|kaunsa|kaunse)\b/i.test(q);
  const hasUploadedDocuments=(data.documents||[]).some(doc=>doc&&doc.id);
  const refersToCurrentFile=/\b(?:this|that|it|these|those|iska|iske|iski|iss|isme|isey|isse|uska|uske|uski|usme|usse|yeh|ye|uploaded)\b|(?:इसका|इसकी|इसके|इसमें|इसे|उसका|उसकी|उसमें|उससे|ये|यह)/iu.test(q);
  const asksDocumentField=/\b(?:amount|total|price|cost|date|deadline|expiry|expires|validity|name|address|phone|email|number|subject|marks|grade|percentage|salary|invoice|bill|receipt|policy|certificate|details|summary|written|mentioned|content|meaning|explain|describe|read|extract|what|which|who|when|how|kitna|kitne|kitni|kab|kya|kaun|batao|samjhao)\b|(?:राशि|कुल|कीमत|तारीख|नाम|पता|नंबर|विषय|अंक|कितना|कितने|कितनी|क्या|कब|कौन|बताओ|समझाओ|जानकारी|विवरण|पूरा|सारा|सारी)/iu.test(q);
  const intentGuess=detectIntent(question);
  const strongWorkspaceIntent=intentGuess.intent&&['tasks','notes','projects','routines','money'].includes(intentGuess.intent)&&intentGuess.scores[intentGuess.intent]>=4;
- return (mentionsFile&&(asksContent||refersToCurrentFile)&&!isFileLookup)||(hasUploadedDocuments&&(asksTimetable||((refersToCurrentFile||asksDocumentField)&&asksContent&&!strongWorkspaceIntent)));
+ return (mentionsFile&&(asksContent||refersToCurrentFile)&&!isFileLookup)||(hasUploadedDocuments&&(asksTimetable||asksExamDetails||((refersToCurrentFile||asksDocumentField)&&asksContent&&!strongWorkspaceIntent)));
 }
 function resolveAskDocumentId(question,targetDocId){
  if(targetDocId)return targetDocId;
@@ -2174,6 +2176,15 @@ function resolveAskDocumentId(question,targetDocId){
  if(!docs.length||!isDocumentContentQuestion(question))return null;
  const raw=String(question||'').toLowerCase();
  const timetableQuestion=isTimetableQuestion(question);
+ // Reuse the document cited by the previous assistant answer for implicit follow-ups.
+ const previousFileReply=[...(data.messages||[])].reverse().find(message=>message?.role==='assistant'&&Array.isArray(message.sources)&&message.sources.some(source=>/^(?:File: |Document JSON: )/i.test(String(source))));
+ if(previousFileReply){
+  for(const source of previousFileReply.sources){
+   const label=String(source||'').replace(/^(?:File: |Document JSON: )/i,'').replace(/\\s+·\\s+(?:Page\\s+\\d+|original file).*$/i,'').trim();
+   const matched=docs.find(doc=>[doc.name,doc.originalName].some(name=>String(name||'').trim()===label));
+   if(matched)return matched.id;
+  }
+ }
  const day=(raw.match(/\b(friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/i)||[])[1]?.toLowerCase()||'';
  const ranked=docs.map(doc=>{
   const name=askOneNormalize([doc.name,doc.originalName,doc.tags||'',doc.note||''].join(' '));
