@@ -1817,21 +1817,27 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
    }catch(fileError){console.warn('Original document could not be attached to Ask One; details redacted.');if(documentQuestion)throw fileError}
   }
  }
- const asksNotes=/\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me)\b|नोट|नोट्स|लिखा|सेव/iu.test(String(question||''));
+ const noteQuestionText=String(question||'');
+ const asksNotes=/\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me)\b|नोट|नोट्स|लिखा|सेव/iu.test(noteQuestionText);
+ const asksAllNotes=/\b(?:all|every|saare|saari|sabhi|sab|jo\s+(?:bhi\s+)?saved|what(?:'s| is)\s+(?:saved|in)|kya\s+(?:kya\s+)?saved|mere\s+notes|meri\s+notes|notes\s+(?:mein|me)\s+(?:kya|jo)|notes\s+(?:batao|dikhao)|show\s+(?:all\s+)?(?:my\s+)?notes|list\s+(?:all\s+)?(?:my\s+)?notes)\b|सारे\s*नोट्स|सभी\s*नोट्स/iu.test(noteQuestionText);
  const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||b.note.created||0)-Number(a.note.updated||a.note.created||0));
- // For explicit note questions, return recent saved notes even when generic wording has no keyword overlap.
+ // Inventory-style questions must return the user's saved notes, not only keyword matches.
  const noteMatches=rankedNotes.filter(item=>item.score>0);
- const selectedNotes=noteMatches.length?noteMatches:(asksNotes?rankedNotes.slice(0,10):[]);
- // Avoid flooding unrelated general questions with personal notes.
+ const selectedNotes=asksAllNotes?rankedNotes.slice(0,20):(noteMatches.length?noteMatches:(asksNotes?rankedNotes.slice(0,10):[]));
+ // Keep the source allow-list in sync with every note sent to the model.
  const notes=selectedNotes
-  .slice(0,10)
-  .map(({note})=>({
-   source:'Note: '+(note.title||'Untitled note'),
-   title:String(note.title||''),
-   subject:String(note.subject||''),
-   tags:String(note.tags||''),
-   content:String(note.content||'').slice(0,2400)
-  }));
+  .slice(0,20)
+  .map(({note})=>{
+   const source='Note: '+(note.title||'Untitled note');
+   sources.push(source);
+   return {
+    source,
+    title:String(note.title||''),
+    subject:String(note.subject||''),
+    tags:String(note.tags||''),
+    content:String(note.content||'').slice(0,2400)
+   };
+  });
  const overviewIntent=/\b(?:summari[sz]e|daily briefing|my day|overview|what should i do|today'?s priorities)\b/i.test(question);
  const asksProjects=overviewIntent||/\b(?:project|projects|milestone|progress)\b/i.test(question);
  const asksTasks=overviewIntent||asksProjects||/\b(?:task|tasks|todo|to-do|deadline|due|planner|today|tomorrow|kal|aaj|priority|pending|overdue|schedule|assignment|homework|kaam|kam|karna|karne|baaki|bache|adhure|zimmedari|zimmedariyan)\b|काम|कार्य|बाकी|बचे|अधूरे|जिम्मेदारी/iu.test(question);
