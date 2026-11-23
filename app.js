@@ -1817,10 +1817,13 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
    }catch(fileError){console.warn('Original document could not be attached to Ask One; details redacted.');if(documentQuestion)throw fileError}
   }
  }
- const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
- // Avoid flooding general questions with unrelated personal notes.
- const notes=rankedNotes
-  .filter(item=>terms.length>0&&item.score>0)
+ const asksNotes=/\\b(?:note|notes|saved|save|likha|likhi|likhe|yaad|jankari|jaankari|what did i write|what have i saved|mere notes|meri notes|notes mein|notes me)\\b|नोट|नोट्स|लिखा|सेव/iu.test(String(question||''));
+ const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||b.note.created||0)-Number(a.note.updated||a.note.created||0));
+ // For explicit note questions, return recent saved notes even when generic wording has no keyword overlap.
+ const noteMatches=rankedNotes.filter(item=>item.score>0);
+ const selectedNotes=noteMatches.length?noteMatches:(asksNotes?rankedNotes.slice(0,10):[]);
+ // Avoid flooding unrelated general questions with personal notes.
+ const notes=selectedNotes
   .slice(0,10)
   .map(({note})=>({
    source:'Note: '+(note.title||'Untitled note'),
@@ -1844,7 +1847,10 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
    const nextWeek=new Date(today()+'T00:00:00');nextWeek.setDate(nextWeek.getDate()+7);
    const weekKey=nextWeek.getFullYear()+'-'+String(nextWeek.getMonth()+1).padStart(2,'0')+'-'+String(nextWeek.getDate()).padStart(2,'0');
    selectedTasks=taskPool.filter(task=>!task.done&&(!task.due||task.due<=weekKey)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,25);
-  }else selectedTasks=matches.map(item=>item.task).slice(0,40);
+  }else if(matches.length)selectedTasks=matches.map(item=>item.task).slice(0,40);
+  else if(/\\b(?:my|mere|meri|saare|all|list|show|batao|dikhao|tasks?|todos?|pending|to.?do)\\b|मेरे|मेरी|काम|टास्क/iu.test(String(question||''))){
+   selectedTasks=taskPool.slice().sort((a,b)=>Number(b.updated||b.created||0)-Number(a.updated||a.created||0)).slice(0,40);
+  }
  }
  const tasks=selectedTasks.map(task=>{const source='Task: '+String(task.title||'Untitled task');sources.push(source);return {source,title:task.title||'',category:task.category||'',due:task.due||null,priority:task.priority||'Medium',completed:!!task.done,notes:String(task.notes||'').slice(0,500)}});
  let selectedProjects=[];
@@ -1862,7 +1868,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
  const memories=selectedMemories.map(memory=>{const source='Personal memory: '+String(memory.title||'Memory');sources.push(source);return {source,title:memory.title||'',category:memory.category||'',content:String(memory.content||'').slice(0,700)}});
  const studySessions=asksRoutines?(data.studySessions||[]).slice(-15).map(session=>Object.fromEntries(Object.entries(session||{}).filter(([key,value])=>!['id','created','updated'].includes(key)&&value!==null&&value!==undefined))):[];
  if(studySessions.length)sources.push('Study sessions');
- const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
+ const expenses=asksMoney?(data.expenses||[]).slice(-100).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
  const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson?.document_type||'unknown',extractionStatus:doc.extractedJson?.extraction_status||doc.ocrStatus||'saved',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,9000),structured_data:doc.extractedJson?.structured_data||{},source_pages:doc.extractedJson?.source_pages||doc.extractedJson?.pages||[],warnings:doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[]}));
