@@ -1654,7 +1654,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   }
  }
  const documents=[],sources=[];
- let totalChars=0,inlineFile;
+ let totalChars=0,inlineFile,fileRef;
  for(const hit of retrieval.evidence){
   const doc=hit.doc,label=hit.label,block='['+label+']\\n'+hit.text;
   if(totalChars+block.length>39000)continue;
@@ -1674,20 +1674,27 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  // Only send the best-matching image, and only when it is already stored locally.
  const queryLooksLikeMealMenu=/\b(?:mess|menu|meal|dinner|lunch|breakfast|hostel|canteen|food)\b|thursday|thrusday|khana|raat ka|रात|खाना|मेस|भोजन|नाश्ता/iu.test(String(question||''));
  const mealDocumentCandidates=queryLooksLikeMealMenu?allDocs.filter(doc=>doc&&['image','pdf'].includes(doc.type)).map(doc=>({doc,score:aiTextScore([doc.name,doc.originalName,doc.tags,doc.note,doc.summary,doc.extractedText,doc.extractedJson?.document_type,doc.extractedJson?.title].join(' '),['mess','menu','meal','hostel','food','breakfast','lunch','dinner','weekly'])+(/mess|menu|meal|hostel|canteen|food|भोजन|मेस/i.test([doc.name,doc.originalName,doc.tags,doc.note,doc.extractedJson?.document_type,doc.extractedJson?.title].join(' '))?12:0)})).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)): [];
- const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||(queryLooksLikeMealMenu?mealDocumentCandidates[0]?.doc:null)||allDocs.find(doc=>doc.id===retrieval.documents[0]);
+ const documentQuestion=isDocumentContentQuestion(question)||/\b(?:this|the|my|uploaded|attached)\s+(?:file|document|image|photo|pdf)\b|\b(?:read|inspect|analyse|analyze|summari[sz]e|extract|what(?:'s| is) in)\b.*\b(?:file|document|image|photo|pdf)\b/i.test(String(question||''));
+ const latestDocument=documentQuestion?allDocs.filter(doc=>doc&&['image','pdf'].includes(doc.type)).sort((a,b)=>Number(b.created||b.createdAt||b.updated||0)-Number(a.created||a.createdAt||a.updated||0))[0]:null;
+ const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||(queryLooksLikeMealMenu?mealDocumentCandidates[0]?.doc:null)||allDocs.find(doc=>doc.id===retrieval.documents[0])||latestDocument;
  if(originalCandidate){
   const matchedDoc=originalCandidate;
-  if(matchedDoc&&['image','pdf'].includes(matchedDoc.type)&&matchedDoc.fileStored){
+  if(matchedDoc&&['image','pdf'].includes(matchedDoc.type)){
+   const label='File: '+matchedDoc.name+' · original file';
+   const mimeType=normalizedDocumentMime({name:matchedDoc.originalName||matchedDoc.name,type:matchedDoc.mimeType||''});
    try{
-    const original=await getOriginalDocument(matchedDoc.id);
-    const blob=original?.blob;
-    const mimeType=String(original?.type||matchedDoc.mimeType||'').toLowerCase();
-    if(blob&&(/^image\/(jpeg|png|webp)$/.test(mimeType)||mimeType==='application/pdf')&&blob.size<=3*1024*1024){
-     const label='File: '+matchedDoc.name+' · original file';
-     inlineFile={name:matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
-     if(!sources.includes(label))sources.push(label);
+    let original=matchedDoc.fileStored?await getOriginalDocument(matchedDoc.id):null;
+    let blob=original?.blob||null;
+    if(blob&&['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType)&&blob.size>0&&blob.size<=3*1024*1024){
+     inlineFile={name:matchedDoc.originalName||matchedDoc.name,mimeType,dataBase64:await fileToBase64(blob)};
+    }else if(matchedDoc.storagePath){
+     fileRef={name:matchedDoc.originalName||matchedDoc.name,mimeType,storagePath:matchedDoc.storagePath};
+    }else if(blob&&['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType)){
+     // Larger local-only files still contribute their complete OCR text; do not silently claim the original is attached.
+     if(blob.size>3*1024*1024)throw new Error('This file is larger than the 3 MB visual-analysis limit and has not finished cloud upload. Wait for cloud sync, then ask again.');
     }
-   }catch(fileError){console.warn("Operation failed; diagnostic details redacted.")}
+    if((inlineFile||fileRef)&&!sources.includes(label))sources.push(label);
+   }catch(fileError){console.warn('Original document could not be attached to Ask One; details redacted.');if(documentQuestion)throw fileError}
   }
  }
  const rankedNotes=(data.notes||[]).filter(note=>!(note?.isPrivate===true||note?.private===true||note?.visibility==='private'||note?.aiShare===false)).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms)+(isProjectLinked(note)?100:0)})).sort((a,b)=>b.score-a.score||Number(b.note.updated||0)-Number(a.note.updated||0));
@@ -1757,7 +1764,7 @@ async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
  const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.people||source!=='People & Follow-ups')&&(privacy.money||source!=='Money & Udhaar')&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
- const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:workspaceTimezone(),dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined};
+ const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:workspaceTimezone(),dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined,fileRef:privacy.documents?context.fileRef:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // Bound every AI request so a stalled network cannot leave Ask One loading forever.
