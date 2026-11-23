@@ -1381,15 +1381,18 @@ async function convertDocumentToJSON(id){
   const token=await getStudentBrainAIToken();
   // Send the original file as visual evidence as well as OCR text. OCR alone can
   // lose Hindi glyphs, handwriting, table columns, and diagram labels.
-  let originalFile;
+  let originalFile,storagePath=doc.storagePath||'';
   try{
    const original=await getOriginalDocument(id),blob=original?.blob;
    const mimeType=String(original?.type||doc.mimeType||(doc.type==='pdf'?'application/pdf':'')).toLowerCase();
    if(blob&&blob.size>0&&blob.size<=3*1024*1024&&(['application/pdf','image/jpeg','image/png','image/webp'].includes(mimeType))){
-    originalFile={name:doc.name,mimeType,dataBase64:await fileToBase64(blob)};
+    originalFile={name:doc.originalName||doc.name,mimeType,dataBase64:await fileToBase64(blob)};
+   }else if(blob&&blob.size>3*1024*1024&&!storagePath){
+    throw new Error('Original file is still syncing securely. Wait until Cloud sync is complete, then retry extraction.');
    }
-  }catch(fileError){console.warn("Original-file visual analysis unavailable; OCR text will be used.");}
-  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText,originalFile})});
+  }catch(fileError){if(!storagePath)throw fileError;console.warn("Using the authenticated private Storage copy for visual extraction.");}
+  if(!originalFile&&!storagePath)throw new Error('Original file is unavailable. Re-upload it or finish cloud sync before extraction.');
+  const response=await fetch(CLOUD_URL+'/functions/v1/document-json',{method:'POST',headers:{'Content-Type':'application/json','apikey':CLOUD_KEY,'Authorization':'Bearer '+token},body:JSON.stringify({name:doc.originalName||doc.name,mimeType:doc.mimeType||(doc.type==='pdf'?'application/pdf':/\.jpe?g$/i.test(doc.name)?'image/jpeg':'image/png'),extractedText:doc.extractedText,originalFile,storagePath:!originalFile?storagePath:undefined})});
   let payload={};try{payload=await response.json()}catch{}
   if(!response.ok)throw new Error(payload.error||'Document conversion failed.');
   if(!payload.json||typeof payload.json!=='object'||Array.isArray(payload.json)||!payload.json.structured_data||typeof payload.json.structured_data!=='object')throw new Error('Generated JSON did not pass validation.');
@@ -1746,7 +1749,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
- const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
+ const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
  for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
  return {workspace:{today:today(),notes,tasks,projects,memories,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile,fileRef};
 }
