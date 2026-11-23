@@ -204,6 +204,54 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   pending={apply:()=>{data.tasks.push(record);persist();render()},done:'Task added to '+(project.name||project.title)+': '+title};pendingExpiresAt=Date.now()+120000;
   return answer('Project task add kar doon? “'+title+'” → '+(project.name||project.title)+'. YES / NO. Abhi save nahi hua.','Projects');
  }
+ // Dedicated note rename/delete and expense edit/delete workflows.
+ const confirmMutation=(item,apply,done,source)=>{
+  pending={apply,done};pendingExpiresAt=Date.now()+120000;
+  return answer('Confirm: '+done+'? Reply YES to confirm or NO to cancel. Abhi koi change nahi hua.',source);
+ };
+ const findByText=(items,target,fields)=>{
+  const needle=norm(target).replace(/^(?:my|the|about|note|notes|expense|expenses)\s+/,'').trim();
+  if(!needle)return [];
+  const tokens=needle.split(' ').filter(t=>t.length>1);
+  return items.map(item=>({item,score:tokens.reduce((n,t)=>n+(fields(item).some(v=>norm(v).includes(t))?1:0),0)}))
+   .filter(x=>x.score>0).sort((a,b)=>b.score-a.score)
+   .filter((x,i,a)=>x.score===a[0].score).map(x=>x.item);
+ };
+ const noteDelete=q.match(/^(?:please\s+)?(?:delete|remove|hatao|mita\s+do)\s+(?:my\s+)?notes?\s+(.+)$/i);
+ const noteRename=q.match(/^(?:please\s+)?(?:rename|edit|update|change)\s+(?:my\s+)?note\s+(.+?)\s+(?:to|as|naam\s+se)\s+(.+)$/i);
+ if((noteDelete||noteRename)&&s==='notes'){
+  const target=(noteDelete||noteRename)[1].replace(/^["']|["']$/g,'').trim();
+  const matches=findByText(data.notes||[],target,x=>[x.title,x.content,x.subject,x.tags]);
+  if(matches.length!==1)return answer(matches.length?'Multiple notes match. Note ka exact title ya kuch unique words bhejo.':'Matching note nahi mila. Koi change nahi kiya.','Notes');
+  const item=matches[0];
+  if(noteDelete){
+   const before=(data.notes||[]).slice();
+   return confirmMutation(item,()=>{data.notes=(data.notes||[]).filter(x=>x.id!==item.id);persist();window.OneCommandsUndo=()=>{data.notes=before;persist();render()};window.OneCommandsShowUndo?.();render()},'Delete note "'+(item.title||'Untitled note')+'"','Notes');
+  }
+  const next=(noteRename[2]||'').replace(/^["']|["']$/g,'').trim();
+  if(!next)return answer('Naya note title batao. Example: rename note Shopping to Grocery list.','Notes');
+  const previous={title:item.title,updated:item.updated};
+  return confirmMutation(item,()=>{item.title=next;item.updated=Date.now();persist();window.OneCommandsUndo=()=>{Object.assign(item,previous);persist();render()};window.OneCommandsShowUndo?.();render()},'Rename note "'+(item.title||'Untitled note')+'" to "'+next+'"','Notes');
+ }
+ const expenseDelete=q.match(/^(?:please\s+)?(?:delete|remove|hatao|mita\s+do)\s+(?:my\s+)?(?:the\s+)?expenses?\s+(.+)$/i);
+ const expenseEdit=q.match(/^(?:please\s+)?(?:edit|update|change)\s+(?:my\s+)?(?:the\s+)?expense\s+(.+?)\s+(?:to|as)\s+(.+)$/i);
+ if((expenseDelete||expenseEdit)&&s==='money'){
+  const target=(expenseDelete||expenseEdit)[1].replace(/^["']|["']$/g,'').trim();
+  const matches=findByText(data.expenses||[],target,x=>[x.description,x.category,x.person,x.kind,x.tags,x.date]);
+  if(matches.length!==1)return answer(matches.length?'Multiple expense records match. Date ya exact description bhi batao.':'Matching expense nahi mila. Koi change nahi kiya.','Money');
+  const item=matches[0];
+  if(expenseDelete){
+   const before=(data.expenses||[]).slice();
+   return confirmMutation(item,()=>{data.expenses=(data.expenses||[]).filter(x=>x.id!==item.id);persist();window.OneCommandsUndo=()=>{data.expenses=before;persist();render()};window.OneCommandsShowUndo?.();render()},'Delete expense "'+(item.description||item.category||'Expense')+'" · '+money(item.amount),'Money');
+  }
+  const replacement=(expenseEdit[2]||'').trim(),amountMatch=replacement.match(/(?:₹|rs\.?\s*)?(\d[\d,]*(?:\.\d+)?)(?:\s*(?:rupees?|rs\.?))?/i);
+  const nextAmount=amountMatch?Number(amountMatch[1].replace(/,/g,'')):null;
+  const nextDescription=replacement.replace(/^(?:₹|rs\.?\s*)?\d[\d,]*(?:\.\d+)?\s*(?:rupees?|rs\.?)?\s*/i,'').trim();
+  if(nextAmount===null&&!nextDescription)return answer('Nayi amount ya description batao. Example: edit expense dinner to 80 rupees.','Money');
+  const previous={amount:item.amount,description:item.description,category:item.category,tags:item.tags,updated:item.updated};
+  const summary=(nextAmount!==null?'amount '+money(item.amount)+' → '+money(nextAmount):'description "'+item.description+'" → "'+nextDescription+'"');
+  return confirmMutation(item,()=>{if(nextAmount!==null)item.amount=nextAmount;if(nextDescription){item.description=nextDescription;item.category=autoExpenseCategory(nextDescription);item.tags=[String(item.category||'Other').toLowerCase()]};item.updated=Date.now();persist();window.OneCommandsUndo=()=>{Object.assign(item,previous);persist();render()};window.OneCommandsShowUndo?.();render()},'Update expense "'+(item.description||'Expense')+'" ('+summary+')','Money');
+ }
  if(!s)return null;
  const collection={tasks:'tasks',reminders:'tasks',notes:'notes',projects:'projects',routines:'routines',money:'expenses',files:'documents'}[s],arr=()=>Array.isArray(data[collection])?data[collection]:[];
  const terms=norm(p.title||query).split(' ').filter(t=>t.length>2&&!Object.values(KEYWORDS.section).flat().map(norm).includes(t)&&!['dikhao','batao','show','list','saare','saari','sabhi','sab','jo','mere','mera','meri','history','lending','borrowing','november','december','january','february','march','april','may','june','july','august','september','october','pending','completed','complete','finished','done','incomplete','open','overdue','late','today','aaj','tomorrow','kal','for','my','delete','money','income','expense','expenses','kharcha','routine','tasks','task','notes','note','wala','wali','wale','please','mere','mera','meri','my','all','aaj','today','who','owes','me','ka','ki','ke'].includes(t));
