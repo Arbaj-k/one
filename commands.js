@@ -117,7 +117,8 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const amount=parseAmount(query);
   const expenseWrite=/\b(?:spent|spend|kharch(?:a|e)?\s+(?:kiya|kiye|hua|hue)|kharch\s+kar(?:a|e)?|paid\s+for|bought)\b/i.test(q)&&amount>0;
   const writeVerb=/\b(?:add|create|make|save|record|log|schedule|set|lagao|laga|banao|bana|jodo|daalo|dalo|yaad\s+dila)\b/i.test(q)||expenseWrite;
-  let action=bulkDeleteCompletedTasks?'delete':readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show';
+  const reminderControl=(/\b(?:pause|paused|rok do|band karo)\b/i.test(q)?'pause':/\b(?:resume|unpause|restart|chalu karo|phir se chalao)\b/i.test(q)?'resume':/\b(?:complete|finish|mark|done|khatam)\b/i.test(q)?'complete':/\b(?:delete|remove|cancel|stop)\b/i.test(q)?'delete':null)&&/\b(?:reminder|remind|yaad|briefing|water|gym)\b/i.test(q);
+  let action=bulkDeleteCompletedTasks?'delete':reminderControl|| (readVerb?'show':writeVerb?'add':reminderCue?'add':Object.entries(KEYWORDS.action).find(([,ws])=>ws.some(w=>fuzzy(q,w)))?.[0]||'show');
   const explicitLoanCue=/\b(?:udhaar|lent|lend|gave|given|borrowed|borrow|repaid|repayment|settle|settled|paid back|returned|return|liya|liye|wapas)\b/i.test(q);
   const udhaarType=personPaymentCue?'borrowed_repayment':explicitLoanCue?( /\b(?:borrowed|borrow|liya|liye|udhaar liya)\b/i.test(q)?'borrowed':/\b(?:repaid|repayment|settle|settled|paid back|returned|return|wapas)\b/i.test(q)?(/\b(?:borrowed|liya)\b/i.test(q)?'borrowed_repayment':'lent_repayment'):'lent'):'';
   const person=(q.match(/(?:^|[^a-z0-9])to\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/(?:^|[^\p{L}\p{N}])([\p{L}][\p{L}\p{M}'-]*)\s+ko(?:$|[^\p{L}\p{N}])/iu)||q.match(/(?:^|[^a-z0-9])from\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/(?:^|[^a-z0-9])with\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/(?:^|[^a-z0-9])(?:lent|borrowed|paid|returned)\s+([\p{L}][\p{L}\p{M}'-]*)/iu)||q.match(/^\s*([\p{L}][\p{L}\p{M}'-]*)\s+(?:ne|has|have)\s+\d[\d,.]*\s+(?:rupees?|rupaye|rupay|rs)?\s*(?:wapas|return|returned|paid|bhej)/iu)||q.match(/^\s*([\p{L}][\p{L}\p{M}'-]*)\s+returned(?:$|[^\p{L}\p{N}])/iu)||[])[1]||'';
@@ -133,10 +134,12 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   const date=parseDate(query),time=parseTime(query);
   let title=q
    .replace(/\b(?:please|kindly|save this idea|remember that|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|me|for|mere liye|mark|complete|finish|done|delete|remove|edit|update|do|this|idea)\b/gi,' ')
-   .replace(/\b(?:today|aaj|tomorrow|kal|parso|parson|daily|every day|weekly|monthly|every week|every month|roz|roj|har roz|har din|subah|shaam|sham|raat|night|at|baje|am|pm|oclock)\b/gi,' ')
+   .replace(/\b(?:today|aaj|tomorrow|kal|parso|parson|daily|every day|weekly|monthly|every week|every month|every\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|monday|tuesday|wednesday|thursday|friday|saturday|sunday|roz|roj|har roz|har din|subah|shaam|sham|raat|night|at|baje|am|pm|oclock|on|due|me|to|my)\b/gi,' ')
    .replace(/\b(?:due|on)\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/gi,' ')
    .replace(/\b(?:on|due)\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/gi,' ')
    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)\b/gi,' ')
+   .replace(/\b\d{1,2}(?::\d{2})?\b/g,' ')
+   .replace(/\b(?:pause|paused|resume|unpause|restart|complete|finish|mark|done|cancel|stop)\b/gi,' ')
    .replace(/\s+/g,' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g,'').trim();
   const projectName=(q.match(/\bproject\s+([\p{L}\p{N}_-]+)/u)||[])[1]||'';
   if(det.intent==='projects'&&/\bmilestone\b/.test(q)){const milestone=q.match(/\bmilestone\s+(.+?)\s+to\s+(.+?)\s+project\b/i);title=milestone?milestone[1].trim():'New milestone'}
@@ -168,7 +171,7 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   return answer('Aapke saved reminders ('+all.length+'):\\n'+list,'Reminders');
  }
  const reminderCue=/\b(?:remind(?:er)?|yaad\s+(?:dila|dilana|dila do|dila dena|rakhna)|set\s+(?:a\s+)?reminder|reminder\s+(?:set|laga)|briefing)\b/i.test(q);
- if(pendingReminderDraft&&Date.now()>reminderDraftExpiresAt)pendingReminderDraft=null;if(pendingReminderDraft&&/^(?:add|create|make|show|list|delete|remove|complete|mark|save|note|task|expense|income|udhaar|project|routine)\b/i.test(q)){pendingReminderDraft=null;}if((reminderCue&&!/\b(?:delete|remove|pause|resume|stop|cancel)\b/i.test(q))||pendingReminderDraft){
+ if(pendingReminderDraft&&Date.now()>reminderDraftExpiresAt)pendingReminderDraft=null;if(pendingReminderDraft&&/^(?:add|create|make|show|list|delete|remove|complete|mark|save|note|task|expense|income|udhaar|project|routine)\b/i.test(q)){pendingReminderDraft=null;}if((reminderCue&&!/\b(?:delete|remove|pause|resume|stop|cancel|complete|finish|mark|done)\b/i.test(q))||pendingReminderDraft){
   const combined=pendingReminderDraft?pendingReminderDraft+' '+query:query;
   const repeat=parseRecurrence(combined),repeatRule=repeat.repeatRule,due=parseDate(combined)||(repeatRule!=='none'?today():''),time=parseTime(combined);
   const title=norm(combined).replace(/\b(remind(?:er)?|set|laga|lagao|laga do|set karo|set kar do|yaad|dila|dilana|dila do|dila dena|rakhna|briefing|brief me|mujhe|mere|please|karo|karna|kar|me|the|a|an|liya|liye|ke liye|ka|ki|ke|kal|tomorrow|aaj|today|parso|parson|subah|morning|shaam|sham|evening|raat|night|at|baje|am|pm|daily|every day|weekly|every week|monthly|every month|each month|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|monday|tuesday|wednesday|thursday|friday|saturday|sunday|somvar|mangalvar|budhvar|guruwar|shukravar|shanivar|ravivar|roz|har roz|har din|for)\b/gi,' ')
