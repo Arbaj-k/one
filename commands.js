@@ -61,7 +61,7 @@
  }
  function autoExpenseCategory(text){
   const q=norm(text);
-  if(/\b(chai|tea|coffee|breakfast|lunch|dinner|food|restaurant|grocery|groceries|pizza|snack|khana|nashta|sabzi|doodh)\b/.test(q))return 'Food';
+  if(/\b(chai|tea|coffee|breakfast|lunch|dinner|food|restaurant|grocery|groceries|pizza|snack|biryani|khana|khaye|nashta|sabzi|doodh)\b/.test(q)||/खाना|खाये|बिरयानी/.test(q))return 'Food';
   if(/\b(petrol|diesel|fuel|uber|ola|taxi|cab|bus|train|metro|flight|travel|hotel|trip|auto|rickshaw)\b/.test(q))return 'Travel';
   if(/\b(rent|electricity|bijli|water|internet|mobile bill|recharge)\b/.test(q))return 'Bills';
   if(/\b(medicine|doctor|hospital|pharmacy|medical)\b/.test(q))return 'Health';
@@ -119,7 +119,9 @@ if(!det.intent&&recurrence.repeatRule!=='none'&&explicitRecurringCommand)det.int
   if(action==='complete'&&!det.intent)det.intent='tasks';
   if(action==='delete'&&!det.intent)det.intent='tasks';
   if(/\b(kitna|kitni|kitne|kya hai|how much|what is)\b/.test(q))action='show';
-  if(planSummary||weeklySpending||dailySpending||udhaarSummary)action='summary';
+  // A spend/add command may mention "aaj" and "spending/expense"; do not
+  // downgrade that write into the daily-spending read-only summary.
+  if((planSummary||weeklySpending||dailySpending||udhaarSummary)&&!writeVerb)action='summary';
   const date=parseDate(query),time=parseTime(query);
   let title=q
    .replace(/\b(?:please|kindly|add|jodo|daalo|dalo|banao|bana|create|likho|save|task|tasks|todo|assignment|assignments|homework|exam|exams|reminder|remind|yaad|dila|dilana|briefing|note|notes|project|routine|habit|paisa|paise|money|kharcha|kharch|expense|expenses|income|salary|set|schedule|kar do|karo|karna|mujhe|me|for|mere liye|mark|complete|finish|done|delete|remove|edit|update|do)\b/gi,' ')
