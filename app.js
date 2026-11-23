@@ -1589,14 +1589,11 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
   const savedText=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'');
   const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(savedText);
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
-  // A saved document must remain discoverable even when the user's wording does not
-  // share OCR keywords (for example, short Hinglish questions like 'info batao').
-  // Fall back to the newest saved document only for explicit document/knowledge queries.
-  if(targetDocId&&!matching.length){
-   // Only fall back to unranked chunks for a specifically selected document.
-   // Generic document questions must not silently inject unrelated file contents.
+  // Explicit document/knowledge questions must still retrieve a saved file when
+  // the query is generic or Hinglish and has no OCR keyword overlap.
+  if((targetDocId||documentQuestion)&&!matching.length){
    const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,24));
-   return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:1};
+   if(fallback.length)return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:targetDocId?2:1};
   }
   return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+savedText,intent.terms)};
  }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
