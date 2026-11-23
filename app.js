@@ -2883,13 +2883,13 @@ const commandPrefix=query.match(/^\/(task|expense|income|udhaar|reminder|note|fi
  if(commandPrefix){
   const section=commandPrefix[1].toLowerCase(),body=(commandPrefix[2]||'').trim();
   if(section==='task')query=/^(?:add|create|make|task|todo)\b/i.test(body)?body:'add task '+body;
-  else if(section==='expense')query=/^(?:add|save|record|log|track|spent|spend|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add expense '+body;
-  else if(section==='income')query=/^(?:add|save|record|log|track|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add income '+body;
-  else if(section==='udhaar')query=/^(?:add|save|record|log|show|list|search|delete|remove|edit|update|lent|borrowed|repay)\b/i.test(body)?body:'add udhaar '+body;
+  else if(section==='expense')query=/^(?:show|list|search)\b/i.test(body)?body:/^(?:delete|remove|edit|update)\b/i.test(body)?body.replace(/^(delete|remove|edit|update)\b/i,'$1 expense'):/^(?:add|save|record|log|track|spent|spend)\b/i.test(body)?body:'add expense '+body;
+  else if(section==='income')query=/^(?:show|list|search)\b/i.test(body)?body:/^(?:delete|remove|edit|update)\b/i.test(body)?body.replace(/^(delete|remove|edit|update)\b/i,'$1 income'):/^(?:add|save|record|log|track)\b/i.test(body)?body:'add income '+body;
+  else if(section==='udhaar')query=/^(?:show|list|search)\b/i.test(body)?body:/^(?:delete|remove|edit|update)\b/i.test(body)?body.replace(/^(delete|remove|edit|update)\b/i,'$1 udhaar'):/^(?:add|save|record|log|lent|borrowed|repay)\b/i.test(body)?body:'add udhaar '+body;
   else if(section==='routine')query=/^(?:add|create|save|show|list|search|delete|remove|edit|update)\b/i.test(body)?body:'add routine '+body;
   else if(section==='scan')query='scan '+(body||'document');
   else if(section==='reminder')query=/^(?:remind|set|show|list|delete|remove|edit|update|pause|resume)\b/i.test(body)?body:'remind me '+body;
-  else if(section==='note')query=/^(?:add|save|create|write|show|list|search|find|edit|update|rename|delete|remove)\b/i.test(body)?body:'save note '+body;
+  else if(section==='note')query=/^(?:show|list|search|find)\b/i.test(body)?body:/^(?:rename|edit|update|change)\b/i.test(body)?body.replace(/^(rename|edit|update|change)\b/i,'$1 note'):/^(?:delete|remove)\b/i.test(body)?body.replace(/^(delete|remove)\b/i,'$1 note'):/^(?:add|save|create|write)\b/i.test(body)?body:'save note '+body;
   else if(section==='project')query=/^(?:add|create|start|show|list|search|edit|update|delete|remove)\b/i.test(body)?body:'create project '+body;
   else if(section==='money'||section==='memory'||section==='file')query=body;
  }
