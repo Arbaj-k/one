@@ -2688,7 +2688,7 @@ async function chatActionIntent(question){
   const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none';
   let due=repeatRule!=='none'?today():parseDate();
   const weekdayMap={sunday:0,ravivar:0,monday:1,somvar:1,tuesday:2,mangalvar:2,wednesday:3,budhvar:3,thursday:4,guruwar:4,friday:5,shukravar:5,saturday:6,shanivar:6};
-  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\b'+day+'\b','i').test(lower));
+  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\\b'+day+'\\b','i').test(lower));
   if(weekly&&requestedWeekday){const base=new Date(due+'T12:00:00Z');const offset=(weekdayMap[requestedWeekday]-base.getUTCDay()+7)%7;base.setUTCDate(base.getUTCDate()+offset);due=base.toISOString().slice(0,10);}
   if(!daily&&!due){const dayOnly=lower.match(/\b(\d{1,2})\s*(?:tarikh|tareekh|तारीख)\b/i);if(dayOnly){const n=Number(dayOnly[1]);if(n>=1&&n<=31){const [yy,mm]=today().split('-').map(Number);let d=new Date(yy,mm-1,n);if(d.getDate()===n&&d.toISOString().slice(0,10)<today())d=new Date(yy,mm,n);if(d.getDate()===n)due=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}}}
   if(!due)return {answer:'Kis date ko briefing chahiye? Example: 20 November ko mujhe project update batana, ya roz subah 9 baje batana.',sources:['Planner','Ask One']};
@@ -2715,7 +2715,7 @@ async function chatActionIntent(question){
   const repeatRule=daily?'daily':weekly?'weekly':monthly?'monthly':'none';
   let due=repeatRule!=='none'?today():parseDate();
   const weekdayMap={sunday:0,ravivar:0,monday:1,somvar:1,tuesday:2,mangalvar:2,wednesday:3,budhvar:3,thursday:4,guruwar:4,friday:5,shukravar:5,saturday:6,shanivar:6};
-  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\b'+day+'\b','i').test(lower));
+  const requestedWeekday=Object.keys(weekdayMap).find(day=>new RegExp('\\b'+day+'\\b','i').test(lower));
   if(weekly&&requestedWeekday){const base=new Date(due+'T12:00:00Z');const offset=(weekdayMap[requestedWeekday]-base.getUTCDay()+7)%7;base.setUTCDate(base.getUTCDate()+offset);due=base.toISOString().slice(0,10);}
   if(!due)return {answer:'Reminder ki date batao. Example: Remind me to pay electricity bill tomorrow at 7 pm, ya daily/weekly/monthly at 9 am.',sources:['Planner']};
   const timeMatch=raw.match(/\b(?:at\s+(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm|baje))?|(?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)))\b/i);
