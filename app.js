@@ -1204,7 +1204,7 @@ async function recoverLegacyDocumentText(){
   const hasOriginal=!!doc.storagePath||!!doc.fileStored;
   const attempted=Number(doc.legacyRecoveryAttemptAt||0);
   return stale&&hasOriginal&&Date.now()-attempted>24*60*60*1000&&!oneLegacyRecoveryInFlight.has(doc.id);
- }).slice(0,2);
+ }).slice(0,6);
  for(const doc of docs){
   if(!cloudReady||!cloudUser||!navigator.onLine)break;
   oneLegacyRecoveryInFlight.add(doc.id);
