@@ -864,7 +864,8 @@ function documentRelatedNotes(doc){
 }
 function documentExtractionStats(doc){
  const candidates=[doc?.extractedText,doc?.extractedJson?.extracted_text,doc?.ocrText].filter(value=>typeof value==='string'&&value.trim());
- const raw=String(candidates.find(value=>!/^\[No readable text/i.test(value.trim()))||candidates[0]||'');
+ const isPlaceholder=value=>/^\[(?:Text extraction is processing|No readable text|Text extraction(?: could not| failed)?|No selectable text|Original file is saved)/i.test(String(value||'').trim());
+ const raw=String(candidates.find(value=>!isPlaceholder(value))||'');
  const clean=raw.replace(/\[Page\s+\d+\]/gi,' ').replace(/\[(?:No selectable text detected on this page\.|No readable text[^\]]*|OCR|Extraction limited[^\]]*)\]/gi,' ').replace(/\s+/g,' ').trim();
  const chars=[...clean].filter(ch=>/[\p{L}\p{N}]/u.test(ch)).length;
  const words=(clean.match(/[\p{L}\p{N}]+(?:['’.-][\p{L}\p{N}]+)*/gu)||[]).length;
@@ -877,8 +878,9 @@ function documentExtractionStats(doc){
 }
 function documentExtractionStatus(doc){
  if(doc?.ocrStatus==='processing'||doc?.jsonStatus==='processing')return 'Extraction in progress…';
- if(doc?.ocrStatus==='failed'&&!documentExtractionStats(doc).hasText)return 'No readable text extracted · Original file saved for AI visual analysis';
  const stats=documentExtractionStats(doc);
+ if(!stats.hasText&&doc?.extractedJson?.extraction_status==='no_text')return 'No readable text extracted · Structured data empty';
+ if(!stats.hasText)return 'No text extracted yet · Original file recovery required';
  const pageLabel=stats.totalPages? ' · '+stats.pagesWithText+'/'+stats.totalPages+' pages with text':'';
  const qualityLabel=stats.quality===null?' · Readability unavailable':' · Readability estimate '+stats.quality+'%';
  const struct=doc?.jsonStatus==='saved_to_knowledge'?' · Structured data ready':doc?.jsonStatus==='no_text'?' · No readable text or structured data recovered':doc?.jsonStatus==='error'?' · Structuring failed: '+(doc.jsonError||'Retry available'):doc?.jsonStatus==='processing'?' · Structuring data…':'';
