@@ -1232,7 +1232,7 @@ async function recoverLegacyDocumentText(){
  const docs=(data.documents||[]).filter(doc=>{
   const mime=String(doc?.mimeType||'').toLowerCase();
   const name=String(doc?.originalName||doc?.name||'').toLowerCase();
-  const supported=doc?.type==='pdf'||doc?.type==='image'||mime==='application/pdf'||/^image\\/(?:jpeg|png|webp)$/.test(mime)||/\\.pdf$/.test(name)||/\\.(?:jpe?g|png|webp)$/.test(name);
+  const supported=doc?.type==='pdf'||doc?.type==='image'||mime==='application/pdf'||['image/jpeg','image/png','image/webp'].includes(mime)||name.endsWith('.pdf')||['.jpg','.jpeg','.png','.webp'].some(ext=>name.endsWith(ext));
   if(!doc?.id||!supported||doc.jsonStatus==='processing'||doc.ocrStatus==='processing')return false;
   const raw=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').trim();
   const missing=!raw||/^\[(?:No readable text|Text extraction|Text extraction could not|No selectable text)/i.test(raw)||raw.replace(/\[Page\s+\d+\]|\[OCR\]/gi,'').trim().length<24;
