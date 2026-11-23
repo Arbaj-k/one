@@ -464,7 +464,7 @@ async function refreshCloudWorkspace(ownerId=cloudUser?.id){
    const metadata=cloudDoc.metadata||{};
    const cloudText=String(cloudDoc.extracted_text||'').trim();
    const localText=String(doc.extractedText||'').trim();
-   const placeholder=/^\\[Text extraction is processing/i.test(localText);
+   const placeholder=/^\[Text extraction is processing/i.test(localText);
    return {
     ...doc,
     storagePath:cloudDoc.storage_path||doc.storagePath||'',
