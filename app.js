@@ -1583,7 +1583,8 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const documentQuestion=/\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?|saved info(?:rmation)?|my knowledge|uploaded|saved file|saved document)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ|सेव|अपलोड)/iu.test(String(question||''));
  const documentList=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId));
  const candidates=documentList.map(doc=>{
-  const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(doc.extractedText||'');
+  const savedText=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'');
+  const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(savedText);
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
   // A saved document must remain discoverable even when the user's wording does not
   // share OCR keywords (for example, short Hinglish questions like 'info batao').
@@ -1594,7 +1595,7 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
    const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,24));
    return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:1};
   }
-  return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+(doc.extractedText||''),intent.terms)};
+  return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+savedText,intent.terms)};
  }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
  const picked=[],seen=new Set();
  for(const item of candidates.slice(0,maxDocs)){
@@ -1627,7 +1628,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?2:0;
   return {doc,score:tokenHits+phraseHit};
  }).filter(item=>targetDocId||item.score>0||isDocumentContentQuestion(question)).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)).slice(0,targetDocId?1:3);
- const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
+ const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson.document_type,extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages,warnings:doc.extractedJson.warnings}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
  const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
@@ -1649,7 +1650,7 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  if(!targetDocId&&contextProject){
   const linkedDocs=allDocs.filter(doc=>isProjectLinked(doc)&&!retrieval.evidence.some(hit=>hit.doc.id===doc.id)).slice(0,3);
   for(const doc of linkedDocs){
-   const text=String(doc.extractedText||doc.summary||'').slice(0,6000);
+   const text=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.summary||'').slice(0,6000);
    if(text)retrieval.evidence.push({doc,label:'File: '+doc.name+' · linked to project '+(contextProject.name||contextProject.title||''),text});
   }
  }
@@ -1661,8 +1662,8 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
   let target=documents.find(entry=>entry.id===doc.id);
   if(!target){
    target={id:doc.id,name:doc.name,type:doc.type||'file',
-    content:'',json:doc.extractedJson||null,tables:extractStructuredTables(doc.extractedText||'').slice(0,12),
-    timetable:extractTimetableData(doc.extractedText||'').slice(0,30)};
+    content:'',json:doc.extractedJson||null,tables:extractStructuredTables(doc.extractedText||doc.extractedJson?.extracted_text||'').slice(0,12),
+    timetable:extractTimetableData(doc.extractedText||doc.extractedJson?.extracted_text||'').slice(0,30)};
    documents.push(target);
   }
   target.content+=(target.content?'\\n\\n':'')+block;
@@ -1745,9 +1746,9 @@ const docList=(data.documents||[]).filter(doc=>doc&&doc.id&&doc.extractedJson&&(
  const expenses=asksMoney?(data.expenses||[]).slice(-80).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
- const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
+ const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson.document_type||'unknown',extractionStatus:doc.extractedJson.extraction_status||'saved',extracted_text:String(doc.extractedText||doc.extractedJson.extracted_text||''),structured_data:doc.extractedJson.structured_data,source_pages:doc.extractedJson.source_pages||doc.extractedJson.pages||[],warnings:doc.extractedJson.warnings||doc.extractedJson.extraction_notes||[]}));
  for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
- return {workspace:{today:today(),notes,tasks,projects,memories,studySessions,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile};
+ return {workspace:{today:today(),notes,tasks,projects,memories,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile,fileRef};
 }
 async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
