@@ -3003,7 +3003,7 @@ const commandPrefix=query.match(/^\/(task|expense|reminder|note|file|money|proje
   // the local command engine before AI planning, document retrieval or OCR fallback.
   const parsedLocal=window.OneCommands?.parseCommand?.(query);
   const localReadOrManage=(parsedLocal?.section&&(
-    ['show','summary','delete','edit','complete','pause','resume'].includes(parsedLocal.action)
+    ['add','show','summary','delete','edit','complete','pause','resume'].includes(parsedLocal.action)
     || /\b(?:find|search|show|list|display|batao|dikhao|who owes|what do i owe|pending|completed|overdue|today|aaj|this month|november)\b/i.test(query)
   ))||(/\b(?:change|update|set|move)\b.*\b(?:deadline|due date)\b/i.test(query));
   if(localReadOrManage){
