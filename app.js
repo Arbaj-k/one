@@ -861,13 +861,14 @@ function documentRelatedNotes(doc){
  return (data.notes||[]).map(note=>({note,score:aiTextScore([note.title,note.subject,note.tags,note.content].join(' '),terms),linked:linked.has(note.id)})).filter(x=>x.linked||x.score>0).sort((a,b)=>Number(b.linked)-Number(a.linked)||b.score-a.score).slice(0,4);
 }
 function documentExtractionStats(doc){
- const raw=String(doc?.extractedText||doc?.extractedJson?.extracted_text||doc?.ocrText||'');
+ const candidates=[doc?.extractedText,doc?.extractedJson?.extracted_text,doc?.ocrText].filter(value=>typeof value==='string'&&value.trim());
+ const raw=String(candidates.find(value=>!/^\[No readable text/i.test(value.trim()))||candidates[0]||'');
  const clean=raw.replace(/\[Page\s+\d+\]/gi,' ').replace(/\[(?:No selectable text detected on this page\.|No readable text[^\]]*|OCR|Extraction limited[^\]]*)\]/gi,' ').replace(/\s+/g,' ').trim();
  const chars=[...clean].filter(ch=>/[\p{L}\p{N}]/u.test(ch)).length;
  const words=(clean.match(/[\p{L}\p{N}]+(?:['’.-][\p{L}\p{N}]+)*/gu)||[]).length;
  const markers=[...raw.matchAll(/\[Page\s+(\d+)\]/gi)].map(m=>Number(m[1])).filter(Number.isFinite);
  const pageTexts=raw.split(/\[Page\s+\d+\]/i).slice(1);
- const pagesWithText=pageTexts.filter(part=>part.replace(/\[(?:No selectable text detected on this page\.|OCR|Extraction limited[^\]]*)\]/gi,'').replace(/\s/g,'').length>=3).length;
+ const pagesWithText=pageTexts.length?pageTexts.filter(part=>part.replace(/\[(?:No selectable text detected on this page\.|OCR|Extraction limited[^\]]*)\]/gi,'').replace(/\s/g,'').length>=3).length:(doc?.type==='pdf'?0:(chars?1:0));
  const totalPages=Math.max(Number(doc?.pageCount)||0,markers.length,doc?.type==='pdf'?0:1);
  const quality=chars?Math.round(documentTextQuality(clean)*100):null;
  return {chars,words,pagesWithText,totalPages,quality,hasText:chars>0};
