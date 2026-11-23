@@ -490,6 +490,8 @@ async function activateCloudWorkspace(userId){
  await syncPendingDocumentDeletes();
  await syncPendingDocumentFiles();
  subscribeWorkspaceRealtime(userId);
+ // Recover older uploads with missing/failed OCR automatically after private cloud files sync.
+ setTimeout(()=>recoverLegacyDocumentText().catch(()=>{}),1800);
 }
 function initCloud(){
  try{
@@ -1191,6 +1193,45 @@ if(type==='expense')body=field('Transaction type','kind',obj.kind||'expense','se
 const arr=data[type==='note'?'notes':type==='task'?'tasks':type==='project'?'projects':'expenses'];const old=obj.projectId||'';body=body.replaceAll('value="'+esc(old)+'"','value="'+esc(old)+'"');
 modal((id?'Edit ':'')+({note:'Note',task:'task',study:'study session',project:'project',expense:'expense'}[type]),body,id?'Save changes':'Create');const firstField=document.querySelector('#edit-form input:not([type=file]),#edit-form textarea,#edit-form select');if(firstField){firstField.removeAttribute('readonly');firstField.removeAttribute('disabled');firstField.focus();}}
 async function saveForm(e){e.preventDefault();if(formType==='fileMeta'){const fd=new FormData(e.target),metadata=Object.fromEntries(fd.entries()),file=window.pendingOneFile;if(!String(metadata.name||'').trim()){toast('Naam is required');return}if(!file){toast('Choose a file again');return}const button=e.target.querySelector('.modal-save-button');if(button){button.disabled=true;button.textContent='Saving…'}saveFile(file,metadata).then(record=>{window.pendingOneFile=null;document.querySelector('#modal-root').innerHTML='';page='vault';window.vaultDocumentQuery='';render();toast('File saved to Uploaded Items');if(record.detectedActionItems?.length)reviewOneExtractedActions('document',record.id)}).catch(error=>{if(button){button.disabled=false;button.textContent='Save file'}if(e.target?.dataset)e.target.dataset.oneSubmitting='false';toast(error.message||'Could not save file')});return}if(formType==='fileRename'){const fd=new FormData(e.target),metadata=Object.fromEntries(fd.entries());if(!String(metadata.name||'').trim()){toast('Naam is required');return}if(renameFile(editing,metadata)){document.querySelector('#modal-root').innerHTML='';render();toast('File details updated')}return}if(formType==='quickUpload'){const files=Array.from(e.target.querySelector('[name=uploads]')?.files||[]);if(!files.length){toast('Choose at least one PDF or image');return}const invalid=files.find(f=>f.size>12*1024*1024||!(f.type==='application/pdf'||f.type.startsWith('image/')));if(invalid){toast(invalid.size>12*1024*1024?'Each file must be 12 MB or smaller':'Choose only PDF or image files');return}document.querySelector('#modal-root').innerHTML='';processUploadedDocuments(files);return}const fd=new FormData(e.target),v=Object.fromEntries(fd.entries()),key=(formType==='note'||formType==='quickKnowledge')?'notes':formType==='task'?'tasks':formType==='project'?'projects':'expenses';if(formType==='memory'){data.memories=data.memories||[];const record=editing?data.memories.find(x=>x.id===editing):null;if(record)Object.assign(record,v,{date:today(),updated:Date.now()});else data.memories.push({id:uid(),...v,date:today(),created:Date.now()});persist();if(window.OneAnalytics&&!editing)window.OneAnalytics.trackEvent('memory_created');document.querySelector('#modal-root').innerHTML='';page='memory';render();toast(editing?'Memory updated':'Memory saved');return}if(formType==='quickKnowledge'){v.subject='Knowledge';v.tags='knowledge';if(!String(v.content||'').trim()){toast('Enter content');return}if(!String(v.title||'').trim())v.title='Knowledge Entry';}let noteFiles=[];if(formType==='note'){v.title=String(v.title||'').trim();v.content=String(v.content||'').trim();if(!v.content){toast('Enter note content');return}delete v.links;delete v.noteLinks;delete v.noteFiles;delete v.attachment;delete v.attachmentName;delete v.attachmentType;delete v.attachmentData;delete v.subject;delete v.tags;}if(['task','expense'].includes(formType)&&v.projectId?.includes('|'))v.projectId=v.projectId.split('|')[0];if(!v.projectId)delete v.projectId;if(formType==='study'){data.studySessions=data.studySessions||[];data.studySessions.push({id:uid(),...v,created:Date.now()});persist();document.querySelector('#modal-root').innerHTML='';render();toast('Study session planned');return}if(formType==='expense'&&(!Number.isFinite(Number(v.amount))||Number(v.amount)<=0)){toast('Enter a valid amount');return}if(formType==='expense'){v.kind=v.kind||'expense';if(v.kind!=='expense'&&!String(v.person||'').trim()){toast('Enter the person name for lending or repayment');return}if(['lent','borrowed','lent_repayment','borrowed_repayment'].includes(v.kind)){v.person=String(v.person).trim();v.description=String(v.description||'').trim()||(({lent:'Lent to ',borrowed:'Borrowed from ',lent_repayment:'Received from ',borrowed_repayment:'Repaid to '}[v.kind]||'Udhaar with ')+v.person);v.category=v.kind.includes('repayment')?'Repayment':'Udhaar'}else delete v.dueDate}if(formType==='task'){v.paused=v.reminderStatus==='paused';delete v.reminderStatus;const candidate={...v,title:String(v.title||'').trim(),repeatRule:v.repeatRule||'none'};const duplicate=reminderDuplicate(candidate,editing);if(duplicate){toast('Same reminder already exists. Duplicate save nahi hua.');return}}let obj=editing?data[key].find(x=>x.id===editing):null;if(obj)Object.assign(obj,v,{updated:Date.now()});else data[key].push({id:uid(),...v,done:false,updated:Date.now(),created:Date.now()});persist();if(formType==='task'){try{const shown=JSON.parse(localStorage.getItem(taskReminderStorageKey())||'{}');const savedTask=editing?data.tasks.find(t=>t.id===editing):data.tasks[data.tasks.length-1];if(savedTask){delete savedTask.snoozedUntil;Object.keys(shown).filter(key=>key.startsWith('task-'+savedTask.id+'-')).forEach(key=>delete shown[key]);persist();}localStorage.setItem(taskReminderStorageKey(),JSON.stringify(shown));}catch{}setTimeout(checkTaskReminders,0)}if(window.OneAnalytics&&!editing){const eventName={note:'note_created',task:'task_created',project:'project_created',expense:'expense_created'}[formType];if(eventName)window.OneAnalytics.trackEvent(eventName)}document.querySelector('#modal-root').innerHTML='';render();toast(editing?'Changes saved':'Created successfully');}
+const oneLegacyRecoveryInFlight=new Set();
+async function recoverLegacyDocumentText(){
+ if(!navigator.onLine)return;
+ const docs=(data.documents||[]).filter(doc=>{
+  if(!doc?.id||!['pdf','image'].includes(doc.type)||doc.jsonStatus==='processing'||doc.ocrStatus==='processing')return false;
+  const raw=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').trim();
+  const missing=!raw||/^\[(?:No readable text|Text extraction|Text extraction could not|No selectable text)/i.test(raw)||raw.replace(/\[Page\s+\d+\]|\[OCR\]/gi,'').trim().length<24;
+  const stale=doc.ocrStatus==='failed'||doc.jsonStatus==='error'||doc.ocrQuality===0||missing;
+  const hasOriginal=!!doc.storagePath||!!doc.fileStored;
+  const attempted=Number(doc.legacyRecoveryAttemptAt||0);
+  return stale&&hasOriginal&&Date.now()-attempted>24*60*60*1000&&!oneLegacyRecoveryInFlight.has(doc.id);
+ }).slice(0,2);
+ for(const doc of docs){
+  if(!cloudReady||!cloudUser||!navigator.onLine)break;
+  oneLegacyRecoveryInFlight.add(doc.id);
+  doc.legacyRecoveryAttemptAt=Date.now();doc.ocrStatus='processing';doc.jsonStatus='processing';doc.jsonError='';persist();render();
+  try{
+   await convertDocumentToJSON(doc.id);
+   const refreshed=(data.documents||[]).find(item=>item.id===doc.id);
+   const extracted=String(refreshed?.extractedJson?.extracted_text||refreshed?.extractedText||'').trim();
+   const clean=extracted.replace(/\[Page\s+\d+\]|\[(?:No readable text[^\]]*|No selectable text[^\]]*)\]/gi,'').trim();
+   if(clean.length>=12){
+    refreshed.extractedText=extracted;refreshed.chunks=splitDocumentIntoChunks(extracted);
+    refreshed.ocrQuality=Math.round(documentTextQuality(extracted)*100);
+    refreshed.ocrEngine='gemini-vision-auto-recovery';refreshed.ocrStatus='complete';
+    refreshed.ocrCompletedAt=Date.now();refreshed.legacyRecoveryStatus='recovered';
+    persist();await autoProcessDocumentInsights(refreshed.id);
+   }else{
+    refreshed.ocrStatus='failed';refreshed.legacyRecoveryStatus='no_readable_text';
+    refreshed.legacyRecoveryError='The original file was processed, but no readable text could be recovered.';
+    persist();
+   }
+  }catch(error){
+   const refreshed=(data.documents||[]).find(item=>item.id===doc.id);
+   if(refreshed){refreshed.ocrStatus='failed';refreshed.legacyRecoveryStatus='error';refreshed.legacyRecoveryError=String(error.message||'Automatic recovery failed').slice(0,240);persist();}
+   console.warn('Legacy document recovery failed; details redacted.');
+  }finally{oneLegacyRecoveryInFlight.delete(doc.id);render();}
+ }
+}
 async function retryDocumentOCR(id){
  const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
  try{await ensureOneDocumentLibraries(doc.type==='pdf',true)}catch(error){toast(error.message||'Document tools could not load');return}
