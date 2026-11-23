@@ -1587,7 +1587,9 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const documentList=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId));
  const candidates=documentList.map(doc=>{
   const savedText=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'');
-  const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(savedText);
+  const structuredFallback=doc.extractedJson?.structured_data&&typeof doc.extractedJson.structured_data==='object'?JSON.stringify(doc.extractedJson.structured_data):'';
+  const searchableText=savedText.trim()||structuredFallback;
+  const sourceChunks=Array.isArray(doc.chunks)&&doc.chunks.length?doc.chunks:splitDocumentIntoChunks(searchableText);
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
   // Explicit document/knowledge questions must still retrieve a saved file when
   // the query is generic or Hinglish and has no OCR keyword overlap.
@@ -1595,7 +1597,7 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
    const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,24));
    if(fallback.length)return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:targetDocId?2:1};
   }
-  return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+savedText,intent.terms)};
+  return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+searchableText,intent.terms)};
  }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
  const picked=[],seen=new Set();
  for(const item of candidates.slice(0,maxDocs)){
@@ -2074,12 +2076,12 @@ function askOneLevenshtein(a,b){
 function isDocumentContentQuestion(question){
  const q=String(question||'').toLowerCase().normalize('NFKC');
  const mentionsFile=/\b(?:pdfs?|images?|photos?|pictures?|documents?|uploaded files?|files?|scans?|receipts?|bills?|invoices?|notices?|date sheets?|screenshots?)\b|\b(?:iss|is|yeh|ye|mera|meri|mere)\s+(?:pdf|image|photo|document|file)|\b(?:pdf|image|photo|document|file)\s+(?:se|mein|me|ka|ki|ke|ko|par|about|from)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ)/u.test(q);
- const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|based|contains?|inside|says?|written|mentioned|answer|details|content|info(?:rmation)?|meaning|saved|save|knowledge|iska|iske|isme|issme|usme|usse|isse|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kitne|kitni|kab|kaise|kahan|nikalo|dikhao|samjha|btao|bta|hai|hain)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|कितने|कितनी|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये|जानकारी|सेव|सहेजा)/u.test(q);
+ const asksContent=/\b(?:what|whats|what's|which|who|when|where|how|explain|summari[sz]e|describe|read|tell|show|find|extract|according|based|contains?|inside|says?|written|mentioned|answer|details|content|info(?:rmation)?|meaning|saved|save|knowledge|iska|iske|isme|issme|usme|usse|isse|batao|samjhao|likha|kya|padh|padho|bata|samjha|kaunsa|kitna|kitne|kitni|kab|kaise|kahan|nikalo|dikhao|samjha|btao|bta|hai|hain|jankari|jaankari|maloom|pata|poora|saara|saari)\b|(?:क्या|कौन|कब|कहाँ|कहां|कैसे|कितना|कितने|कितनी|बताओ|बताइए|समझाओ|पढ़ो|पढ़कर|लिखा|मिला|निकालो|दिखाओ|बताइये|जानकारी|सेव|सहेजा)/u.test(q);
  const isFileLookup=/^\s*(?:where is|find|search for|show me|list)\b/i.test(q)&&/\b(?:my )?(?:pdf|image|photo|document|file|files)\b/i.test(q);
  const asksTimetable=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(q);
  const hasUploadedDocuments=(data.documents||[]).some(doc=>doc&&doc.id);
  const refersToCurrentFile=/\b(?:this|that|it|these|those|iska|iske|iski|iss|isme|isey|isse|uska|uske|uski|usme|usse|yeh|ye|uploaded)\b|(?:इसका|इसकी|इसके|इसमें|इसे|उसका|उसकी|उसमें|उससे|ये|यह)/iu.test(q);
- const asksDocumentField=/\b(?:amount|total|price|cost|date|deadline|expiry|expires|validity|name|address|phone|email|number|subject|marks|grade|percentage|salary|invoice|bill|receipt|policy|certificate|details|summary|written|mentioned|content|meaning|explain|describe|read|extract|what|which|who|when|how|kitna|kitne|kitni|kab|kya|kaun|batao|samjhao)\b|(?:राशि|कुल|कीमत|तारीख|नाम|पता|नंबर|विषय|अंक|कितना|कितने|कितनी|क्या|कब|कौन|बताओ|समझाओ)/iu.test(q);
+ const asksDocumentField=/\b(?:amount|total|price|cost|date|deadline|expiry|expires|validity|name|address|phone|email|number|subject|marks|grade|percentage|salary|invoice|bill|receipt|policy|certificate|details|summary|written|mentioned|content|meaning|explain|describe|read|extract|what|which|who|when|how|kitna|kitne|kitni|kab|kya|kaun|batao|samjhao)\b|(?:राशि|कुल|कीमत|तारीख|नाम|पता|नंबर|विषय|अंक|कितना|कितने|कितनी|क्या|कब|कौन|बताओ|समझाओ|जानकारी|विवरण|पूरा|सारा|सारी)/iu.test(q);
  const intentGuess=detectIntent(question);
  const strongWorkspaceIntent=intentGuess.intent&&['tasks','notes','projects','routines','money'].includes(intentGuess.intent)&&intentGuess.scores[intentGuess.intent]>=4;
  return (mentionsFile&&(asksContent||refersToCurrentFile)&&!isFileLookup)||(hasUploadedDocuments&&(asksTimetable||((refersToCurrentFile||asksDocumentField)&&asksContent&&!strongWorkspaceIntent)));
