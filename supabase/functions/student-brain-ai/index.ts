@@ -224,9 +224,6 @@ Rules:
       parts.push({ text: "The original file attached next is: " + validatedInline.name + ". Read it visually and use it as primary evidence for file-specific questions. Cite \"" + validatedInline.label + "\" when used." });
       parts.push({ inline_data: { mime_type: validatedInline.mimeType, data: validatedInline.data } });
     }
-    const primaryModel = "gemini-3.5-flash-lite";
-    const fallbackModel = "gemini-2.5-flash";
-    let usedModel = primaryModel;
     const requestBody = JSON.stringify({
       contents: [{ role: "user", parts }],
       generationConfig: { responseMimeType: "application/json", maxOutputTokens: validatedInline ? 6000 : 1800, temperature: 0.2 },
@@ -240,36 +237,61 @@ Rules:
       });
     }
 
-    let aiResponse: Response;
-    try {
-      aiResponse = await callGemini(primaryModel);
-      // A 5xx from Gemini is an upstream availability failure, not a user-data
-      // validation error. Fail over once to another currently supported stable
-      // Flash model; never fail over on auth, quota, or malformed-request errors.
-      if (aiResponse.status >= 500) {
-        console.warn("Gemini primary model returned an upstream error.", JSON.stringify({
-          model: primaryModel, httpStatus: aiResponse.status,
-        }));
-        await new Promise(resolve => setTimeout(resolve, 450));
-        usedModel = fallbackModel;
-        aiResponse = await callGemini(fallbackModel);
-      }
-    } catch (upstreamError) {
-      const reason = upstreamError instanceof Error ? upstreamError.name : "unknown";
-      console.warn("Gemini request transport failed.", JSON.stringify({ model: usedModel, reason }));
-      if (reason === "TimeoutError" || reason === "AbortError") {
-        return json(req, { error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504);
-      }
-      // A network failure may be transient or model-specific; try the alternate
-      // stable model once before returning an error.
+    // Discover models enabled for THIS API key instead of hard-coding a model
+    // that may have been retired or may not be available to this project.
+    async function discoverGeminiModels(): Promise<string[]> {
+      const preferred = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
       try {
-        usedModel = fallbackModel;
-        aiResponse = await callGemini(fallbackModel);
-      } catch (fallbackError) {
-        const fallbackReason = fallbackError instanceof Error ? fallbackError.name : "unknown";
-        console.warn("Gemini fallback transport failed.", JSON.stringify({ model: fallbackModel, reason: fallbackReason }));
-        return json(req, { error: "Could not connect to Gemini after trying the backup model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502);
+        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+          headers: { "x-goog-api-key": geminiKey },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) return preferred;
+        const payload = await response.json();
+        const available = (Array.isArray(payload?.models) ? payload.models : [])
+          .filter((item: any) =>
+            typeof item?.name === "string" &&
+            Array.isArray(item?.supportedGenerationMethods) &&
+            item.supportedGenerationMethods.includes("generateContent")
+          )
+          .map((item: any) => String(item.name).replace(/^models\//, ""));
+        const selected = preferred.filter(name => available.includes(name));
+        return selected.length ? selected : available.filter((name: string) => /flash/i.test(name)).slice(0, 4);
+      } catch {
+        return preferred;
       }
+    }
+
+    const candidateModels = await discoverGeminiModels();
+    let usedModel = candidateModels[0] || "gemini-2.5-flash";
+    let aiResponse: Response | null = null;
+    let lastTransportError: unknown = null;
+
+    for (const model of candidateModels.length ? candidateModels : ["gemini-2.5-flash", "gemini-2.0-flash"]) {
+      usedModel = model;
+      try {
+        aiResponse = await callGemini(model);
+        // A missing/retired model is a reason to try the next model. Also retry
+        // transient provider failures once on the next available candidate.
+        if (aiResponse.ok) break;
+        if (aiResponse.status !== 404 && aiResponse.status < 500) break;
+        console.warn("Gemini candidate unavailable; trying next candidate.", JSON.stringify({
+          model, httpStatus: aiResponse.status,
+        }));
+      } catch (error) {
+        lastTransportError = error;
+        const reason = error instanceof Error ? error.name : "unknown";
+        console.warn("Gemini candidate transport failed.", JSON.stringify({ model, reason }));
+        if (reason === "TimeoutError" || reason === "AbortError") {
+          return json(req, { error: "Gemini took too long to respond. Retry in a moment; your local data is unchanged.", code: "GEMINI_TIMEOUT" }, 504);
+        }
+      }
+    }
+
+    if (!aiResponse) {
+      const reason = lastTransportError instanceof Error ? lastTransportError.name : "unknown";
+      console.warn("All Gemini candidates failed before receiving a response.", JSON.stringify({ reason }));
+      return json(req, { error: "Could not connect to an available Gemini model. Your saved data remains unchanged; please retry shortly.", code: "GEMINI_NETWORK" }, 502);
     }
 
     let aiResult: any = {};
