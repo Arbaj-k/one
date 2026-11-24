@@ -1451,6 +1451,8 @@ async function processUploadedDocumentsOnce(files,sourceNoteId=null,existingReco
    data.documents=data.documents||[];
    const extractedJson=documentTextToJSON(file.name,extractedText);
    const existingRecord=(data.documents||[]).find(item=>item.id===id);const documentRecord={id,name:existingRecord?.name||file.name,originalName:file.name,type:isPdf?'pdf':'image',mimeType,size:file.size,pageCount:isPdf?(typeof pdf!=='undefined'?pdf.numPages:existingRecord?.pageCount||0):1,extractedText,extractedJson,chunks:splitDocumentIntoChunks(extractedText),ocrQuality:Math.round(documentTextQuality(usableText)*100),ocrEngine:window.Tesseract?'tesseract-eng+hin':'pdf-text-layer',ocrCompletedAt:Date.now(),created:existingRecord?.created||Date.now(),createdAt:existingRecord?.createdAt||Date.now(),updated:Date.now(),tags:existingRecord?.tags||[],note:existingRecord?.note||'',sourceNoteId:sourceNoteId||existingRecord?.sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored:fileStored||existingRecord?.fileStored||false,jsonStatus:'text_extracted',ocrStatus:ocrFailed?'failed':'complete',cloudUploadStatus:existingRecord?.cloudUploadStatus||'pending'};if(existingRecord)Object.assign(existingRecord,documentRecord);else data.documents.push(documentRecord);
+   // A deliberate file upload enables document context for Ask One so extracted text/JSON can answer follow-up questions.
+   data.aiPrivacy=data.aiPrivacy||{};data.aiPrivacy.documents=true;
    persist();if(cloudReady&&cloudUser){documentRecord.cloudUploadStatus='uploading';try{await Promise.race([syncOriginalDocumentToCloud(documentRecord,file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Cloud upload timed out')),20000))])}catch(uploadError){documentRecord.cloudUploadStatus='pending';documentRecord.cloudUploadError=String(uploadError.message||'Cloud upload failed').slice(0,300);persist();toast('File saved locally. Cloud upload will retry when connected.')}}if(window.OneAnalytics)window.OneAnalytics.trackEvent('document_uploaded',page);render();setProgress(92,'Processing '+file.name);toast('File uploaded. Extracting readable text and document data…');try{await convertDocumentToJSON(id);const refreshed=(data.documents||[]).find(item=>item.id===id);const hasRecoveredText=String(refreshed?.extractedText||'').replace(/\[Page\s+\d+\]|\[No readable text[^\]]*\]|\[No selectable text[^\]]*\]/gi,'').trim().length>=12;if(hasRecoveredText){refreshed.ocrStatus='complete';refreshed.ocrQuality=Math.max(Number(refreshed.ocrQuality)||0,Math.round(documentTextQuality(refreshed.extractedText)*100));refreshed.ocrEngine='gemini-vision+browser-ocr';persist();await autoProcessDocumentInsights(id)}else if(refreshed?.jsonStatus==='saved_to_knowledge'){refreshed.ocrStatus='complete';refreshed.ocrEngine='gemini-vision';persist();toast('Document visually processed. Text layer was unavailable; see structured data.')}}catch(processError){console.warn('Document visual extraction did not complete; original file is retained.');}
   }catch(err){
    console.warn('Document extraction failed; attempting to preserve the original upload.');
@@ -1458,7 +1460,7 @@ async function processUploadedDocumentsOnce(files,sourceNoteId=null,existingReco
    if(!alreadySaved){
     const id=uid();let fileStored=false;try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn('Original file storage failed; metadata-only recovery will be attempted.');}
     const fallback={id,name:file.name,originalName:file.name,type:normalizedDocumentMime(file)==='application/pdf'?'pdf':'image',mimeType:normalizedDocumentMime(file),size:file.size,extractedText:'[Text extraction could not finish. Original file is saved for later retry.]',extractedJson:documentTextToJSON(file.name,''),chunks:[],ocrQuality:0,ocrEngine:'pending',created:Date.now(),createdAt:Date.now(),sourceNoteId:sourceNoteId||null,sourceKind:sourceNoteId?'note-attachment':'uploaded-file',fileStored,jsonStatus:'pending',ocrStatus:'failed',cloudUploadStatus:'pending',uploadError:String(err.message||'Document processing failed').slice(0,240)};
-    data.documents=data.documents||[];data.documents.push(fallback);persist();
+    data.documents=data.documents||[];data.documents.push(fallback);data.aiPrivacy=data.aiPrivacy||{};data.aiPrivacy.documents=true;persist();
     if(cloudReady&&cloudUser&&fileStored){try{await syncOriginalDocumentToCloud(fallback,file)}catch(cloudError){fallback.cloudUploadError=String(cloudError.message||'Cloud upload failed').slice(0,240);persist()}}
     render();setStatus(fileStored?'Original file saved. Text extraction can be retried later.':'Upload details saved, but browser storage could not keep the original file. Try a smaller file.');toast(fileStored?'File saved; text extraction can be retried.':'File could not be fully saved. Try a smaller file.');
    }else{const existing=(data.documents||[]).find(item=>item.id===existingRecordId)||(data.documents||[]).find(item=>item.originalName===file.name&&Number(item.size)===Number(file.size)&&Number(item.created||0)>=uploadStartedAt-1000);if(existing){existing.ocrStatus='failed';existing.jsonStatus=existing.jsonStatus||'pending';existing.cloudUploadStatus=existing.cloudUploadStatus||'pending';existing.uploadError=String(err.message||'Document processing did not finish').slice(0,240);persist()}setStatus('Original file is saved. Text extraction can be retried later.');toast('File saved; text extraction can be retried.')}
@@ -1731,6 +1733,14 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  }
  return {intent,evidence,documents:[...new Set(evidence.map(hit=>hit.doc.id))],chars:total};
 }
+function compactDocumentAIValue(value,depth=0){
+ if(value==null||typeof value==='boolean'||typeof value==='number')return value;
+ if(typeof value==='string')return value.slice(0,500);
+ if(depth>=4)return Array.isArray(value)?'[array truncated]':'[object truncated]';
+ if(Array.isArray(value))return value.slice(0,14).map(item=>compactDocumentAIValue(item,depth+1));
+ if(typeof value==='object')return Object.fromEntries(Object.entries(value).slice(0,28).map(([key,item])=>[String(key).slice(0,100),compactDocumentAIValue(item,depth+1)]));
+ return String(value).slice(0,300);
+}
 async function buildStudentBrainAIRequest(question,targetDocId=null){
  const terms=aiQueryTerms(question),allDocs=(data.documents||[]).filter(doc=>doc&&doc.id);
 const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
@@ -1746,13 +1756,13 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?4:0;
   const contentQuality=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').trim().length?1:0;
   return {doc,score:tokenHits+phraseHit+contentQuality};
- }).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||b.doc.updated||0)-Number(a.doc.createdAt||a.doc.created||a.doc.updated||0)).slice(0,targetDocId?1:8);
- const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson?.document_type||'unclassified',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,9000),structured_data:doc.extractedJson?.structured_data||{},source_pages:doc.extractedJson?.source_pages||doc.extractedJson?.pages||[],warnings:doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[]}));
+ }).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||b.doc.updated||0)-Number(a.doc.createdAt||a.doc.created||a.doc.updated||0)).slice(0,targetDocId?1:5);
+ const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson?.document_type||'unclassified',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,2200),structured_data:compactDocumentAIValue(doc.extractedJson?.structured_data||{}),source_pages:compactDocumentAIValue(doc.extractedJson?.source_pages||doc.extractedJson?.pages||[]),warnings:compactDocumentAIValue(doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[])}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
  const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
  const isProjectLinked=item=>!!contextProject&&(item.projectId===contextProject.id||item.relatedProjectId===contextProject.id||(Array.isArray(item.projectIds)&&item.projectIds.includes(contextProject.id)));
- const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:6,maxChunks:targetDocId?24:24,maxChars:39000});
+ const retrieval=aiBuildDocumentEvidence(allDocs,question,targetDocId,{maxDocs:targetDocId?1:8,maxChunks:targetDocId?32:32,maxChars:26000});
  // Structured timetable JSON is authoritative and must reach the model even when
  // OCR chunks contain no matching words or an older upload has sparse extracted text.
  if(isTimetableQuestion(question)){
@@ -1781,7 +1791,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
   let target=documents.find(entry=>entry.id===doc.id);
   if(!target){
    target={id:doc.id,name:doc.name,type:doc.type||'file',
-    content:'',json:doc.extractedJson||null,tables:extractStructuredTables(doc.extractedText||doc.extractedJson?.extracted_text||'').slice(0,12),
+    content:'',json:compactDocumentAIValue(doc.extractedJson||null),tables:extractStructuredTables(doc.extractedText||doc.extractedJson?.extracted_text||'').slice(0,12),
     timetable:extractTimetableData(doc.extractedText||doc.extractedJson?.extracted_text||'').slice(0,30)};
    documents.push(target);
   }
@@ -1877,7 +1887,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
  const expenses=asksMoney?(data.expenses||[]).slice(-100).map(expense=>({description:expense.description||'',category:expense.category||'',person:expense.person||'',kind:expense.kind||'expense',amount:expense.amount||0,date:expense.date||'',dueDate:expense.dueDate||''})):[];
  if(expenses.length)sources.push('Money & Udhaar');
  const intelligence={dailyPlan:overviewIntent?phase4DailyPlan().answer:undefined,projectRisks:asksProjects?phase4ProjectRisks().answer:undefined,spendingInsights:asksMoney?phase4SpendingInsights().answer:undefined};
- const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson?.document_type||'unknown',extractionStatus:doc.extractedJson?.extraction_status||doc.ocrStatus||'saved',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,9000),structured_data:doc.extractedJson?.structured_data||{},source_pages:doc.extractedJson?.source_pages||doc.extractedJson?.pages||[],warnings:doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[]}));
+ const structuredDocuments=rankedJson.map(({doc})=>({id:doc.id,name:doc.name,type:doc.type||'file',savedAt:doc.jsonSavedAt||doc.jsonConvertedAt||doc.ocrCompletedAt||null,documentType:doc.extractedJson?.document_type||'unknown',extractionStatus:doc.extractedJson?.extraction_status||doc.ocrStatus||'saved',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,2200),structured_data:compactDocumentAIValue(doc.extractedJson?.structured_data||{}),source_pages:compactDocumentAIValue(doc.extractedJson?.source_pages||doc.extractedJson?.pages||[]),warnings:compactDocumentAIValue(doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[])}));
  for(const doc of structuredDocuments){const label='Document JSON: '+doc.name;if(!sources.includes(label))sources.push(label)}
  return {workspace:{today:today(),notes,tasks,projects,memories,expenses,documents,jsonDocuments,structuredDocuments,intelligence},sources:[...new Set([...sources,...jsonDocuments.map(item=>item.source)])].slice(0,40),inlineFile,fileRef};
 }
