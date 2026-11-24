@@ -1294,7 +1294,7 @@ async function retryDocumentOCR(id){
        const base=pg.getViewport({scale:1}),viewport=pg.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pg.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-       const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
+       const ocr=await runImageOCR(canvas);if(ocr.trim())pageText=mergeDocumentTextLayers(pageText,ocr);
         }
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
@@ -1302,7 +1302,7 @@ async function retryDocumentOCR(id){
      pg.cleanup?.();
     }
    }else{
-    if(window.Tesseract){try{extracted=await Promise.race([runImageOCR(file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Image text scan timed out')),20000))])}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}}
+    try{if(!window.Tesseract)await ensureOneDocumentLibraries(false,true);if(window.Tesseract)extracted=await Promise.race([runImageOCR(file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Image text scan timed out')),20000))])}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
    }
    await saveOriginalDocument(id,file);
    const readable=extracted.trim();doc.extractedText=readable||'[No readable text detected. Original file is available for AI analysis.]';
@@ -1322,6 +1322,17 @@ function documentTextQuality(value){
  const usefulWords=words.filter(word=>/[\p{L}\p{N}]{2,}/u.test(word)).length;
  const repeated=(text.match(/(.)\1{4,}/gu)||[]).join('').length;
  return Math.max(0,Math.min(1,(chars/visible)*.55+(usefulWords/Math.max(1,words.length))*.45-(repeated/visible)*.5));
+}
+function mergeDocumentTextLayers(nativeText,ocrText){
+ const native=String(nativeText||'').trim(),ocr=String(ocrText||'').trim();
+ if(!native)return ocr?'[OCR]\n'+ocr:'';
+ if(!ocr)return native;
+ const normalize=value=>value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
+ const a=normalize(native),b=normalize(ocr);
+ if(!b||a.includes(b)||b.includes(a))return native.length>=ocr.length?native:'[OCR]\n'+ocr;
+ // Keep both layers: OCR often recovers scanned columns, handwriting and Hindi text
+ // that the selectable PDF layer omits, while native text preserves exact characters.
+ return native+'\n[OCR supplementary]\n'+ocr;
 }
 function shouldRunDocumentOCR(value){
  const text=String(value||'').replace(/\[Page\s+\d+\]|\[OCR\]|\[No selectable text detected[^\]]*\]/gi,' ').trim();
@@ -1432,7 +1443,7 @@ async function processUploadedDocumentsOnce(files,sourceNoteId=null,existingReco
        const base=pdfPage.getViewport({scale:1}),viewport=pdfPage.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pdfPage.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-       const ocr=await runImageOCR(canvas);if(ocr.trim()&&documentTextQuality(ocr)>documentTextQuality(pageText))pageText='[OCR]\n'+ocr.trim();
+       const ocr=await runImageOCR(canvas);if(ocr.trim())pageText=mergeDocumentTextLayers(pageText,ocr);
         }
       }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
      }
@@ -1442,7 +1453,7 @@ async function processUploadedDocumentsOnce(files,sourceNoteId=null,existingReco
     }
    }else{
     setProgress(15,window.Tesseract?'Reading image text · '+file.name:'Saving original image for AI analysis · '+file.name);
-    if(window.Tesseract){try{const ocrFile=await documentFileForOcr(file);extracted=await runImageOCR(ocrFile)}catch(ocrError){console.warn('Image OCR unavailable; original upload will be retained.')}}
+    try{if(!window.Tesseract)await ensureOneDocumentLibraries(false,true);if(window.Tesseract){const ocrFile=await documentFileForOcr(file);extracted=await runImageOCR(ocrFile)}}catch(ocrError){console.warn('Image OCR unavailable; original upload will be retained.')}
    }
    setProgress(88,'Saving '+file.name);const id=existingRecordId||uid();let fileStored=!!existingRecordId;
    if(!existingRecordId){try{await saveOriginalDocument(id,file);fileStored=true}catch(storageError){console.warn("Operation failed; diagnostic details redacted.")}}
