@@ -1894,19 +1894,24 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
 async function requestStudentBrainAI(question,targetDocId=null,mode=null){
  const token=await getStudentBrainAIToken(),context=await buildStudentBrainAIRequest(question,targetDocId);
  const privacy={notes:data.aiPrivacy?.notes===true,tasks:data.aiPrivacy?.tasks===true,projects:data.aiPrivacy?.projects===true,documents:data.aiPrivacy?.documents===true,money:data.aiPrivacy?.money===true,memories:data.aiPrivacy?.memories===true,people:data.aiPrivacy?.people===true};
+ // A direct question about an uploaded file is an explicit, one-request
+ // instruction to use that file. Never include documents marked private or
+ // opted out of AI sharing, and do not change the user's persistent settings.
+ const explicitDocumentQuestion=isDocumentContentQuestion(question);
+ const allowDocumentContext=privacy.documents||explicitDocumentQuestion;
  const selectedWorkspace={...context.workspace};
  if(!privacy.notes)selectedWorkspace.notes=[];
  if(!privacy.tasks)selectedWorkspace.tasks=[];
  if(!privacy.projects)selectedWorkspace.projects=[];
- if(!privacy.documents){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[];selectedWorkspace.structuredDocuments=[]}
+ if(!allowDocumentContext){selectedWorkspace.documents=[];selectedWorkspace.jsonDocuments=[];selectedWorkspace.structuredDocuments=[]}
  if(!privacy.money)selectedWorkspace.expenses=[];
  if(!privacy.memories)selectedWorkspace.memories=[];
  if(!privacy.people)selectedWorkspace.followUps=[];
  if(!privacy.tasks)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,dailyPlan:undefined};
  if(!privacy.projects)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,projectRisks:undefined};
  if(!privacy.money)selectedWorkspace.intelligence={...selectedWorkspace.intelligence,spendingInsights:undefined};
- const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.people||source!=='People & Follow-ups')&&(privacy.money||source!=='Money & Udhaar')&&(privacy.documents||!(/^(?:File: |Document JSON: )/.test(source)));
- const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:workspaceTimezone(),dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:privacy.documents?context.inlineFile:undefined,fileRef:privacy.documents?context.fileRef:undefined};
+ const sourceAllowed=source=>(privacy.notes||!source.startsWith('Note: '))&&(privacy.tasks||!source.startsWith('Task: '))&&(privacy.projects||!source.startsWith('Project: '))&&(privacy.memories||!source.startsWith('Personal memory: '))&&(privacy.people||source!=='People & Follow-ups')&&(privacy.money||source!=='Money & Udhaar')&&(allowDocumentContext||!(/^(?:File: |Document JSON: )/.test(source)));
+ const body={message:question,mode:mode||undefined,workspace:{...selectedWorkspace,today:today(),timezone:workspaceTimezone(),dateInterpretation:'Interpret aaj/today as workspace.today. Interpret kal/tomorrow as the next calendar day for future reminders; interpret kal/yesterday only when the user clearly describes a past event (e.g. diya tha, hua tha, yesterday). Never claim data is not uploaded when the user is asking to create a reminder or briefing; use the local workspace action flow.'},allowedSources:context.sources.filter(sourceAllowed),inlineFile:allowDocumentContext?context.inlineFile:undefined,fileRef:allowDocumentContext?context.fileRef:undefined};
  let response,networkError;
  const endpoint=CLOUD_URL+'/functions/v1/student-brain-ai';
  // Bound every AI request so a stalled network cannot leave Ask One loading forever.
