@@ -1735,10 +1735,10 @@ function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
 }
 function compactDocumentAIValue(value,depth=0){
  if(value==null||typeof value==='boolean'||typeof value==='number')return value;
- if(typeof value==='string')return value.slice(0,500);
+ if(typeof value==='string')return value.slice(0,900);
  if(depth>=4)return Array.isArray(value)?'[array truncated]':'[object truncated]';
- if(Array.isArray(value))return value.slice(0,14).map(item=>compactDocumentAIValue(item,depth+1));
- if(typeof value==='object')return Object.fromEntries(Object.entries(value).slice(0,28).map(([key,item])=>[String(key).slice(0,100),compactDocumentAIValue(item,depth+1)]));
+ if(Array.isArray(value))return value.slice(0,20).map(item=>compactDocumentAIValue(item,depth+1));
+ if(typeof value==='object')return Object.fromEntries(Object.entries(value).slice(0,40).map(([key,item])=>[String(key).slice(0,100),compactDocumentAIValue(item,depth+1)]));
  return String(value).slice(0,300);
 }
 async function buildStudentBrainAIRequest(question,targetDocId=null){
@@ -1757,7 +1757,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
   const contentQuality=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').trim().length?1:0;
   return {doc,score:tokenHits+phraseHit+contentQuality};
  }).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||b.doc.updated||0)-Number(a.doc.createdAt||a.doc.created||a.doc.updated||0)).slice(0,targetDocId?1:5);
- const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson?.document_type||'unclassified',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,2200),structured_data:compactDocumentAIValue(doc.extractedJson?.structured_data||{}),source_pages:compactDocumentAIValue(doc.extractedJson?.source_pages||doc.extractedJson?.pages||[]),warnings:compactDocumentAIValue(doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[])}));
+ const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson?.document_type||'unclassified',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,6000),structured_data:compactDocumentAIValue(doc.extractedJson?.structured_data||{}),source_pages:compactDocumentAIValue(doc.extractedJson?.source_pages||doc.extractedJson?.pages||[]),warnings:compactDocumentAIValue(doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[])}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
  const contextProject=projectCandidates.length&&projectCandidates[0].score>=2?projectCandidates[0].project:null;
