@@ -35,25 +35,41 @@
    if(m)key_value.push({page:page.page,key:normalizeKey(m[1]),label:m[1].trim(),value:m[2].trim(),raw:line});
   }
   const tables=[];
+  // Preserve blank cells: a timetable is a grid, and dropping an empty cell
+  // shifts every later subject into the wrong time slot.
+  const splitCells=line=>{
+   const delimiter=line.includes('|')?'|':line.includes('\t')?'\t':null;
+   if(!delimiter)return null;
+   let cells=line.split(delimiter).map(value=>value.trim());
+   if(delimiter==='|'&&cells[0]==='')cells.shift();
+   if(delimiter==='|'&&cells[cells.length-1]==='')cells.pop();
+   return cells;
+  };
   for(const page of pages){
-   const candidates=page.text.filter(line=>/[|\t]/.test(line));
-   for(let i=0;i<candidates.length;i++){
-    const columns=candidates[i].split(/[|\t]+/).map(x=>x.trim()).filter(Boolean);
-    if(columns.length<2)continue;
-    const rows=[];
-    for(let j=i+1;j<candidates.length;j++){
-     const row=candidates[j].split(/[|\t]+/).map(x=>x.trim()).filter(Boolean);
-     if(row.length!==columns.length)break;
-     rows.push(Object.fromEntries(columns.map((label,k)=>[normalizeKey(label)||'column_'+(k+1),row[k]||''])));
+   const rows=page.text.map(line=>({raw:line,cells:splitCells(line)})).filter(row=>row.cells&&row.cells.length>=2);
+   for(let i=0;i<rows.length;i++){
+    const header=rows[i].cells;
+    if(header.length<3)continue;
+    const body=[];
+    for(let j=i+1;j<rows.length;j++){
+     const cells=rows[j].cells;
+     if(cells.length>header.length)break;
+     body.push(Array.from({length:header.length},(_,k)=>cells[k]??''));
     }
-    if(rows.length){tables.push({page:page.page,columns:columns.map((label,k)=>({key:normalizeKey(label)||'column_'+(k+1),label})),rows});i+=rows.length;}
+    if(body.length){
+     tables.push({page:page.page,columns:header.map((label,k)=>({key:normalizeKey(label)||'column_'+(k+1),label})),rows:body.map((cells,index)=>({row_number:index+1,cells:cells.map((value,k)=>({column:header[k]||'column_'+(k+1),value,empty:!value}))}))});
+     i+=body.length;
+    }
    }
   }
   const timetable=[];
-  for(const page of pages)for(const line of page.text){
-   const m=line.match(/\b(\d{1,2}(?:[:.]\d{2})?\s*(?:AM|PM)?)\s*(?:-|–|to)\s*(\d{1,2}(?:[:.]\d{2})?\s*(?:AM|PM)?)\b/i);
-   if(m&&/(subject|exam|course|paper|lecture|class|date|aec|vac|sec|elective)/i.test(line)){
-    timetable.push({page:page.page,source:line,start_time:m[1].trim(),end_time:m[2].trim()});
+  const timetableDay=/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार)$/i;
+  for(const page of pages){
+   let currentDay='';
+   for(const line of page.text){
+    if(timetableDay.test(line.trim())){currentDay=line.trim();continue}
+    const m=line.match(/\b(\d{1,2}(?:[:.]\d{2})?\s*(?:AM|PM)?)\s*(?:-|–|to)\s*(\d{1,2}(?:[:.]\d{2})?\s*(?:AM|PM)?)\b/i);
+    if(m)timetable.push({page:page.page,day:currentDay||null,source:line,start_time:m[1].trim(),end_time:m[2].trim()});
    }
   }
   const line_records=[];
