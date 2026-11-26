@@ -1817,7 +1817,14 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
  const mealDocumentCandidates=queryLooksLikeMealMenu?allDocs.filter(doc=>doc&&['image','pdf'].includes(doc.type)).map(doc=>({doc,score:aiTextScore([doc.name,doc.originalName,doc.tags,doc.note,doc.summary,doc.extractedText,doc.extractedJson?.document_type,doc.extractedJson?.title].join(' '),['mess','menu','meal','hostel','food','breakfast','lunch','dinner','weekly'])+(/mess|menu|meal|hostel|canteen|food|भोजन|मेस/i.test([doc.name,doc.originalName,doc.tags,doc.note,doc.extractedJson?.document_type,doc.extractedJson?.title].join(' '))?12:0)})).sort((a,b)=>b.score-a.score||Number(b.doc.created||b.doc.createdAt||0)-Number(a.doc.created||a.doc.createdAt||0)): [];
  const documentQuestion=isDocumentContentQuestion(question)||/\b(?:this|the|my|uploaded|attached)\s+(?:file|document|image|photo|pdf)\b|\b(?:read|inspect|analyse|analyze|summari[sz]e|extract|what(?:'s| is) in)\b.*\b(?:file|document|image|photo|pdf)\b/i.test(String(question||''));
  const latestDocument=documentQuestion?allDocs.filter(doc=>doc&&['image','pdf'].includes(doc.type)).sort((a,b)=>Number(b.created||b.createdAt||b.updated||0)-Number(a.created||a.createdAt||a.updated||0))[0]:null;
- const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||(queryLooksLikeMealMenu?mealDocumentCandidates[0]?.doc:null)||allDocs.find(doc=>doc.id===retrieval.documents[0])||latestDocument;
+ // Never attach an arbitrary original image/PDF when several files are in scope:
+ // the vision model can over-focus on that one file and ignore the other uploaded documents.
+ // Original binary attachment is allowed only for an explicitly selected file, or when
+ // retrieval has confidently narrowed the request to exactly one saved document.
+ const singleRetrievedDocId=retrieval.documents.length===1?retrieval.documents[0]:null;
+ const originalCandidate=(targetDocId?allDocs.find(doc=>doc.id===targetDocId):null)||
+  (singleRetrievedDocId?allDocs.find(doc=>doc.id===singleRetrievedDocId):null)||
+  (allDocs.length===1?allDocs[0]:null);
  if(originalCandidate){
   const matchedDoc=originalCandidate;
   if(matchedDoc&&['image','pdf'].includes(matchedDoc.type)){
