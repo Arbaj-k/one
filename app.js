@@ -1767,7 +1767,7 @@ const docList=allDocs.filter(doc=>(!targetDocId||doc.id===targetDocId)&&(
   const phraseHit=normalizedQuery.length>5&&searchable.includes(normalizedQuery)?4:0;
   const contentQuality=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').trim().length?1:0;
   return {doc,score:tokenHits+phraseHit+contentQuality};
- }).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||b.doc.updated||0)-Number(a.doc.createdAt||a.doc.created||a.doc.updated||0)).slice(0,targetDocId?1:5);
+ }).sort((a,b)=>b.score-a.score||Number(b.doc.createdAt||b.doc.created||b.doc.updated||0)-Number(a.doc.createdAt||a.doc.created||a.doc.updated||0)).slice(0,targetDocId?1:8);
  const jsonDocuments=rankedJson.map(({doc})=>({source:'Document JSON: '+doc.name,name:doc.name,document_type:doc.extractedJson?.document_type||'unclassified',extracted_text:String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'').slice(0,6000),structured_data:compactDocumentAIValue(doc.extractedJson?.structured_data||{}),source_pages:compactDocumentAIValue(doc.extractedJson?.source_pages||doc.extractedJson?.pages||[]),warnings:compactDocumentAIValue(doc.extractedJson?.warnings||doc.extractedJson?.extraction_notes||[])}));
 
  const projectCandidates=(data.projects||[]).map(project=>({project,score:aiTextScore([project.name,project.description].join(' '),terms)})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score);
