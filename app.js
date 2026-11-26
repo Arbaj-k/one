@@ -1716,37 +1716,41 @@ function aiDocumentExtractedText(doc){
 }
 function aiBuildDocumentEvidence(documents,question,targetDocId=null,limits={}){
  const intent=aiQueryIntent(question),maxDocs=limits.maxDocs??6,maxChunks=limits.maxChunks??24,maxChars=limits.maxChars??30000;
- const documentQuestion=/\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?|saved info(?:rmation)?|my knowledge|uploaded|saved file|saved document)\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ|सेव|अपलोड)/iu.test(String(question||''));
+ const rawQuestion=String(question||'');
+ const mealMenuQuestion=/\\b(?:mess|menu|meal|breakfast|lunch|dinner|refreshment|snack|hostel|canteen|food)\\b|\\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b|(?:मेस|भोजन|नाश्ता|दोपहर का खाना|रात का खाना)/iu.test(rawQuestion);
+ const documentQuestion=/\\b(?:pdfs?|images?|photos?|pictures?|documents?|files?|scans?|receipts?|bills?|invoices?|screenshots?|saved info(?:rmation)?|my knowledge|uploaded|saved file|saved document|menu|mess|meal|breakfast|lunch|dinner|refreshment|hostel)\\b|\\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b|(?:इस|उस|इसमें|उसमें|दस्तावेज़|दस्तावेज|तस्वीर|फोटो|पीडीएफ|सेव|अपलोड|मेस|भोजन|नाश्ता)/iu.test(rawQuestion);
  const documentList=(documents||[]).filter(doc=>doc&&doc.id&&(!targetDocId||doc.id===targetDocId));
  const candidates=documentList.map(doc=>{
-  const savedText=String(doc.extractedText||doc.extractedJson?.extracted_text||doc.ocrText||'');
+  const savedText=aiDocumentExtractedText(doc);
   const structuredFallback=doc.extractedJson?.structured_data&&typeof doc.extractedJson.structured_data==='object'?JSON.stringify(doc.extractedJson.structured_data):'';
-  const searchableText=savedText.trim()||structuredFallback;
-  const cachedChunks=Array.isArray(doc.chunks)?doc.chunks.filter(chunk=>String(chunk?.text||'').trim()&&!/^\[(?:no readable text|no selectable text|text extraction is processing)/i.test(String(chunk.text).trim())):[];
-  const sourceChunks=cachedChunks.length?cachedChunks:splitDocumentIntoChunks(searchableText);
+  const searchableText=savedText||structuredFallback;
+  const cachedChunks=Array.isArray(doc.chunks)?doc.chunks.filter(chunk=>String(chunk?.text||'').trim()&&!/^\\[(?:no readable text|no selectable text|text extraction is processing|text extraction could not finish)/i.test(String(chunk.text).trim())):[];
+  const cachedText=cachedChunks.map(chunk=>String(chunk.text||'')).join(' ');
+  // Rebuild from canonical OCR text whenever cached chunks are absent, stale,
+  // or materially shorter than the persisted extraction.
+  const sourceChunks=savedText&&(cachedText.length<savedText.length*0.85)?splitDocumentIntoChunks(savedText):(cachedChunks.length?cachedChunks:splitDocumentIntoChunks(searchableText));
   const ranked=aiRankDocumentChunks(sourceChunks,question),matching=ranked.filter(chunk=>chunk.score>0);
-  // Explicit document/knowledge questions must still retrieve a saved file when
-  // the query is generic or Hinglish and has no OCR keyword overlap.
-  if((targetDocId||documentQuestion)&&!matching.length){
-   const fallback=ranked.filter(item=>String(item.text||'').trim()).sort((a,b)=>a.index-b.index).slice(0,Math.min(maxChunks,24));
-   if(fallback.length)return {doc,matching:fallback.map(item=>({...item,score:Math.max(0.01,item.score||0)})),docScore:targetDocId?2:1};
+  // Meal menus and explicit document questions need the complete saved extract:
+  // a Monday query must not lose Monday's row because OCR wording scored poorly.
+  if((targetDocId||documentQuestion)&&(mealMenuQuestion||!matching.length)){
+   const complete=sourceChunks.map((item,index)=>({...item,index,score:Math.max(0.01,aiChunkIntentScore(item,intent))}))
+    .filter(item=>String(item.text||'').trim()).slice(0,Math.min(maxChunks,32));
+   if(complete.length)return {doc,matching:complete,docScore:targetDocId?100:10};
   }
   return {doc,matching,docScore:aiTextScore((doc.name||'')+' '+searchableText,intent.terms)};
- }).filter(item=>item.matching.length>0).sort((a,b)=>b.matching[0].score-a.matching[0].score||b.docScore-a.docScore);
+ }).filter(item=>item.matching.length>0).sort((a,b)=>b.docScore-a.docScore||b.matching[0].score-a.matching[0].score);
  const picked=[],seen=new Set();
  for(const item of candidates.slice(0,maxDocs)){
-  const first=item.matching[0];picked.push({...first,doc:item.doc});seen.add(item.doc.id+':'+first.index);
- }
- const global=candidates.flatMap(item=>item.matching.map(chunk=>({...chunk,doc:item.doc,docScore:item.docScore}))).sort((a,b)=>b.score-a.score||b.docScore-a.docScore||a.index-b.index);
- for(const hit of global){
-  if(picked.length>=maxChunks)break;
-  const key=hit.doc.id+':'+hit.index;if(seen.has(key))continue;
-  picked.push(hit);seen.add(key);
+  for(const hit of item.matching){
+   if(picked.length>=maxChunks)break;
+   const key=item.doc.id+':'+hit.index;if(seen.has(key))continue;
+   picked.push({...hit,doc:item.doc});seen.add(key);
+  }
  }
  const evidence=[];let total=0;
  for(const hit of picked){
   if(evidence.length>=maxChunks)break;
-  const label='File: '+hit.doc.name+(hit.page?' · Page '+hit.page:''),block='['+label+']\n'+hit.text;
+  const label='File: '+hit.doc.name+(hit.page?' · Page '+hit.page:''),block='['+label+']\\n'+hit.text;
   if(total+block.length>maxChars)continue;
   total+=block.length;evidence.push({...hit,label});
  }
