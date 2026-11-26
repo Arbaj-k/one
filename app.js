@@ -2249,8 +2249,12 @@ function resolveAskDocumentId(question,targetDocId){
  if(!docs.length||!isDocumentContentQuestion(question))return null;
  const raw=String(question||'').toLowerCase();
  const timetableQuestion=isTimetableQuestion(question);
- // Reuse the document cited by the previous assistant answer for implicit follow-ups.
- const previousFileReply=[...(data.messages||[])].reverse().find(message=>message?.role==='assistant'&&(message.documentId||Array.isArray(message.sources)&&message.sources.some(source=>/^(?:File: |Document JSON: )/i.test(String(source)))));
+ // Reuse the previous document only for genuine implicit follow-ups.
+ // A new subject (e.g. "mid-term exam") must trigger a fresh search across all saved files.
+ const asksSpecificDocumentTopic=/\\b(?:mid[ -]?term|semester|exam(?:ination)?s?|date[ -]?sheet|admit[ -]?card|marks?|result|syllabus|course|subject|timetable|time[ -]?table|class[ -]?schedule|mess|menu|meal|hostel|receipt|invoice|bill|certificate|assignment|notice|deadline)\\b/i.test(raw)||isTimetableQuestion(question);
+ const refersBackToPreviousDocument=/\\b(?:it|this|that|these|those|same|previous|above|usme|isme|iska|iske|iski|usse|isse|uska|uski|uske|yeh|ye|woh|vo|aur|also|what about)\\b|(?:इसमें|उसमें|इसका|उसका|इसे|उसे|वही|उसकी|इसकी)/iu.test(raw);
+ const implicitDocumentFollowUp=!asksSpecificDocumentTopic&&refersBackToPreviousDocument;
+ const previousFileReply=implicitDocumentFollowUp?[...(data.messages||[])].reverse().find(message=>message?.role==='assistant'&&(message.documentId||Array.isArray(message.sources)&&message.sources.some(source=>/^(?:File: |Document JSON: )/i.test(String(source))))):null;
  if(previousFileReply){
   if(previousFileReply.documentId&&docs.some(doc=>doc.id===previousFileReply.documentId))return previousFileReply.documentId;
   for(const source of previousFileReply.sources||[]){
