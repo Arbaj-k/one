@@ -1271,48 +1271,55 @@ async function recoverLegacyDocumentText(){
 }
 async function retryDocumentOCR(id){
  const doc=(data.documents||[]).find(d=>d.id===id);if(!doc)return;
- try{await ensureOneDocumentLibraries(doc.type==='pdf',true)}catch(error){toast(error.message||'Document tools could not load');return}
- const picker=document.createElement('input');picker.type='file';picker.accept=doc.type==='pdf'?'.pdf':'image/*';
+ // Open the native picker synchronously inside the click gesture. Awaiting CDN
+ // libraries first loses browser user activation, so picker.click() gets blocked.
+ const picker=document.createElement('input');
+ picker.type='file';
+ picker.accept=doc.type==='pdf'?'.pdf,application/pdf':'image/*,.jpg,.jpeg,.png,.webp';
+ picker.style.position='fixed';picker.style.left='-9999px';
+ document.body.appendChild(picker);
  picker.onchange=async()=>{
-  const file=picker.files?.[0];if(!file)return;
+  const file=picker.files?.[0];picker.remove();if(!file)return;
   if(file.size>12*1024*1024){toast('File is over 12 MB');return}
   try{
-   let extracted='';
    const mimeType=normalizedDocumentMime(file),isPdf=mimeType==='application/pdf';
+   await ensureOneDocumentLibraries(isPdf,!isPdf);
+   let extracted='';
    if(isPdf){
     if(!window.pdfjsLib)throw new Error('PDF reader unavailable. Refresh and retry.');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    
     for(let p=1;p<=pdf.numPages;p++){
      const pg=await pdf.getPage(p),ct=await pg.getTextContent();
      let pageText=ct.items.filter(x=>String(x.str||'').trim()).map(x=>x.str).join(' ');
      if(shouldRunDocumentOCR(pageText)){
       try{
        if(!window.Tesseract)await ensureOneDocumentLibraries(false,true);
-       if(window.Tesseract){
        const base=pg.getViewport({scale:1}),viewport=pg.getViewport({scale:Math.min(2.5,2600/Math.max(base.width,base.height))});
        const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        await pg.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
        const ocr=await runImageOCR(canvas);if(ocr.trim())pageText=mergeDocumentTextLayers(pageText,ocr);
-        }
-      }catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
+      }catch(ocrError){console.warn('PDF page OCR fallback failed; continuing with selectable text.')}
      }
-     extracted+='\n[Page '+p+']\n'+(pageText.trim()||'[No readable text found.]')+'\n';
+     extracted+='\\n[Page '+p+']\\n'+(pageText.trim()||'[No readable text found.]')+'\\n';
      pg.cleanup?.();
     }
    }else{
-    try{if(!window.Tesseract)await ensureOneDocumentLibraries(false,true);if(window.Tesseract)extracted=await Promise.race([runImageOCR(file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Image text scan timed out')),20000))])}catch(ocrError){console.warn("Operation failed; diagnostic details redacted.")}
+    extracted=await Promise.race([runImageOCR(file),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Image text scan timed out')),30000))]);
    }
    await saveOriginalDocument(id,file);
-   const readable=extracted.trim();doc.extractedText=readable||'[No readable text detected. Original file is available for AI analysis.]';
-   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.originalName=file.name;doc.mimeType=mimeType;doc.size=file.size;doc.fileStored=true;doc.created=Date.now();doc.ocrQuality=Math.round(documentTextQuality(readable)*100);doc.ocrEngine=window.Tesseract?'tesseract-eng+hin':'pdf-text-layer';doc.ocrCompletedAt=Date.now();doc.ocrStatus=readable?'complete':'failed';doc.extractedJson=documentTextToJSON(doc.name,doc.extractedText);
-   persist();render();if(readable){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}else toast('No readable text found. You can retry OCR from Advanced options.');
-  }catch(err){console.warn("Operation failed; diagnostic details redacted.");toast(err.message||'OCR retry failed')}
+   const readable=extracted.trim();
+   doc.extractedText=readable||'[No readable text detected. Original file is available for AI analysis.]';
+   doc.chunks=splitDocumentIntoChunks(doc.extractedText);doc.name=file.name;doc.originalName=file.name;doc.mimeType=mimeType;doc.size=file.size;doc.fileStored=true;doc.created=Date.now();doc.ocrQuality=Math.round(documentTextQuality(readable)*100);doc.ocrEngine=isPdf?'pdf-text-layer+tesseract':'tesseract';doc.ocrCompletedAt=Date.now();doc.ocrStatus=readable?'complete':'failed';doc.extractedJson=documentTextToJSON(doc.name,doc.extractedText);
+   persist();render();
+   if(readable){await convertDocumentToJSON(id);await autoProcessDocumentInsights(id)}
+   else toast('No readable text found. Try a clearer image or PDF.');
+  }catch(err){console.warn('OCR retry failed:',err);toast(err.message||'OCR retry failed')}
  };
+ picker.addEventListener('cancel',()=>picker.remove(),{once:true});
+ // No await before this line: browsers require a live user gesture here.
  picker.click();
 }
-
 function documentTextQuality(value){
  const text=String(value||'').replace(/\[Page\s+\d+\]|\[OCR\]/gi,' ').trim();
  if(!text)return 0;
