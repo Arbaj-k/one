@@ -3057,7 +3057,18 @@ const commandPrefix=query.match(/^\/(task|expense|income|udhaar|reminder|note|fi
     ['add','show','summary','delete','edit','complete','pause','resume'].includes(parsedLocal.action)
     || /\b(?:find|search|show|list|display|batao|dikhao|who owes|what do i owe|pending|completed|overdue|today|aaj|this month|november)\b/i.test(query)
   ))||(/\b(?:change|update|set|move)\b.*\b(?:deadline|due date)\b/i.test(query));
-  if(localReadOrManage){
+  // Document-content questions must reach the document RAG path. The generic
+  // local "files" command only searches filenames/tags and used to intercept
+  // questions about the contents of uploaded PDFs/images, returning a false "not found".
+  const documentContentRequest=isDocumentContentQuestion(query)||/\b(?:uploaded|saved|attached)\s+(?:pdfs?|documents?|files?|images?)\b/i.test(query);
+  // A request for the inventory is deterministic: answer from the complete saved list.
+  const documentInventoryRequest=/\b(?:how many|count|list|show|name|names|which|all|total)\b/i.test(query)&&/\b(?:uploaded|saved|attached|my|workspace)\b/i.test(query)&&/\b(?:files?|documents?|pdfs?|images?)\b/i.test(query);
+  if(documentInventoryRequest){
+    const docs=(data.documents||[]).filter(doc=>doc&&doc.id);
+    reply({answer:docs.length?'Your uploaded files ('+docs.length+'):\\n'+docs.map((doc,index)=>(index+1)+'. '+(doc.name||doc.originalName||'Untitled file')+' · '+String(doc.type||'file').toUpperCase()+' · '+(doc.jsonStatus||doc.ocrStatus||'saved')):'No uploaded files are currently available in this account workspace.',sources:['Uploaded Items'],fileResults:docs.map(doc=>({id:doc.id,name:doc.name||doc.originalName,type:doc.type,tags:doc.tags||[]}))});
+    return;
+  }
+  if(localReadOrManage&&!documentContentRequest){
    const localResult=window.OneCommands?.executeCommand?.(query);
    if(localResult?.answer){reply(localResult,{pendingAction:!!window.OneCommands?.hasPending?.()});return}
   }
