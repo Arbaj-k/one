@@ -3062,10 +3062,16 @@ const commandPrefix=query.match(/^\/(task|expense|income|udhaar|reminder|note|fi
   // questions about the contents of uploaded PDFs/images, returning a false "not found".
   const documentContentRequest=isDocumentContentQuestion(query)||/\b(?:uploaded|saved|attached)\s+(?:pdfs?|documents?|files?|images?)\b/i.test(query);
   // A request for the inventory is deterministic: answer from the complete saved list.
-  const documentInventoryRequest=/\b(?:how many|count|list|show|name|names|which|all|total)\b/i.test(query)&&/\b(?:uploaded|saved|attached|my|workspace)\b/i.test(query)&&/\b(?:files?|documents?|pdfs?|images?)\b/i.test(query);
+  // Detect inventory questions in English and Hindi/Hinglish. These must be
+  // answered from the active account's saved document records, never guessed by AI.
+  const inventoryIntent=/\b(?:how many|count|list|show|name|names|which|all|total|kitne|kitni|ginti|naam|batao|dikhao|kaun|sabhi|saari|sare|sabke|kitna)\b/i.test(query);
+  const fileNoun=/\b(?:files?|documents?|pdfs?|images?|uploads?|dastaavez|fileon|filen)\b/i.test(query);
+  const inventoryContext=/\b(?:uploaded|saved|attached|my|workspace|mere|meri|mera|mere\s+workspace|upload|uploaded)\b/i.test(query);
+  const documentInventoryRequest=inventoryIntent&&fileNoun&&inventoryContext;
   if(documentInventoryRequest){
-    const docs=(data.documents||[]).filter(doc=>doc&&doc.id);
-    reply({answer:docs.length?'Your uploaded files ('+docs.length+'):\\n'+docs.map((doc,index)=>(index+1)+'. '+(doc.name||doc.originalName||'Untitled file')+' · '+String(doc.type||'file').toUpperCase()+' · '+(doc.jsonStatus||doc.ocrStatus||'saved')):'No uploaded files are currently available in this account workspace.',sources:['Uploaded Items'],fileResults:docs.map(doc=>({id:doc.id,name:doc.name||doc.originalName,type:doc.type,tags:doc.tags||[]}))});
+    const docs=(Array.isArray(data.documents)?data.documents:[]).filter(doc=>doc&&doc.id);
+    const names=docs.map((doc,index)=>(index+1)+'. '+(doc.name||doc.originalName||'Untitled file')+' · '+String(doc.type||'file').toUpperCase()+' · '+(doc.jsonStatus||doc.ocrStatus||'saved'));
+    reply({answer:docs.length?'Active workspace mein '+docs.length+' uploaded file'+(docs.length===1?' hai':'s hain')+':\\n'+names.join('\\n'):'Is active account workspace mein abhi koi uploaded file record nahi mila.',sources:['Uploaded Items'],fileResults:docs.map(doc=>({id:doc.id,name:doc.name||doc.originalName,type:doc.type,tags:doc.tags||[]}))});
     return;
   }
   if(localReadOrManage&&!documentContentRequest){
