@@ -13,7 +13,8 @@ function corsFor(req: Request) {
 
 
 const textValue = (value: unknown, max = 52000) => typeof value === "string" ? value.slice(0, max) : "";
-const MODEL = "gemini-3.5-flash-lite";
+// Multimodal Gemini models, ordered by preferred availability.
+const MODEL_CANDIDATES = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite"];
 const validOriginal=(data:string,mime:string)=>{try{const b=Uint8Array.from(atob(data),c=>c.charCodeAt(0));if(mime==="application/pdf")return new TextDecoder().decode(b.slice(0,8)).startsWith("%PDF-");if(mime==="image/jpeg")return b[0]===255&&b[1]===216&&b[2]===255;if(mime==="image/png")return [137,80,78,71,13,10,26,10].every((v,i)=>b[i]===v);if(mime==="image/webp")return new TextDecoder().decode(b.slice(0,4))==="RIFF"&&new TextDecoder().decode(b.slice(8,12))==="WEBP";return false}catch{return false}};
 
 async function generate(geminiKey: string, prompt: string, originalFile?: { mimeType: string; dataBase64: string }) {
@@ -22,20 +23,30 @@ async function generate(geminiKey: string, prompt: string, originalFile?: { mime
     parts.push({ text: "The original uploaded document/image is attached. Inspect every visible page and use it to verify OCR, table structure, handwriting, labels, diagrams and column alignment. The visual source is primary evidence; the OCR text is only a helper." });
     parts.push({ inline_data: { mime_type: originalFile.mimeType, data: originalFile.dataBase64 } });
   }
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.1, maxOutputTokens: 16000 },
-    }),
-  });
-  const payload = await response.json();
-  if (!response.ok) {
-    if (response.status === 429) throw new Error("Gemini free-tier limit reached. Wait and retry.");
-    throw new Error("Document JSON generation failed. Verify the Gemini model/key configuration and retry.");
+  let lastError = "";
+  for (const model of MODEL_CANDIDATES) {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: { responseMimeType: "application/json", temperature: 0.1, maxOutputTokens: 16000 },
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      const output = (payload?.candidates?.[0]?.content?.parts || []).map((part: { text?: string }) => part.text || "").join("").trim();
+      if (!output) throw new Error("Gemini returned an empty document extraction. Retry OCR.");
+      return { text: output, model };
+    }
+    const apiMessage = String(payload?.error?.message || "");
+    lastError = model + ": " + (apiMessage || "HTTP " + response.status);
+    if (response.status === 429) throw new Error("Gemini rate limit reached while extracting this document. Wait and retry. (" + lastError + ")");
+    if (![400, 404].includes(response.status) || !/model|not found|not supported|not available|resource/i.test(apiMessage)) {
+      throw new Error("Gemini document extraction failed. " + lastError);
+    }
   }
-  return (payload?.candidates?.[0]?.content?.parts || []).map((part: { text?: string }) => part.text || "").join("").trim();
+  throw new Error("No configured Gemini vision model is available for this API key. Tried: " + MODEL_CANDIDATES.join(", ") + ". Last response: " + lastError);
 }
 function parseObject(raw: string): Record<string, unknown> | null {
   try {
@@ -136,7 +147,9 @@ Document name: ${name}
 Source text:
 ${sourceText}`;
 
-    let raw = await generate(key, basePrompt, originalFile);
+    let generated = await generate(key, basePrompt, originalFile);
+    let raw = generated.text;
+    const usedModel = generated.model;
     let parsed = parseObject(raw);
     let repaired = false;
     for (let attempt = 0; attempt < 2 && !validateShape(parsed); attempt++) {
@@ -146,7 +159,8 @@ Original document text:
 ${sourceText}
 Invalid output to repair:
 ${raw}`;
-      raw = await generate(key, repairPrompt, originalFile);
+      generated = await generate(key, repairPrompt, originalFile);
+      raw = generated.text;
       parsed = parseObject(raw);
     }
     if (!validateShape(parsed)) return json(req, { error: "The AI could not produce valid structured JSON. Try Convert to JSON again." }, 502, undefined, req);
@@ -162,9 +176,9 @@ ${raw}`;
       warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map((v: unknown) => String(v).slice(0, 500)).slice(0, 50) : [],
       validation: { valid_json: true, repaired },
     };
-    return json(req, { json: result, model: MODEL }, undefined, req);
+    return json(req, { json: result, model: usedModel });
   } catch (err) {
     console.warn("Operation failed; diagnostic details redacted.");
-    return json(req, { error: "Document conversion failed. Retry." }, 500, undefined, req);
+    return json(req, { error: err instanceof Error ? err.message.slice(0, 700) : "Document conversion failed. Retry." }, 500);
   }
 });
