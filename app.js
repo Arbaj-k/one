@@ -3011,9 +3011,13 @@ const commandPrefix=query.match(/^\/(task|expense|income|udhaar|reminder|note|fi
    const pendingResult=await chatActionIntent(query);
    if(pendingResult){reply(pendingResult,{pendingAction:!!pendingAction});return}
   }
+  // A new, explicit document topic must search across the user's whole saved library,
+  // not stay pinned to a previously selected/replied-to file (e.g. a mess menu).
+  const asksNewDocumentTopic=/\b(?:mid[ -]?term|semester|exam(?:ination)?s?|date[ -]?sheet|admit[ -]?card|marks?|result|syllabus|course|subject|timetable|time[ -]?table|class[ -]?schedule|mess|menu|meal|hostel|receipt|invoice|bill|certificate|assignment|notice|deadline)\b/i.test(query);
   // Reminder commands are app actions, never document questions. Ignore any stale selected document.
   if(deterministicReminderRequest)targetDocId=null;
-  else if(!targetDocId)targetDocId=resolveAskDocumentId(query,null);
+  else if(asksNewDocumentTopic)targetDocId=null;
+  if(!deterministicReminderRequest&&!targetDocId)targetDocId=resolveAskDocumentId(query,null);
   const asksTimetableContext=/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|periods?|lectures?|classes|which subject|what subject|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b|(?:समय सारणी|टाइम टेबल|कक्षा|क्लास|शुक्रवार|सोमवार|मंगलवार|बुधवार|गुरुवार|शनिवार|रविवार)/iu.test(query);
   if(!targetDocId&&asksTimetableContext&&/\b(?:time ?table|timetable|class ?schedule|lecture ?schedule|uploaded|pdf|document|file)\b/i.test(query)){
    const latestUploaded=(data.documents||[]).filter(doc=>doc&&doc.id&&/time.?table|timetable|schedule|class/i.test(String(doc.name||'')+' '+String(doc.tags||''))).sort((a,b)=>Number(b.createdAt||b.created||0)-Number(a.createdAt||a.created||0))[0];
